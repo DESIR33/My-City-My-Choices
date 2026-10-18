@@ -14,7 +14,8 @@ Visit http://localhost:8000. Three.js currently loads from jsDelivr, so the brow
 
 ## Controls
 
-- **WASD** or arrow keys: walk / drive
+- **WASD** or arrow keys: walk; while driving, W accelerates, S brakes/reverses, and A/D steer
+- **Space**: handbrake while driving
 - **Mouse**: look around (click the game to capture the mouse)
 - **E**: interact
 - **F**: enter or exit a parked car
