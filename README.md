@@ -1,6 +1,6 @@
 # My City, My Choices
 
-An early browser-game prototype for a story-driven life-skills game. Chapter 1 takes place on Maple Street, a walkable 3D district where the player learns coin and bill values, practices counting customer change with selectable denominations, starts a small business, compares a low-cost kit with a higher-risk premium kit, calculates business profit, and chooses whether to save, reinvest, or try a fictional investment.
+An early browser-game prototype for a story-driven life-skills game. Chapter 1 takes place on Maple Street, a walkable 3D district where the player learns coin and bill values, practices counting customer change with selectable denominations, starts a small business, compares a low-cost kit with a higher-risk premium kit, calculates business profit, and chooses whether to save, upgrade the business, or try a fictional investment. Business upgrades spend cash and appear as a new sign at the market stand.
 
 ## Run locally
 
