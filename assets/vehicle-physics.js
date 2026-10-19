@@ -44,7 +44,7 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
     state.throttle = approach(state.throttle, braking ? 0 : Math.abs(direction), 7, dt);
     state.brake = approach(state.brake, braking ? (handbrake ? .8 : Math.abs(direction)) : 0, 16, dt);
     const cornerLoad=clamp(Math.abs(state.lateralAcceleration)/9.81,0,.85);
-    const engine = state.throttle * (6500 / VEHICLE.mass) * (1 - .68 * clamp(abs / VEHICLE.maxSpeed, 0, 1))*(1-.25*cornerLoad);
+    const engine = state.throttle * (6500 / VEHICLE.mass) * (1 - .68 * clamp(abs / VEHICLE.maxSpeed, 0, 1))*Math.sqrt(Math.max(.2,1-cornerLoad*cornerLoad));
     const resistance = abs > .02 ? .13 + .00042 * abs * abs + .012 * abs + (state.throttle<.05?.045*abs:0) : 0;
     let acceleration = state.direction * engine - Math.sign(speed) * (resistance + state.brake * 9.2);
     if (braking && abs < .1) {state.speed = 0; acceleration = 0; state.throttle = 0;}
