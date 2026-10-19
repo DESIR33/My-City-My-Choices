@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import {CAFE,BAKERY,FIRE_STATION} from './city-rules.js';
+import {SCHOOL,GROCERY,BUS_STOPS,shellObstacles,groceryObstacles,insideSchool,insideGrocery} from './city-next.js';
+import {RIVER_PARK} from './world-rules.js';
 const unit=new THREE.BoxGeometry(1,1,1);
 export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurfaces,characters}){
   const seats=[],cutaway=[],wood=new THREE.MeshStandardMaterial({color:0x865d3d,roughness:.82}),metal=new THREE.MeshStandardMaterial({color:0x243a3a,metalness:.55,roughness:.44}),cream=new THREE.MeshStandardMaterial({color:0xd5c9ad,roughness:.85}),red=new THREE.MeshStandardMaterial({color:0xa72e24,roughness:.5,metalness:.18}),navy=new THREE.MeshStandardMaterial({color:0x253846,roughness:.76});
@@ -135,11 +137,59 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
     return engine;
   }
   const firefighters=[];for(let i=0;i<4;i++){const actor=characters.create({x:133+i*2,z:-100,model:i%2?'casual':'neighbor',firefighter:true,interactive:true});firefighters.push(actor);}
+  const crowd=new THREE.Group();scene.add(crowd);crowd.visible=false;
+  for(const [cx,cz,color] of [[-36,-16,0x3d6a86],[-33,-15,0x8a4d42],[-37,-13,0x4f6b52],[-34,-18,0x6d5b86]]){
+    const person=new THREE.Group();person.position.set(cx,0,cz);crowd.add(person);
+    box(person,new THREE.MeshStandardMaterial({color,roughness:.8}),0,.9,0,.46,1.15,.32);
+    box(person,new THREE.MeshStandardMaterial({color:0xc99570,roughness:.7}),0,1.62,0,.22,.22,.2);
+  }
+  const marketClosed=label(scene,'MARKET CLOSED',14,2.35,-13.2,4.2,.55);marketClosed.visible=false;
+  function useObstacles(list){for(const o of list)obstacles.push(o);}
+  function openBuilding(place,brickColor,signText,extraObstacles,floorH=4.4){
+    const {x,z,w,d}=place,brick=visualKit.brick(brickColor),front=z+d/2;
+    const shell=new THREE.Group();scene.add(shell);
+    box(scene,visualKit.concrete,x,.08,z,w,.13,d);groundSurfaces.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:front+1.2,top:.21});
+    for(const side of [-1,1])box(shell,brick,x+side*(w/2),.21,z,.3,floorH,d);
+    box(shell,brick,x,.21,z-d/2,w,floorH,.3);
+    const gap=2.4,leaf=(w-gap)/2;
+    box(shell,brick,x-gap/2-leaf/2,.21,front,leaf,floorH,.3);box(shell,brick,x+gap/2+leaf/2,.21,front,leaf,floorH,.3);
+    box(shell,cream,x,floorH-.45,front,gap,.7,.16);
+    const roofMesh=box(shell,metal,x,floorH,z,w+.5,.22,d+.5);
+    box(scene,metal,x,floorH-.55,front+.15,w,.16,1.4);label(scene,signText,x,floorH-.15,front+.2,Math.min(w-1,11),.7);
+    useObstacles(extraObstacles);
+    buildings.push({x,z,w,d,shop:false,height:floorH+.3});
+    return {shell,roof:roofMesh};
+  }
+  // The zero-size box above is unused; the front wall is the two leaves around the door.
+  const school=openBuilding(SCHOOL,0x8d4b3a,'MAPLE STREET SCHOOL',shellObstacles(SCHOOL),4.6);
+  box(scene,visualKit.grass,SCHOOL.x,.02,SCHOOL.z+SCHOOL.d/2+4,SCHOOL.w+2,.08,6);
+  chair(SCHOOL.x+6,SCHOOL.z+SCHOOL.d/2+3.2,Math.PI,'bench');
+  box(scene,wood,SCHOOL.desk.x,.21,SCHOOL.desk.z,3.2,.9,1.1);obstacles.push({minX:SCHOOL.desk.x-1.6,maxX:SCHOOL.desk.x+1.6,minZ:SCHOOL.desk.z-.7,maxZ:SCHOOL.desk.z+.55});
+  label(scene,'TODAY’S LESSON',SCHOOL.desk.x,1.7,SCHOOL.desk.z-.7,3.2,.4);
+  if(characters.create)characters.create({x:SCHOOL.x-4,z:SCHOOL.z-1,model:'mom',interactive:false});
+  const grocery=openBuilding(GROCERY,0x3f6a58,'MAPLE GROCERY',groceryObstacles(),4.3);
+  for(const side of [-1,1]){box(scene,wood,GROCERY.x+side*3.4,.21,GROCERY.z,.9,1.15,2.6);box(scene,cream,GROCERY.x+side*3.4,1.36,GROCERY.z,1,.08,2.7);}
+  box(scene,wood,GROCERY.x,.21,GROCERY.z-5,4.6,1.05,1);label(scene,'PAY HERE',GROCERY.x,2.1,GROCERY.z-5.7,3,.45);
+  if(characters.create)characters.create({x:GROCERY.x+3,z:GROCERY.z-3.2,model:'neighbor',interactive:false});
+  function busStop(stop){
+    const g=new THREE.Group();g.position.set(stop.x+2.4,0,stop.z);scene.add(g);
+    box(g,metal,0,.21,0,.12,2.6,.12);box(g,metal,.7,2.7,0,1.6,.08,1.3);box(g,navy,0,.9,.35,1.5,1.1,.08);
+    label(g,'CITY BUS',0,2.15,.42,1.5,.32);obstacles.push({minX:stop.x+1.7,maxX:stop.x+3.3,minZ:stop.z-.5,maxZ:stop.z+.5});
+  }
+  busStop(BUS_STOPS.maple);busStop(BUS_STOPS.northstar);
+  const park=RIVER_PARK,px=(park.minX+park.maxX)/2,pz=(park.minZ+park.maxZ)/2,pw=park.maxX-park.minX,pd=park.maxZ-park.minZ;
+  box(scene,visualKit.grass,px,.03,pz,pw,.08,pd);groundSurfaces.push({minX:park.minX,maxX:park.maxX,minZ:park.minZ,maxZ:park.maxZ,top:.1});
+  box(scene,visualKit.concrete,-28,.08,-330,34,.1,2.4);box(scene,visualKit.concrete,-34,.08,-345,2.2,.1,30);
+  chair(-24,-318,Math.PI/2,'bench');chair(-40,-352,-Math.PI/2,'bench');
+  table(-34,-340);chair(-34,-341.8,0);chair(-34,-338.2,Math.PI);
+  label(scene,'RIVERFRONT PARK',-22,2.4,-300,5,.55);
+  for(const [tx,tz] of [[-42,-290],[-18,-370],[-44,-360]])if(visualKit.treeModel)scene.add(visualKit.treeModel(tx,tz,1));
   let servedOrder=null;
   function serveOrder(id){if(servedOrder)scene.remove(servedOrder);servedOrder=new THREE.Group();servedOrder.position.set(-25,1.35,-38.2);scene.add(servedOrder);box(servedOrder,metal,0,0,0,.65,.025,.45);
     if(id==='sandwich'){box(servedOrder,cream,0,.025,0,.38,.05,.28);box(servedOrder,new THREE.MeshStandardMaterial({color:0xd7a841}),0,.075,0,.39,.025,.29);box(servedOrder,cream,0,.1,0,.38,.05,.28);}
     else if(id==='fruit'){const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.2,.12,.12,16),cream);bowl.position.y=.085;servedOrder.add(bowl);for(let i=0;i<5;i++){const fruit=new THREE.Mesh(new THREE.SphereGeometry(.06,12,8),new THREE.MeshStandardMaterial({color:[0x9b3832,0x6a8f40,0xd29a36][i%3]}));fruit.position.set(Math.cos(i*1.3)*.1,.17,Math.sin(i*1.3)*.1);servedOrder.add(fruit);}}
     else{const cup=new THREE.Mesh(new THREE.CylinderGeometry(.11,.085,.23,16),cream);cup.position.y=.14;servedOrder.add(cup);const drink=new THREE.Mesh(new THREE.CircleGeometry(.098,16),new THREE.MeshStandardMaterial({color:id==='juice'?0xe2a13a:0x5f3624}));drink.rotation.x=-Math.PI/2;drink.position.y=.258;servedOrder.add(drink);}}
-  return {seats,chair,firefighters,fireEngine:engine,serveOrder,serveBakeryOrder,bakeryInside,cafeInside:p=>p.x>-40.5&&p.x<-19.5&&p.z>-40.5&&p.z<-27,
-    update(p){const inside=this.cafeInside(p);for(const o of cutaway)o.visible=!inside;const inBakery=bakeryInside(p);bakeryWalls.visible=bakeryRoof.visible=!inBakery;return inside||inBakery;}};
+  return {seats,chair,firefighters,fireEngine:engine,serveOrder,serveBakeryOrder,bakeryInside,cafeInside:p=>p.x>-40.5&&p.x<-19.5&&p.z>-40.5&&p.z<-27,schoolInside:insideSchool,groceryInside:insideGrocery,marketClosed,
+    applyAtmosphere(atmosphere){crowd.visible=!!atmosphere?.cafeBusy;marketClosed.visible=!!atmosphere?.evening;},
+    update(p){const inside=this.cafeInside(p);for(const o of cutaway)o.visible=!inside;const inBakery=bakeryInside(p);bakeryWalls.visible=bakeryRoof.visible=!inBakery;const inSchool=insideSchool(p),inGrocery=insideGrocery(p);school.shell.visible=!inSchool;grocery.shell.visible=!inGrocery;return inside||inBakery||inSchool||inGrocery;}};
 }

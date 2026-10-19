@@ -146,7 +146,7 @@ export function mountVehicle(group, template, color, index = 0) {
   // A small stamped plate remains readable without adding another texture or web request.
   box(body,new THREE.MeshStandardMaterial({color:0xc6d0cb,roughness:.48}),0,.67,-2.305,.43,.12,.012);
   rig.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
-  const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,paint,travel:0,steering:0,pitch:0,roll:0};
+  const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,headlightMaterial:led,paint,travel:0,steering:0,pitch:0,roll:0};
   group.userData.vehicleVisual=data;group.userData.vehicleDimensions={width:VEHICLE.width,length:VEHICLE.length};
   return data;
 }
@@ -164,4 +164,7 @@ export function updateVehicleVisual(group, state, dt) {
   data.brakeMaterial.emissiveIntensity=(state.brake>.08||state.handbrake)?2.6:.28;
   data.reverseMaterial.emissiveIntensity=state.gear==='R'?1.4:0;
   if(data.hazardMaterial)data.hazardMaterial.emissiveIntensity=disabled?(Math.floor(performance.now()/380)%2?2.5:.05):0;
+  if(data.headlightMaterial)data.headlightMaterial.emissiveIntensity=headlightLevel;
 }
+let headlightLevel=.2;
+export function setHeadlightLevel(level){if(Number.isFinite(level))headlightLevel=Math.max(0,Math.min(4,level));}
