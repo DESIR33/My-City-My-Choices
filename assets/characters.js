@@ -61,7 +61,7 @@ function makeHair() {
 }
 
 function makeAccessories() {
-  const head = new THREE.Group(), torso = new THREE.Group(), hat = new THREE.Group(), backpack = new THREE.Group();
+  const head = new THREE.Group(), torso = new THREE.Group(), hat = new THREE.Group(), backpack = new THREE.Group(), policeCap = new THREE.Group(), policeBadge = new THREE.Group();
   const straw = clothMaterial(0xd7ba7a), ribbon = clothMaterial(0x5a6253), fabric = clothMaterial(0x657e92);
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.013,36), straw); brim.position.y = .2; hat.add(brim);
   const profile = [new THREE.Vector2(.126,0),new THREE.Vector2(.123,.025),new THREE.Vector2(.108,.1),new THREE.Vector2(.09,.125),new THREE.Vector2(0,.13)];
@@ -75,8 +75,17 @@ function makeAccessories() {
   }
   hat.traverse(o=>{if(o.isMesh)o.castShadow=true}); backpack.traverse(o=>{if(o.isMesh)o.castShadow=true});
   const hair = makeHair(); head.add(hair.curls,hair.bun,hat); torso.add(backpack);
-  hat.visible = backpack.visible = false;
-  return { head, torso, hat, backpack, hair };
+  const uniform = clothMaterial(0x172b45), uniformTrim = new THREE.MeshStandardMaterial({color:0xb6a56d,roughness:.42,metalness:.48});
+  const cap = new THREE.Mesh(new RoundedBoxGeometry(.25,.14,.27,4,.035),uniform); cap.position.set(0,.195,-.015); policeCap.add(cap);
+  const visor = new THREE.Mesh(new RoundedBoxGeometry(.27,.025,.19,3,.01),uniform); visor.position.set(0,.132,.065); policeCap.add(visor);
+  const capBadge = new THREE.Mesh(new THREE.CircleGeometry(.035,8),uniformTrim); capBadge.position.set(0,.195,.123); policeCap.add(capBadge);
+  const shieldShape = new THREE.Shape(); shieldShape.moveTo(-.035,.045); shieldShape.lineTo(.035,.045); shieldShape.lineTo(.031,-.005); shieldShape.lineTo(0,-.045); shieldShape.lineTo(-.031,-.005); shieldShape.closePath();
+  const badge = new THREE.Mesh(new THREE.ShapeGeometry(shieldShape),uniformTrim); badge.position.set(.075,.045,.115); policeBadge.add(badge);
+  const badgeCenter = new THREE.Mesh(new THREE.CircleGeometry(.009,8),uniform); badgeCenter.position.set(.075,.045,.117); policeBadge.add(badgeCenter);
+  head.add(policeCap); torso.add(policeBadge);
+  hat.visible = backpack.visible = policeCap.visible = policeBadge.visible = false;
+  policeCap.traverse(o=>{if(o.isMesh)o.castShadow=true}); policeBadge.traverse(o=>{if(o.isMesh)o.castShadow=true});
+  return { head, torso, hat, backpack, policeCap, policeBadge, hair };
 }
 
 // Only rotations and a proportionally scaled vertical root motion are retargeted.
@@ -177,10 +186,11 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     data.accessories.hair.material.color.setHex(a.hair??0x483c35);
     data.accessories.hat.visible=!!a.wardrobe?.hat;data.accessories.backpack.visible=!!a.wardrobe?.backpack;
   }
-  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false }) {
+  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false,police=false }) {
     const actor=new THREE.Group();actor.position.set(x,groundHeight(x,z),z);scene.add(actor);
     const fallback=placeholder(shirt);actor.add(fallback);
-    const data={ model,customizable,interactive,fallback,appearance:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61 };
+    const data={ model,customizable:customizable||police,interactive,police,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}: {},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61 };
+    if(police)actor.userData.role='police-officer';
     actor.userData.character=data;actors.push(actor);
     const loading=Promise.all([template(model),motions(MODELS[model].set)]).then(([gltf,clips])=>{
       const source=cloneSkeleton(gltf.scene),visual=new THREE.Group();
@@ -193,20 +203,22 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const leftEye=source.getObjectByName(model==='child'||model==='boy'?'Bip02_LEye':'Bip01_LEye');
       actor.updateMatrixWorld(true);
       if(head&&leftEye){const headPosition=head.getWorldPosition(new THREE.Vector3()),eyePosition=leftEye.getWorldPosition(new THREE.Vector3());if(eyePosition.z<headPosition.z)visual.rotation.y=Math.PI;}
-      if(customizable){
+      if(data.customizable){
         data.uniforms={avatarSkinRatio:{value:new THREE.Color(1,1,1)},avatarShirt:{value:new THREE.Color(0x496d84)},avatarHair:{value:new THREE.Color(0x483c35)},avatarShoes:{value:new THREE.Color(0x303f52)},avatarHairStyle:{value:0}};
         data.accessories=makeAccessories();actor.add(data.accessories.head,data.accessories.torso);
       }
       source.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=mesh.receiveShadow=true;mesh.frustumCulled=false;
-        const prepare=m=>{if(customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=.85;return mat};
+        const prepare=m=>{if(data.customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=.85;return mat};
         mesh.material=Array.isArray(mesh.material)?mesh.material.map(prepare):prepare(mesh.material);
       });
       data.mixer=new THREE.AnimationMixer(source);data.actions={};
       for(const {name,gltf:motion} of clips){const clip=retargetMotion(motion.animations[0],motion.scene,source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}
-      if(customizable){
+      if(data.customizable){
         const spine=source.getObjectByName('Bip02_Spine2');
         data.anchors=[rememberAnchor(actor,head,data.accessories.head),rememberAnchor(actor,spine,data.accessories.torso)];
         setAppearance(actor,data.appearance);
+        data.accessories.policeCap.visible=data.police;
+        data.accessories.policeBadge.visible=data.police;
       }
       fallback.visible=false;data.ready=true;setMotion(data,'idle');data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
       data.mixer.update(0);actor.updateMatrixWorld(true);if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
