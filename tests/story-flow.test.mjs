@@ -107,5 +107,15 @@ c.obstacles.splice(c.obstacles.indexOf(enclosure),1);
 run('vehicleAction();findNear();interactNow()');assert.equal(run('driving===cars[1]'),true,'The parked car can be entered again');
 assert.equal(run('obstacles.includes(driving.userData.obstacle)'),false,'Entering removes the parked collider');
 run('vehicleAction()');assert.equal(c.obstacles.filter(o=>o===loaner.userData.obstacle).length,1,'Repeated exits register one parked collider');
+// New southern destinations use the same real story handlers and wallet.
+run('stage="done";marketDay=2;goal=0;cash=1;saved=2;moneyPlan=freshMoneyPlan();carLife=transactCar(freshCarOwnership(),1000,"buy","used").car;carLife.fuel=2;garageCar.userData.disabled=false;garageCar.position.set(-2.4,0,1114);player.position.set(-10,0,1114);driving=null;response=null');
+c.openCoastMotors();assert.ok(doc.querySelector('#panel').innerHTML.includes('Sunshore Motors'));
+c.carUpkeep('fuel');assert.equal(run('carLife.fuel'),4);assert.equal(run('cash'),.5);assert.equal(run('saved'),2,'Southern refills cannot use protected savings');
+run('cash=0');const coastalFuel=run('carLife.fuel');c.carUpkeep('fuel');assert.equal(run('carLife.fuel'),coastalFuel,'An empty wallet cannot buy coastal fuel');
+run('saveGame();player.position.set(-83,0,-22);garageCar.position.set(-86,0,115);carLife=freshCarOwnership();restoreGame()');
+assert.equal(run('player.position.z'),1114);assert.equal(run('garageCar.position.z'),1114);assert.equal(run('carLife.fuel'),4,'Coastal car, player, and fuel state survive save/restore');
+c.openWorldMap();assert.ok(doc.querySelector('#panel').innerHTML.includes('Sunshore City'));assert.ok(doc.querySelector('#panel').innerHTML.includes('Three connected districts'));
+c.setCityDestination('coast');assert.equal(run('navigationTarget.z'),1080);c.setCityDestination('beach');assert.equal(run('navigationTarget.x'),48);
+run('player.position.set(25,0,1090);near=null;interactNow()');assert.ok(doc.querySelector('#panel').innerHTML.includes('Welcome to the coast'),'The beach information board is reachable through the actual interaction system');
 c.newStory();assert.equal(storage.has('mapleStreetChapter1'),false);assert.ok(c.reloaded);
 console.log('Story flow passed: business days 1–10 across four businesses, long customer queues, persistent repairs, neighbor-job recovery, garden timing, planner decisions, car ownership, save/restore, café purchases, seating, crash response and repair, steering direction, keyboard/touch walking after angled vehicle exits, blocked doors, repeated entry/exit, and duplicate-payment prevention.');

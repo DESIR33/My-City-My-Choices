@@ -20,10 +20,10 @@ color, ownership IDs, saved poses, disabled states, lights, and wheel travel sta
 under the existing game systems. Police cars retain their existing rig and livery.
 
 The two compressed assets total 2.8 MB. The civilian fleet now retains the supplied
-Ford Mustang alongside the Mercedes-Benz GLS and McLaren Senna: 14 Mustangs, 14 SUVs,
-and 7 McLarens across the 35 civilian slots. `vehicle-fleet.js` assigns 12 body-paint
+Ford Mustang alongside the Mercedes-Benz GLS and McLaren Senna: 20 Mustangs, 20 SUVs,
+and 10 McLarens across the 50 civilian slots. `vehicle-fleet.js` assigns 12 body-paint
 options deterministically and separately from the police roster. Every model has
-multiple colors, and both districts contain all three models. The owned coupe is
+multiple colors, and all three districts contain all three models. The owned coupe is
 a Mustang; purchasing or restoring it preserves its offer paint. Police livery is
 unchanged. Premium near detail is limited to four cars on desktop and two on touch devices.
 Medium detail is limited to ten and five respectively. Remaining cars use the

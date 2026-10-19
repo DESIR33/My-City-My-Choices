@@ -11,8 +11,8 @@ import {civilianAppearance,availableFleetModel,FLEET_PAINTS} from '../assets/veh
 import {prepareVehicleTemplate,mountVehicle,updateVehicleVisual} from '../assets/vehicles.js';
 import {preparePremiumVehicleTemplate,updateVehicleDetail,setVehicleEnvironment} from '../assets/premium-vehicles.js';
 
-const lineup=Array.from({length:35},(_,i)=>civilianAppearance(i));
-assert.deepEqual(lineup.reduce((a,v)=>(a[v.modelId]=(a[v.modelId]||0)+1,a),{}),{mustang:14,gls:14,senna:7});
+const lineup=Array.from({length:50},(_,i)=>civilianAppearance(i));
+assert.deepEqual(lineup.reduce((a,v)=>(a[v.modelId]=(a[v.modelId]||0)+1,a),{}),{mustang:20,gls:20,senna:10});
 assert.equal(new Set(lineup.map(v=>v.brand)).size,3);
 assert.equal(new Set(lineup.map(v=>v.color)).size,12);
 for(const id of ['mustang','gls','senna'])assert.ok(new Set(lineup.filter(v=>v.modelId===id).map(v=>v.color)).size>=5,'Every model has several actual body colors');
@@ -20,8 +20,8 @@ for(let i=1;i<lineup.length;i++) {
   assert.notEqual(lineup[i].modelId,lineup[i-1].modelId,'Consecutive civilian slots do not all become the same model');
   assert.notEqual(lineup[i].color,lineup[i-1].color,'Neighboring slots use visibly different paint');
 }
-for(const start of [0,17,23])assert.equal(new Set(lineup.slice(start,start+8).map(v=>v.modelId)).size,3,'Parked cars, local traffic, and the north district each include all three models');
-assert.deepEqual(Array.from({length:35},(_,i)=>civilianAppearance(i)),lineup,'Reloading retains the same vehicle identities');
+for(const start of [0,17,23,35])assert.equal(new Set(lineup.slice(start,start+8).map(v=>v.modelId)).size,3,'Parked cars, local traffic, and the north district each include all three models');
+assert.deepEqual(Array.from({length:50},(_,i)=>civilianAppearance(i)),lineup,'Reloading retains the same vehicle identities');
 assert.equal(new Set(FLEET_PAINTS.map(v=>v.color)).size,12);
 assert.deepEqual(civilianAppearance(NaN),civilianAppearance(0));
 
@@ -58,7 +58,7 @@ const context={civilianAppearance,availableFleetModel,mustangTemplate:mustang,lo
 vm.createContext(context);vm.runInContext(source+';window.loadFleet=loadPremiumCars;',context);
 await context.window.loadFleet();
 const civilians=refs.filter(r=>r!==refs.find(r=>r.group===police));
-assert.deepEqual(civilians.reduce((a,r)=>(a[r.group.userData.vehicleVisual.modelId]=(a[r.group.userData.vehicleVisual.modelId]||0)+1,a),{}),{mustang:14,gls:14,senna:7},'The shipped loader retains Ford cars instead of overwriting all of them with Mercedes');
+assert.deepEqual(civilians.reduce((a,r)=>(a[r.group.userData.vehicleVisual.modelId]=(a[r.group.userData.vehicleVisual.modelId]||0)+1,a),{}),{mustang:20,gls:20,senna:10},'The shipped loader retains Ford cars instead of overwriting all of them with Mercedes');
 assert.equal(police.userData.vehicleVisual.rig,policeRig);assert.equal(police.userData.vehicleVisual.paint.color.getHex(),policePaint);
 assert.equal(owned.group.userData.vehicleVisual.paint.color.getHex(),owned.color,'Saved ownership paint is not replaced by the traffic palette');
 assert.equal(refs[3].group.position.distanceTo(position),0);assert.equal(refs[3].group.rotation.y,.6);
@@ -89,4 +89,4 @@ for(const loaded of [new Map([['gls',templates.get('gls')]]),new Map([['senna',t
 }
 assert.equal(availableFleetModel(lineup[0],new Map()),null);
 assert.equal(civilians[8].group.userData.disabled,true,'Disabled/crashed cars remain disabled after their model changes');
-console.log('Fleet diversity passed: 35 actual civilian vehicles, 3 brands, 12 body colors, both districts, real loader integration, owned paint, police livery, independent materials, wheel/brake states, premium detail budgets, and partial-download fallback.');
+console.log('Fleet diversity passed: 50 actual civilian vehicles, 3 brands, 12 body colors, all three districts, real loader integration, owned paint, police livery, independent materials, wheel/brake states, premium detail budgets, and partial-download fallback.');
