@@ -37,6 +37,7 @@ try {
 } finally {globalThis.document=originalDocument;}
 const blocked=(x,z,radius=.5)=>!worldWalkable(x,z)||obstacles.some(o=>x>o.minX-radius&&x<o.maxX+radius&&z>o.minZ-radius&&z<o.maxZ+radius);
 assert.ok(coast.palms.length>=100,'The district has a dense palm canopy, not a few isolated trees');
+assert.equal(coast.palmGrove.templates.length,3);coast.update(.04,{x:19,z:1300});assert.ok(coast.palmGrove.meshes.some(m=>m.userData.palmDetail==='near'&&m.count>0),'The real coast selects detailed nearby palms');assert.equal(coast.palmGrove.meshes.filter(m=>m.name==='Layered palm crowns').reduce((n,m)=>n+m.count,0),coast.palms.length);
 assert.equal(traffic.length,12);assert.equal(cars.length,15,'There are twelve moving cars and three parked beach loaners');
 assert.equal(actors.length,8);assert.equal(seats.length,6);
 assert.equal(trafficControllers.length,21);assert.ok(glows.length>=30);assert.ok(lamps.length>20);
