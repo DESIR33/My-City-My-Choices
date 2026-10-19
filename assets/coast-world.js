@@ -212,6 +212,7 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
     isRiding:()=>!!flamingo?.isRiding(),
     rideTo:(index,actor)=>!!flamingo?.rideTo(index,actor),
     floorY:()=>flamingo?.floorY?.()??0,
+    presentInterior:()=>flamingo?.presentInterior?.(),
     entrance:flamingo?.entrance||null,
     update(dt,playerPosition){waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}flamingo?.update(dt,playerPosition);}};
 }

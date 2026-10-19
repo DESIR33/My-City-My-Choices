@@ -41,16 +41,23 @@ function dataTexture(w, h, paint, repeatX = 1, repeatY = 1) {
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeatX, repeatY);
   texture.anisotropy = 8;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
   texture.needsUpdate = true;
   return texture;
 }
 function marble(tint, vein) {
   return dataTexture(512, 512, (x, y) => {
-    const n = fbm(x*.02, y*.02), warp = fbm(x*.008+2, y*.008);
-    const line = Math.abs(Math.sin(x*.035 + warp*7 + n*3));
-    const v = Math.pow(line, 10);
-    const speckle = (hash(x, y)-.5)*10;
-    return tint.map((channel, i) => Math.max(0, Math.min(255, channel*(1-v)+vein[i]*v+speckle)));
+    const n = fbm(x*.008, y*.008), warp = fbm(x*.004+2, y*.004);
+    const band = Math.abs(Math.sin(x*.008 + y*.003 + warp*4 + n*2));
+    const v = Math.pow(band, 4)*.55;
+    const grout = Math.min(x%256, 256-(x%256)) < 3 || Math.min(y%256, 256-(y%256)) < 3;
+    const speckle = (hash(x, y)-.5)*5;
+    return tint.map((channel, i) => {
+      const stone = channel*(1-v)+vein[i]*v+speckle;
+      return Math.max(0, Math.min(255, grout ? stone*.78 : stone));
+    });
   }, 1, 1);
 }
 function wood() {
@@ -104,9 +111,26 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     if (!batches.has(mat)) batches.set(mat, []);
     batches.get(mat).push({x, y:y+h/2, z, w, h, d});
   }
+  const geoCache = new Map();
+  function sizedGeometry(w, h, d) {
+    const key = [w, h, d].map(n => n.toFixed(3)).join('|');
+    if (geoCache.has(key)) return geoCache.get(key);
+    const geo = new THREE.BoxGeometry(Math.max(w, .001), Math.max(h, .001), Math.max(d, .001));
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i);
+      const ax = Math.abs(px)/(w/2||1), ay = Math.abs(py)/(h/2||1), az = Math.abs(pz)/(d/2||1);
+      const u = ax >= ay && ax >= az ? pz+d/2 : px+w/2;
+      const v = ay >= ax && ay >= az ? pz+d/2 : py+h/2;
+      uv.setXY(i, u, v);
+    }
+    uv.needsUpdate = true;
+    geoCache.set(key, geo);
+    return geo;
+  }
   function box(parent, mat, x, y, z, w, h, d) {
-    const mesh = new THREE.Mesh(unit, mat);
-    mesh.position.set(x, y+h/2, z); mesh.scale.set(w, h, d);
+    const mesh = new THREE.Mesh(sizedGeometry(w, h, d), mat);
+    mesh.position.set(x, y+h/2, z);
     mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh); return mesh;
   }
   function rounded(parent, mat, x, y, z, w, h, d, radius = .03) {
@@ -134,20 +158,22 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
 
   const plaster = new THREE.MeshStandardMaterial({color:0xf4f1eb, roughness:.86, metalness:0, side:THREE.DoubleSide, fog:false});
   const stoneMap = marble([232, 226, 218], [168, 160, 150]);
-  const stone = new THREE.MeshPhysicalMaterial({map:stoneMap, bumpMap:stoneMap, bumpScale:.012, color:0xffffff, roughness:.2, metalness:0, clearcoat:.45, clearcoatRoughness:.28, side:THREE.DoubleSide, fog:false});
+  stoneMap.repeat.set(.42, .42);
+  const stone = new THREE.MeshPhysicalMaterial({map:stoneMap, bumpMap:stoneMap, bumpScale:.006, color:0xd9d0c6, roughness:.55, metalness:0, clearcoat:.08, clearcoatRoughness:.6, side:THREE.DoubleSide, fog:false});
   const darkStoneMap = marble([92, 90, 88], [48, 46, 44]);
-  const darkStone = new THREE.MeshPhysicalMaterial({map:darkStoneMap, bumpMap:darkStoneMap, bumpScale:.02, roughness:.35, metalness:.04, clearcoat:.2, side:THREE.DoubleSide, fog:false});
-  const woodMap = wood();
-  const walnut = new THREE.MeshStandardMaterial({map:woodMap, bumpMap:woodMap, bumpScale:.02, roughness:.46, metalness:0, side:THREE.DoubleSide, fog:false});
-  const steel = new THREE.MeshPhysicalMaterial({color:0xc9ccd0, roughness:.22, metalness:1, envMapIntensity:1, side:THREE.DoubleSide, fog:false});
-  const brass = new THREE.MeshPhysicalMaterial({color:0xb08d57, roughness:.32, metalness:1, envMapIntensity:1, side:THREE.DoubleSide, fog:false});
+  darkStoneMap.repeat.set(.55, .55);
+  const darkStone = new THREE.MeshPhysicalMaterial({map:darkStoneMap, bumpMap:darkStoneMap, bumpScale:.008, roughness:.46, metalness:.08, clearcoat:.08, side:THREE.DoubleSide, fog:false});
+  const woodMap = wood(); woodMap.repeat.set(1.1, 1.1);
+  const walnut = new THREE.MeshStandardMaterial({map:woodMap, bumpMap:woodMap, bumpScale:.03, roughness:.48, metalness:0, side:THREE.DoubleSide, fog:false});
+  const steel = new THREE.MeshPhysicalMaterial({color:0xc8ccd1, roughness:.24, metalness:1, clearcoat:.45, clearcoatRoughness:.2, envMapIntensity:1.15, side:THREE.DoubleSide, fog:false});
+  const brass = new THREE.MeshPhysicalMaterial({color:0xb08d57, roughness:.3, metalness:1, clearcoat:.4, clearcoatRoughness:.22, envMapIntensity:1.25, side:THREE.DoubleSide, fog:false});
   const glass = new THREE.MeshPhysicalMaterial({color:0xe7eeea, roughness:.04, metalness:0, transmission:1, thickness:.04, ior:1.5, transparent:true, side:THREE.DoubleSide, fog:false});
   const charcoalMap = fabric([58, 60, 64]);
   const charcoal = new THREE.MeshStandardMaterial({map:charcoalMap, bumpMap:charcoalMap, bumpScale:.015, roughness:.92, side:THREE.DoubleSide, fog:false});
   const sandMap = fabric([214, 204, 190]);
   const sand = new THREE.MeshStandardMaterial({map:sandMap, bumpMap:sandMap, bumpScale:.012, roughness:.9, side:THREE.DoubleSide, fog:false});
-  const carpetMap = carpet();
-  const carpetMat = new THREE.MeshStandardMaterial({map:carpetMap, bumpMap:carpetMap, bumpScale:.03, roughness:1, side:THREE.DoubleSide, fog:false});
+  const carpetMap = carpet(); carpetMap.repeat.set(1.6, 1.6);
+  const carpetMat = new THREE.MeshStandardMaterial({map:carpetMap, bumpMap:carpetMap, bumpScale:.04, roughness:.96, side:THREE.DoubleSide, fog:false});
   const linen = new THREE.MeshStandardMaterial({color:0xf7f4ef, roughness:.84, side:THREE.DoubleSide, fog:false});
   const leafMat = new THREE.MeshStandardMaterial({color:0x2d5a3c, roughness:.8, side:THREE.DoubleSide, fog:false});
   const glowMat = new THREE.MeshStandardMaterial({color:0xfff4e4, emissive:0xffe2b8, emissiveIntensity:2.4, roughness:.4, fog:false});
@@ -252,7 +278,9 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   // Continuous inner lining. The street opening is only as tall as the doors.
   const innerT = .18;
   box(interior, plaster, bx, .21, zNorth+.78, building.w-1.6, 16, innerT);
-  box(interior, darkStone, bx, .21, zSouth-.78, building.w-1.6, 16, innerT);
+  box(interior, stone, bx, .21, zSouth-.78, building.w-1.6, 16, innerT);
+  box(interior, darkStone, bx, .21, zSouth-.64, building.w-2.4, 1.08, .06);
+  box(interior, brass, bx, 1.28, zSouth-.6, building.w-2.4, .035, .045);
   box(interior, plaster, back+.78, .21, bz, innerT, 16, building.d-1.8);
   box(interior, plaster, front-.7, 3.2, bz, innerT, 13, building.d-1.8);
   box(interior, plaster, front-.7, .21, bz-sideCenter, innerT, 3.0, sideSpan-.4);
@@ -339,6 +367,8 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   tree(X(16), Z(2), 2.6);
   tree(X(-16), Z(-4), 2.3);
   tree(X(16), Z(-14), 2.2);
+  box(interior, carpetMat, X(8.4), floors[0].y+.01, Z(2.2), 8.4, .02, 9.2);
+  box(interior, carpetMat, X(-6.2), floors[0].y+.01, Z(10.5), 3.2, .02, 8.4);
 
   // Reception: stone top, walnut case, monitor, lamp. East of the elevator aisle.
   const deskX = X(7.2), deskZ = Z(13.2);
@@ -386,7 +416,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   drawLevel('L');
   const cabs = cabLocals.map(localX => {
     const x = X(localX), z = Z(17.35);
-    const group = new THREE.Group(); group.position.set(x, floors[0].y, z); scene.add(group); cabGroups.push(group);
+    const group = new THREE.Group(); group.name = 'Flamingo cab'; group.position.set(x, floors[0].y, z); scene.add(group); cabGroups.push(group);
     box(group, darkStone, 0, 0, 0, 2.35, .08, 2.15);
     box(group, steel, -1.2, .08, 0, .06, 2.55, 2.15);
     box(group, steel, 1.2, .08, 0, .06, 2.55, 2.15);
@@ -482,12 +512,20 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     light.position.set(x, y, z); light.target.position.set(tx, .2, tz);
     light.castShadow = false; scene.add(light, light.target); lights.push(light); return light;
   }
-  spot(X(0), 6.4, Z(4), X(2), Z(8), 260, 16);
-  spot(X(8), 6.3, Z(-2), X(9), Z(-6), 180, 14);
-  spot(X(-8), 6.2, Z(8), X(-6), Z(14), 180, 14);
-  spot(X(0), floors[1].y+3.0, Z(2), X(4), Z(4), 140, 10);
-  spot(X(4), floors[2].y+2.8, Z(-2), bedX, bedZ, 110, 9);
-  const fill = new THREE.PointLight(0xfff6ea, 40, 18, 2); fill.position.set(X(2), 4.2, Z(2)); scene.add(fill); lights.push(fill);
+  spot(X(0), 6.2, Z(4), X(2), Z(8), 900, 18);
+  spot(X(8), 5.8, Z(-2), X(9), Z(-6), 640, 16);
+  spot(X(-8), 5.8, Z(8), X(-6), Z(14), 720, 16);
+  spot(X(0), floors[1].y+3.2, Z(2), X(4), Z(4), 520, 12);
+  spot(X(4), floors[2].y+2.8, Z(-2), bedX, bedZ, 420, 11);
+  function warm(x, y, z, intensity, distance) {
+    const light = new THREE.PointLight(0xffe3c4, intensity, distance, 2);
+    light.position.set(x, y, z); light.castShadow = false; scene.add(light); lights.push(light);
+  }
+  warm(X(2), 3.4, Z(2), 90, 18);
+  warm(X(8), 2.2, Z(6), 36, 8);
+  warm(deskX, 2.15, deskZ-1.2, 28, 7);
+  warm(X(-6), floors[1].y+2.2, Z(2), 46, 12);
+  warm(X(2), floors[2].y+2.1, Z(0), 40, 11);
   lights.push(...cabLights);
 
   let cutaway = false, entranceOpen = 0, doorOpen = 0, currentFloor = 0;
@@ -594,8 +632,20 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     setCabDoors(doorOpen);
   }
 
+  let sunLight, hemiLight;
+  function presentInterior() {
+    if (!sunLight) {
+      sunLight = scene.children.find(object => object.isDirectionalLight);
+      hemiLight = scene.children.find(object => object.isHemisphereLight);
+    }
+    if (!cutaway || !sunLight) return;
+    sunLight.intensity *= .1;
+    if (hemiLight) hemiLight.intensity *= .28;
+    scene.environmentIntensity = .55;
+  }
+
   return {
-    floors, inside, nearestElevator, rideTo, update,
+    floors, inside, nearestElevator, rideTo, update, presentInterior,
     isRiding: () => ride.active,
     floorY: () => floorSurface.top,
     entrance: {x:front+5, z:bz},
