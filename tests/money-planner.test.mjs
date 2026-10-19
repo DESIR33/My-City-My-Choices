@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const text=await readFile(new URL('../assets/money-planner.js',import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/assets/money-planner.js',import.meta.url),'utf8'));
+const {freshMoneyPlan,restoreMoneyPlan,planTotals,changeReserve,plannedSpend,moveGoalMoney}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
+const fresh=freshMoneyPlan();let plan=changeReserve(fresh,600,'home',200).plan;plan=changeReserve(plan,600,'transport',100).plan;
+assert.deepEqual(planTotals(plan,600),{planned:300,unplanned:300,shortfall:0});assert.equal(fresh.reserves.home,0,'Plans are independent');
+assert.equal(changeReserve(plan,600,'buffer',301).ok,false,'Cannot plan nonexistent cash');assert.equal(changeReserve(plan,600,'home',-201).ok,false);assert.equal(changeReserve(plan,600,'other',25).ok,false);
+let home=plannedSpend(plan,600,'home',200);assert.equal(home.allocated,200);assert.equal(home.afterWallet,400);assert.equal(home.afterPlan.reserves.home,0);assert.equal(home.shortfall,0);assert.equal(home.unplannedAfter,300,'Paying a planned bill does not count it twice');
+let shoes=plannedSpend(plan,600,'fun',400);assert.ok(shoes.canAfford);assert.equal(shoes.shortfall,100);assert.equal(shoes.newShortfall,100);assert.equal(plan.reserves.home,200,'Preview does not mutate the plan');
+let tooMuch=plannedSpend(plan,600,'fun',601);assert.equal(tooMuch.canAfford,false);
+let oldShort=plannedSpend(plan,200,'home',100);assert.equal(oldShort.shortfall,100);assert.equal(oldShort.newShortfall,0,'Already short plan need not warn twice for a planned bill');
+assert.deepEqual(moveGoalMoney(300,100,25,'save'),{ok:true,wallet:275,savings:125});assert.deepEqual(moveGoalMoney(275,125,100,'withdraw'),{ok:true,wallet:375,savings:25});
+for(const amount of [-1,0,1.5,NaN,Infinity])assert.equal(moveGoalMoney(300,100,amount,'save').ok,false);
+assert.equal(moveGoalMoney(100,0,101,'save').ok,false);assert.equal(moveGoalMoney(100,50,51,'withdraw').ok,false);assert.equal(moveGoalMoney(100,50,25,'other').ok,false);
+assert.deepEqual(restoreMoneyPlan(null),freshMoneyPlan());const bad=restoreMoneyPlan({reserves:{home:-1,fun:NaN,buffer:50,unknown:300}});assert.equal(bad.reserves.home,0);assert.equal(bad.reserves.fun,0);assert.equal(bad.reserves.buffer,50);assert.equal(bad.reserves.unknown,undefined);
+assert.equal(restoreMoneyPlan(plan).reserves.transport,100);
+console.log('Money planner passed: exact-cent reservations, available cash, spending previews, matching expense allocation, shortfall detection, savings transfers, and legacy saves.');

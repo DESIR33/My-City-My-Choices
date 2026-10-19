@@ -21,7 +21,7 @@ function texture(image, anisotropy, color = false) {
   return map;
 }
 
-export function createCityVisuals(renderer, scene) {
+export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const cache = new Map();
 
@@ -120,67 +120,139 @@ export function createCityVisuals(renderer, scene) {
     return mesh;
   }
 
-  const [foliageImage, fq] = canvas(256);
-  const leafRng = randomSequence(431);
-  for (let i = 0; i < 75; i++) {
-    const a = leafRng() * Math.PI * 2, r = Math.sqrt(leafRng()) * 100;
-    fq.save(); fq.translate(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); fq.rotate(a);
-    fq.fillStyle = ['#426441', '#648252', '#7e945a', '#536f45'][i % 4];
-    fq.beginPath(); fq.moveTo(-10, 0); fq.quadraticCurveTo(0, -7, 12, 0);
-    fq.quadraticCurveTo(0, 7, -10, 0); fq.fill();
-    fq.strokeStyle = 'rgba(195,205,144,.22)'; fq.lineWidth = .8;
-    fq.beginPath(); fq.moveTo(-8, 0); fq.lineTo(10, 0); fq.stroke(); fq.restore();
-  }
-  const foliageMaterial = new THREE.MeshStandardMaterial({
-    map: texture(foliageImage, anisotropy, true), side: THREE.DoubleSide,
-    alphaTest: .45, roughness: .95, metalness: 0,
+  // Dense leaf sprays with transparent gaps, fine twigs, and species-specific color.
+  // Three shared materials keep near trees and the forest economical on phones.
+  const foliageMaterials = [0x426a32, 0x2e5940, 0x597437].map((tint, species) => {
+    const [image, q] = canvas(256), rng = randomSequence(431 + species * 71);
+    q.strokeStyle = '#51432c'; q.lineWidth = 2;
+    for (let b = 0; b < 9; b++) {
+      const angle = b * 2.399, ex = 128 + Math.cos(angle) * 104, ey = 128 + Math.sin(angle) * 104;
+      q.beginPath(); q.moveTo(128, 138); q.lineTo(ex, ey); q.stroke();
+    }
+    for (let i = 0; i < 220; i++) {
+      const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 110;
+      q.save(); q.translate(128 + Math.cos(a) * r, 128 + Math.sin(a) * r); q.rotate(a + rng());
+      q.fillStyle = ['#284c25', '#416a30', '#5a803a', '#789749', '#355d2d'][i % 5];
+      const len = 5 + rng() * 9, width = 3 + rng() * 4;
+      q.beginPath(); q.moveTo(-len, 0); q.quadraticCurveTo(0, -width, len, 0);
+      q.quadraticCurveTo(0, width, -len, 0); q.fill();
+      q.strokeStyle = '#91a85c77'; q.lineWidth = .55;
+      q.beginPath(); q.moveTo(-len, 0); q.lineTo(len, 0); q.stroke(); q.restore();
+    }
+    const mat = new THREE.MeshStandardMaterial({map: texture(image, anisotropy, true),
+      color: tint, side: THREE.DoubleSide, alphaTest: .4, roughness: .92});
+    // The texture carries the leaf hues; a restrained tint gives species variation.
+    mat.color.lerp(new THREE.Color(0xffffff), .72);
+    mat.name = 'Leaf sprays ' + species;
+    return mat;
   });
-  const branchGeometry = new THREE.CylinderGeometry(.65, 1, 1, 9);
-  const branchMaterial = surface('siding', 0x66533e);
+  const branchGeometry = new THREE.CylinderGeometry(.63, 1, 1, 8);
+  const [barkImage, bq] = canvas(256), barkRng = randomSequence(102);
+  bq.fillStyle = '#514335'; bq.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 650; i++) {
+    bq.fillStyle = i % 3 ? '#302d25' : '#80705a';
+    bq.fillRect(barkRng() * 256, barkRng() * 256, 1 + barkRng() * 3, 7 + barkRng() * 38);
+  }
+  const barkMap = texture(barkImage, anisotropy, true);
+  const branchMaterial = new THREE.MeshStandardMaterial({map: barkMap, bumpMap: barkMap, bumpScale: .035, roughness: 1});
   const leafGeometry = new THREE.PlaneGeometry(1, 1);
-  function treeModel(x, z, size = 1) {
-    const group = new THREE.Group(); group.position.set(x, -.07, z);
+  function treeModel(x, z, size = 1, distant = false, speciesOverride) {
+    const group = new THREE.Group(); group.position.set(x, -.07, z); group.name = 'Natural tree';
     const rng = randomSequence(Math.abs(Math.round(x * 83 + z * 217)) + 19);
+    const species = speciesOverride ?? Math.floor(rng() * 3), tall = species === 1;
+    const height = (tall ? 7.6 : 5.6) * size, spread = (tall ? 1.55 : 2.7) * size;
+    const branchParts = [];
     function branch(a, b, radius) {
-      const delta = new THREE.Vector3().subVectors(b, a), mesh = new THREE.Mesh(branchGeometry, branchMaterial);
-      mesh.position.copy(a).addScaledVector(delta, .5); mesh.scale.set(radius, delta.length(), radius);
-      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
-      mesh.castShadow = mesh.receiveShadow = true; group.add(mesh);
+      const delta = new THREE.Vector3().subVectors(b, a), dummy = new THREE.Object3D();
+      dummy.position.copy(a).addScaledVector(delta, .5); dummy.scale.set(radius, delta.length(), radius);
+      dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize()); dummy.updateMatrix();
+      branchParts.push(branchGeometry.clone().applyMatrix4(dummy.matrix));
     }
-    branch(new THREE.Vector3(), new THREE.Vector3(.07, 3.25 * size, .04), .22 * size);
-    for (let i = 0; i < 8; i++) {
-      const angle = i * 2.399, length = (1 + rng() * .65) * size;
-      branch(new THREE.Vector3(0, (1.8 + i * .11) * size, 0), new THREE.Vector3(Math.cos(angle) * length, (3 + rng() * 1.2) * size, Math.sin(angle) * length), .065 * size);
+    branch(new THREE.Vector3(), new THREE.Vector3(.15 * size, height * .83, .07), .25 * size);
+    const lobes = [];
+    for (let i = 0; i < 11; i++) {
+      const angle = i * 2.399 + rng() * .3, r = spread * (.48 + rng() * .42);
+      const y = tall ? height * (.36 + i * .046) : height * (.57 + rng() * .29);
+      const taper = tall ? 1 - i * .055 : 1;
+      const tip = new THREE.Vector3(Math.cos(angle) * r * taper, y, Math.sin(angle) * r * taper);
+      branch(new THREE.Vector3(.07, y * .69, 0), tip, (.065 + rng() * .035) * size);
+      lobes.push(tip);
     }
-    const leaves = new THREE.InstancedMesh(leafGeometry, foliageMaterial, 58), dummy = new THREE.Object3D();
-    for (let i = 0; i < 58; i++) {
-      const angle = rng() * Math.PI * 2, r = Math.cbrt(rng()) * 1.65 * size;
-      dummy.position.set(Math.cos(angle) * r, (3.2 + (rng() - .35) * 2) * size, Math.sin(angle) * r);
-      dummy.rotation.set(rng() * Math.PI, rng() * Math.PI * 2, rng() * Math.PI);
-      dummy.scale.setScalar((1.1 + rng() * .7) * size); dummy.updateMatrix(); leaves.setMatrixAt(i, dummy.matrix);
+    const woody = new THREE.Mesh(mergeGeometries(branchParts), branchMaterial);
+    branchParts.forEach(g => g.dispose()); woody.castShadow = woody.receiveShadow = !distant; group.add(woody);
+    const count = distant ? 62 : 240, leaves = new THREE.InstancedMesh(leafGeometry, foliageMaterials[species], count), dummy = new THREE.Object3D();
+    for (let i = 0; i < count; i++) {
+      const lobe = lobes[i % lobes.length], a = rng() * Math.PI * 2, r = Math.cbrt(rng());
+      const extent = (tall ? .86 : 1.25) * size;
+      dummy.position.set(lobe.x + Math.cos(a) * r * extent, lobe.y + (rng() - .4) * extent * 1.3, lobe.z + Math.sin(a) * r * extent);
+      dummy.rotation.set((rng() - .5) * Math.PI, rng() * Math.PI * 2, rng() * Math.PI);
+      const scale = (distant ? 1.9 : 1.1) * size * (.8 + rng() * .5);
+      dummy.scale.set(scale, scale * (tall ? .72 : .9), scale); dummy.updateMatrix(); leaves.setMatrixAt(i, dummy.matrix);
+      leaves.setColorAt(i, new THREE.Color().setHSL(.24 + rng() * .045, .22, .66 + rng() * .2));
     }
-    leaves.castShadow = leaves.receiveShadow = true; group.add(leaves);
-    group.add(contactShadow(4.2 * size, 4.2 * size, .008));
+    leaves.castShadow = leaves.receiveShadow = !distant; leaves.computeBoundingSphere(); group.add(leaves);
+    if (!distant) group.add(contactShadow(spread * 2, spread * 2, .008));
     return group;
+  }
+
+  function forestHeight(x, z) {
+    const radius = Math.max(Math.abs(x), Math.abs(z)), t = THREE.MathUtils.smoothstep(radius, 167, 228);
+    return -.07 + t * (5 + 3.5 * Math.sin(x * .024) + 2.8 * Math.cos(z * .031));
+  }
+  function addForest() {
+    // A continuous terrain skirt, with layered clusters and irregular gaps rather than a fence of repeated trees.
+    const rings = 12, segments = 128, positions = [], indices = [];
+    for (let r = 0; r <= rings; r++) for (let i = 0; i <= segments; i++) {
+      const a = i / segments * Math.PI * 2, radius = 166 + r / rings * 103;
+      const edge = Math.max(Math.abs(Math.sin(a)), Math.abs(Math.cos(a)));
+      const x = Math.sin(a) * radius / edge, z = Math.cos(a) * radius / edge;
+      positions.push(x, forestHeight(x, z), z);
+      if (r < rings && i < segments) { const k = r * (segments + 1) + i; indices.push(k, k + segments + 1, k + 1, k + 1, k + segments + 1, k + segments + 2); }
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(positions.flatMap((v, i) => i % 3 === 0 ? [v / 6, positions[i + 2] / 6] : []), 2));
+    geo.setIndex(indices); geo.computeVertexNormals();
+    const land = new THREE.Mesh(geo, surface('grass', 0x365231)); land.receiveShadow = true; land.name = 'Forested foothills'; scene.add(land);
+    const rng = randomSequence(981), transforms = [[], [], []];
+    for (let i = 0; i < 470; i++) {
+      const angle = i * 2.39996 + rng() * .16, radius = 181 + rng() * 39;
+      const edge = Math.max(Math.abs(Math.sin(angle)), Math.abs(Math.cos(angle)));
+      const x = Math.sin(angle) * radius / edge, z = Math.cos(angle) * radius / edge, species = i % 3;
+      const dummy = new THREE.Object3D(); dummy.position.set(x, forestHeight(x, z), z);
+      dummy.rotation.y = rng() * Math.PI * 2; dummy.scale.setScalar(.85 + rng() * .95); dummy.updateMatrix(); transforms[species].push(dummy.matrix.clone());
+    }
+    // Expand one specimen per species into shared geometry; instance whole trees in six draw calls.
+    for (let species = 0; species < 3; species++) {
+      const template = treeModel(0, 0, 1, true, species), trunk = template.children[0], leaves = template.children[1], cards = [], matrix = new THREE.Matrix4();
+      for (let i = 0; i < leaves.count; i++) { leaves.getMatrixAt(i, matrix); cards.push(leafGeometry.clone().applyMatrix4(matrix)); }
+      const crown = mergeGeometries(cards); cards.forEach(g => g.dispose());
+      for (const [geometry, material] of [[trunk.geometry, branchMaterial], [crown, foliageMaterials[species]]]) {
+        const batch = new THREE.InstancedMesh(geometry, material, transforms[species].length);
+        transforms[species].forEach((matrix, i) => batch.setMatrixAt(i, matrix)); batch.computeBoundingSphere();
+        batch.name = 'Distant forest ' + species; scene.add(batch);
+      }
+      leaves.dispose();
+    }
   }
 
   const sky = new Sky(); sky.scale.setScalar(4500);
   const uniforms = sky.material.uniforms;
-  uniforms.turbidity.value = 3.4; uniforms.rayleigh.value = 1.8;
+  uniforms.turbidity.value = 2.2; uniforms.rayleigh.value = 2.1;
   uniforms.mieCoefficient.value = .004; uniforms.mieDirectionalG.value = .82;
   const lightDirection = new THREE.Vector3(-75, 100, -55).normalize();
   uniforms.sunPosition.value.copy(lightDirection); scene.add(sky);
-  scene.background = new THREE.Color(0xb5ccd5);
-  scene.fog = new THREE.FogExp2(0xb5ccd5, .0017);
+  scene.background = new THREE.Color(0x8aafc3);
+  scene.fog = new THREE.FogExp2(0x8aafc3, .00115);
   const environmentScene = new THREE.Scene(); environmentScene.add(sky.clone());
   const pmrem = new THREE.PMREMGenerator(renderer);
   const environment = pmrem.fromScene(environmentScene, .06, .1, 10000);
-  scene.environment = environment.texture; scene.environmentIntensity = .7; pmrem.dispose();
-  const hemisphere = new THREE.HemisphereLight(0xd5e6f5, 0x615b48, .85);
+  scene.environment = environment.texture; scene.environmentIntensity = .42; pmrem.dispose();
+  const hemisphere = new THREE.HemisphereLight(0xbdd7ee, 0x38432f, .58);
   scene.add(hemisphere);
-  const sun = new THREE.DirectionalLight(0xffebc9, 3.1);
+  const sun = new THREE.DirectionalLight(0xffe1ad, 2.5);
   sun.position.set(-75, 100, -55); sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.near = 1; sun.shadow.camera.far = 250;
+  const shadowSize = mobile ? 1024 : 2048;
+  sun.shadow.mapSize.set(shadowSize, shadowSize); sun.shadow.camera.near = 1; sun.shadow.camera.far = 250;
   Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70 });
   sun.shadow.bias = -.00012; sun.shadow.normalBias = .025; sun.shadow.radius = 2;
   scene.add(sun, sun.target);
@@ -299,9 +371,9 @@ export function createCityVisuals(renderer, scene) {
   }
 
   return {
-    asphalt: surface('asphalt', 0x373c3d), concrete: surface('concrete', 0xb4b0a4),
-    grass: surface('grass', 0x778268), masonry: hex => surface('stone', hex),
+    asphalt: surface('asphalt', 0x252b30), concrete: surface('concrete', 0x92948f),
+    grass: surface('grass', 0x3c6335), masonry: hex => surface('stone', hex),
     brick: hex => surface('brick', hex), siding: hex => surface('siding', hex), roofing: hex => surface('roof', hex),
-    windowMaterial, contactShadow, treeModel, shopSign, decorateCity, batchArchitecture, updateLighting,
+    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting,
   };
 }
