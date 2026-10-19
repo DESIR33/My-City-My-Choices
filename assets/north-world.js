@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight} from './world-rules.js';
+import {NORTH_BLOCK,northBlockObstacles,insideNorthBlock} from './city-next.js';
 export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters}){
   const unit=new THREE.BoxGeometry(1,1,1),batches=new Map(),dummy=new THREE.Object3D();
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
@@ -74,5 +75,18 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(const x of [-2.4,2.4]){const speed=x<0?11:-11;car(x,x<0?-380:-940,0x466b72,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1134,max:-176});}
   for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:i%2?'neighbor':'casual'});}
   for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
-  return {towers:TOWERS,buildings:CITY_BLOCKS,water};
+  // One real shell on the boulevard. The other towers stay instanced scenery.
+  const visit=new THREE.Group();scene.add(visit);const place=NORTH_BLOCK,{x,z,w,d}=place,front=z+d/2,back=z-d/2,height=7.2,gap=2.4,leaf=(w-gap)/2;
+  cube(scene,x,.06,z,w,.12,d,C.walk,false);cube(scene,x,.06,(front-1144)/2,4,.12,Math.abs(front+1144),C.walk,false);
+  cube(visit,x-w/2,.2,z,.3,height,d,brick[1]);cube(visit,x+w/2,.2,z,.3,height,d,brick[1]);cube(visit,x,.2,back,w,height,.3,brick[1]);
+  cube(visit,x-gap/2-leaf/2,.2,front,leaf,height,.3,brick[1]);cube(visit,x+gap/2+leaf/2,.2,front,leaf,height,.3,brick[1]);
+  cube(visit,x,height-.55,front,gap,.55,.16,white);cube(visit,x,height,z,w+.5,.28,d+.5,stone);
+  cube(visit,-8.58,.2,-1168,2.85,height,.3,brick[0]);cube(visit,0,.2,-1168,9.7,height,.3,brick[0]);cube(visit,8.58,.2,-1168,2.85,height,.3,brick[0]);
+  cube(scene,-6,.21,-1171.9,4.2,1.05,1,white);cube(scene,6,.21,-1171.9,4.2,1.05,1,white);cube(scene,7.9,.21,-1163.85,2.5,1.05,1,white);
+  label('RIVER TABLE',-6,2.15,-1171.2,4,.45);label('STUDIO OFFICE',6,2.15,-1171.2,4,.45);label('ASK ABOUT A ROOM',7.9,2.05,-1163.2,3.2,.4);label('HUDSON BLOCK',x,height-.2,front+.2,12,.8);
+  for(const o of northBlockObstacles())obstacles.push(o);buildings.push({x,z,w,d,shop:false,height:height+.3});
+  if(characters?.create)characters.create({x:-2,z:-1163,model:'casual'});
+  return {towers:TOWERS,buildings:CITY_BLOCKS,water,warmWindows:warm,inside:insideNorthBlock,visit,
+    applyAtmosphere(atmosphere){warm.emissiveIntensity=atmosphere?.evening?1.25:atmosphere?.rain?0.55:0.3;},
+    update(p){visit.visible=!insideNorthBlock(p);}};
 }

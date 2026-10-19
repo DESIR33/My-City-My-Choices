@@ -265,6 +265,32 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     lastX = x; lastZ = z; sun.position.set(x - 75, 100, z - 55);
     sun.target.position.set(x, 0, z); sun.target.updateMatrixWorld();
   }
+  const rainCount = 420, rainPositions = new Float32Array(rainCount * 3);
+  for (let i = 0; i < rainCount; i++) rainPositions.set([(Math.random() - .5) * 36, Math.random() * 18, (Math.random() - .5) * 36], i * 3);
+  const rainGeo = new THREE.BufferGeometry(); rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+  const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({color:0xd5e4ee, size:.08, transparent:true, opacity:.55, depthWrite:false}));
+  rain.visible = false; rain.frustumCulled = false; scene.add(rain);
+  const daySun = sun.intensity, daySky = hemisphere.intensity, dayFog = scene.fog.color.clone(), dayBackground = scene.background.clone();
+  let appliedWeather = '', roadMaterial = null;
+  function applyAtmosphere(atmosphere, position) {
+    const key = (atmosphere?.rain ? 'rain' : 'clear') + (atmosphere?.evening ? '-night' : '');
+    if (key !== appliedWeather) {
+      appliedWeather = key;
+      const scale = atmosphere?.sunScale ?? 1;
+      sun.intensity = daySun * scale; hemisphere.intensity = daySky * (atmosphere?.evening ? .4 : atmosphere?.rain ? .7 : 1);
+      scene.fog.color.copy(dayFog).multiplyScalar(atmosphere?.evening ? .35 : atmosphere?.rain ? .72 : 1);
+      scene.background.copy(dayBackground).multiplyScalar(atmosphere?.evening ? .28 : atmosphere?.rain ? .7 : 1);
+      const glow = atmosphere?.windowGlow || 0;
+      for (const mat of windowMats) if (mat) {mat.emissive.setHex(glow ? 0xffd7a1 : 0x000000); mat.emissiveIntensity = glow;}
+      if (roadMaterial?.color) {if (!roadMaterial.userData.dry) roadMaterial.userData.dry = roadMaterial.color.clone(); roadMaterial.color.copy(roadMaterial.userData.dry); if (atmosphere?.wetRoads) roadMaterial.color.multiplyScalar(.62);}
+    }
+    rain.visible = !!atmosphere?.rain;
+    if (!atmosphere?.rain || !position) return;
+    const values = rainGeo.attributes.position.array;
+    for (let i = 1; i < values.length; i += 3) {values[i] -= .55; if (values[i] < .2) values[i] = 16 + Math.random() * 2;}
+    rainGeo.attributes.position.needsUpdate = true;
+    rain.position.set(position.x, 0, position.z);
+  }
 
   function shopSign(text, index) {
     const [image, q] = canvas(512); image.height = 128;
@@ -375,9 +401,9 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   }
 
   return {
-    asphalt: surface('asphalt', 0x252b30), concrete: surface('concrete', 0x92948f),
+    asphalt: roadMaterial = surface('asphalt', 0x252b30), concrete: surface('concrete', 0x92948f),
     grass: surface('grass', 0x3c6335), masonry: hex => surface('stone', hex),
     brick: hex => surface('brick', hex), siding: hex => surface('siding', hex), roofing: hex => surface('roof', hex),
-    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting,
+    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, applyAtmosphere,
   };
 }
