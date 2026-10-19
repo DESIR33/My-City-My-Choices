@@ -12,7 +12,7 @@ export function restoreCarOwnership(saved){
   const offer=offerFor(saved.offerId);fresh.visited=!!saved.visited;fresh.choice=['borrow','buy'].includes(saved.choice)?saved.choice:null;
   if(!offer)return fresh;
   const safe=(n,fall,max=1e9)=>Number.isFinite(n)?clamp(n,0,max):fall;
-  return {...fresh,offerId:offer.id,choice:'buy',fuel:safe(saved.fuel,TANK_CAPACITY,TANK_CAPACITY),condition:safe(saved.condition,offer.startCondition,100),metres:safe(saved.metres,0),purchaseSpent:Math.round(safe(saved.purchaseSpent,offer.price)),fuelSpent:Math.round(safe(saved.fuelSpent,0)),serviceSpent:Math.round(safe(saved.serviceSpent,0)),pose:saved.pose&&['x','z','heading'].every(k=>Number.isFinite(saved.pose[k]))&&Math.abs(saved.pose.x)<165&&Math.abs(saved.pose.z)<165?{x:saved.pose.x,z:saved.pose.z,heading:saved.pose.heading}:null};
+  return {...fresh,offerId:offer.id,choice:'buy',fuel:safe(saved.fuel,TANK_CAPACITY,TANK_CAPACITY),condition:safe(saved.condition,offer.startCondition,100),metres:safe(saved.metres,0),purchaseSpent:Math.round(safe(saved.purchaseSpent,offer.price)),fuelSpent:Math.round(safe(saved.fuelSpent,0)),serviceSpent:Math.round(safe(saved.serviceSpent,0)),pose:saved.pose&&['x','z','heading'].every(k=>Number.isFinite(saved.pose[k]))&&Math.abs(saved.pose.x)<253&&saved.pose.z>-1811&&saved.pose.z<165?{x:saved.pose.x,z:saved.pose.z,heading:saved.pose.heading}:null};
 }
 export function carBudget(offerId,walletCents){
   const offer=offerFor(offerId);if(!offer)return null;

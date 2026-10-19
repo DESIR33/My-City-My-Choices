@@ -15,6 +15,7 @@ let partial={...bought.car,fuel:7.5};assert.deepEqual(fuelQuote(partial),{units:
 assert.equal(transactCar({...bought.car,fuel:0},49,'fuel').ok,false);let refill=transactCar({...bought.car,fuel:0},50,'fuel');assert.equal(refill.walletCents,0);assert.equal(refill.car.fuel,2);
 const service=transactCar(empty.car,100,'service');assert.equal(service.car.condition,100);assert.equal(service.walletCents,25);assert.equal(service.car.serviceSpent,75);
 const restored=restoreCarOwnership({...usage.car,pose:{x:-86,z:115,heading:Math.PI/2}});assert.equal(restored.offerId,'used');assert.deepEqual(restored.pose,{x:-86,z:115,heading:Math.PI/2});
+assert.deepEqual(restoreCarOwnership({...bought.car,pose:{x:-62,z:-1500,heading:Math.PI}}).pose,{x:-62,z:-1500,heading:Math.PI},'Northern car poses survive save migration');
 const invalid=restoreCarOwnership({offerId:'used',fuel:Infinity,condition:-4,purchaseSpent:NaN,pose:{x:Infinity,z:0,heading:0}});assert.equal(invalid.fuel,8);assert.equal(invalid.condition,0);assert.equal(invalid.purchaseSpent,400);assert.equal(invalid.pose,null);
 assert.equal(restoreCarOwnership({offerId:'unknown'}).offerId,null);assert.equal(useOwnedCar(fresh,100).car.offerId,null,'Loaners have no ownership cost');
 console.log('Car ownership passed: purchase budget, cents-only billing, full/partial refills, upkeep, consumption, threshold events, duplicate rejection, and save migration.');
