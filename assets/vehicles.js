@@ -117,6 +117,20 @@ export function mountVehicle(group, template, color, index = 0) {
       const rim = new THREE.Mesh(new THREE.CylinderGeometry(.225,.225,.252,24),metal);rim.rotation.z=Math.PI/2;spin.add(rim);
       for(let j=0;j<5;j++){const spoke=box(spin,dark,Math.sign(center.x)*.13,Math.sin(j*Math.PI/2.5)*.11,Math.cos(j*Math.PI/2.5)*.11,.012,.045,.2);spoke.rotation.x=-j*Math.PI/2.5;}
     }
+    // Hub caps and five lug nuts add visible depth to the wheel centers on both faces.
+    const hubCap = new THREE.Mesh(new THREE.CylinderGeometry(.072,.072,.018,24),metal);
+    hubCap.rotation.z=Math.PI/2;spin.add(hubCap);
+    for (const face of [-1,1]) {
+      const hubRing = new THREE.Mesh(new THREE.TorusGeometry(.083,.008,6,24),dark);
+      hubRing.rotation.y=Math.PI/2;hubRing.position.x=face*.14;spin.add(hubRing);
+      for (let lug=0;lug<5;lug++) {
+        const angle=lug*Math.PI*2/5;
+        const nut=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.025,8),metal);
+        nut.rotation.z=Math.PI/2;
+        nut.position.set(face*.145,Math.cos(angle)*.105,Math.sin(angle)*.105);
+        spin.add(nut);
+      }
+    }
     // Ventilated brake rotors rotate with the wheel; calipers stay fixed to the steering/suspension pivot.
     const rotor = new THREE.Mesh(new THREE.CylinderGeometry(.225,.225,.022,32),brakeRotor);rotor.rotation.z=Math.PI/2;spin.add(rotor);
     const caliper = box(pivot,brakeCaliper,Math.sign(center.x)*.055,.005,.125,.075,.19,.12);caliper.castShadow=true;
