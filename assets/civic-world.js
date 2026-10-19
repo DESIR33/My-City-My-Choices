@@ -23,12 +23,14 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
   // The café is a real shell: the doorway and the room remain open for walking.
   const floor=box(scene,visualKit.concrete,-30,.08,-34,22,.13,14);groundSurfaces.push({minX:-41,maxX:-19,minZ:-41,maxZ:-27,top:.21});
   box(scene,visualKit.concrete,-30,.08,-18,28,.13,14);groundSurfaces.push({minX:-44,maxX:-16,minZ:-25,maxZ:-11,top:.21});
-  const walls=new THREE.Group();scene.add(walls);const brick=visualKit.brick(0x784635),glass=new THREE.MeshPhysicalMaterial({color:0x9aafa7,transparent:true,opacity:.24,roughness:.15,metalness:.08,side:THREE.DoubleSide});
+  const walls=new THREE.Group();scene.add(walls);const brick=visualKit.brick(0x784635),glass=new THREE.MeshPhysicalMaterial({color:0xd5ebe4,transparent:true,opacity:.16,roughness:.05,metalness:.02,depthWrite:false,side:THREE.DoubleSide});
+  const sconce=new THREE.MeshStandardMaterial({color:0xffefc4,emissive:0xffb35a,emissiveIntensity:.06,roughness:.28});
+  visualKit.atmosphere?.registerGlow(sconce,{day:.04,night:4.2,color:0xffc56a});
   for(const side of [-1,1]){box(walls,brick,-30+side*10.85,.21,-34,.3,4,14);obstacle(-30+side*10.85,-34,.3,14);box(walls,glass,-30+side*6.1,.21,-27,9.4,3.7,.12);obstacle(-30+side*6.1,-27,9.4,.12);}
   box(walls,brick,-30,.21,-40.9,22,4,.25);obstacle(-30,-40.9,22,.25);
   const roof=box(scene,metal,-30,4.2,-34,22.6,.25,14.6);cutaway.push(walls,roof);
   box(scene,metal,-30,3.8,-26.9,22,.4,.28);label(scene,'MAPLE CAFE',-30,3.99,-26.71,9,1.05);
-  for(const x of [-40,-20])box(scene,wood,x,.21,-25,.14,3.5,.14);
+  for(const x of [-40,-20]){box(scene,wood,x,.21,-25,.14,3.5,.14);box(scene,sconce,x,2.55,-24.82,.22,.36,.16);}
   box(scene,metal,-30,3.62,-25.7,22,.16,2.5);
   // A central walkway between the terrace tables leads straight to the door.
   for(const x of [-39,-21])for(const z of [-21,-14]){table(x,z,true);chair(x-1.45,z,Math.PI/2);chair(x+1.45,z,-Math.PI/2);}
@@ -48,7 +50,7 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
   for(const x of [-46.5,-42,-37.5]){box(bakeryWalls,cream,x,5.2,-79.8,2.2,2,.12);box(bakeryWalls,glass,x,5.35,-79.7,1.9,1.7,.08);}
   const bakeryRoof=box(scene,metal,-42,8.61,-90,14.6,.3,20.6);
   box(scene,metal,-42,3.65,-79.2,14,.2,2);label(scene,'MAPLE BAKERY',-42,3.85,-78.15,10,.8);
-  for(const x of [-48,-36])box(scene,wood,x,.21,-78,.13,3.4,.13);
+  for(const x of [-48,-36]){box(scene,wood,x,.21,-78,.13,3.4,.13);box(scene,sconce,x,2.45,-77.82,.22,.36,.16);}
   // Umbrella tables flank the unbroken central route to the open doorway.
   for(const x of [-50,-34]){table(x,-74.5,true);chair(x-1.45,-74.5,Math.PI/2);chair(x+1.45,-74.5,-Math.PI/2);}
   table(-45,-88);chair(-46.45,-88,Math.PI/2);chair(-43.55,-88,-Math.PI/2);chair(-45,-95,0,'bench');
