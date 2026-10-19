@@ -32,6 +32,7 @@ function maskTexture(head) {
   } else {
     rect('#ff0000', .332, .062, .333, .713); rect('#ff0000', .35, .797, .3, .075);
     rect('#00ff00', .15, .17, .18, .13); rect('#00ff00', .67, .17, .18, .13);
+    rect('#ffff00', .015, .57, .31, .43); rect('#ffff00', .68, .57, .31, .43);
     rect('#0000ff', 0, 0, .192, .278); rect('#0000ff', .808, 0, .192, .278);
   }
   const map = new THREE.CanvasTexture(image); map.flipY = false;
@@ -91,7 +92,7 @@ function makeAccessories() {
   head.add(fireHelmet);torso.add(fireStripes);fireHelmet.visible=fireStripes.visible=false;
   hat.visible = backpack.visible = policeCap.visible = policeBadge.visible = false;
   policeCap.traverse(o=>{if(o.isMesh)o.castShadow=true}); policeBadge.traverse(o=>{if(o.isMesh)o.castShadow=true});
-  return { head, torso, hat, backpack, policeCap, policeBadge, fireHelmet,fireStripes,hair };
+  return { head, torso, hat, backpack, policeCap, policeBadge, fireHelmet,fireStripes,hair,hatMaterial:straw,backpackMaterial:fabric };
 }
 
 // Only rotations and a proportionally scaled vertical root motion are retargeted.
@@ -149,7 +150,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     const material = original.clone(); material.roughness = head ? .7 : .9; material.metalness = 0;
     material.onBeforeCompile = shader => {
       Object.assign(shader.uniforms,uniforms,{ avatarMask: { value: head?masks.head:masks.body } });
-      shader.fragmentShader = 'uniform sampler2D avatarMask;\nuniform vec3 avatarSkinRatio;\nuniform vec3 avatarShirt;\nuniform vec3 avatarHair;\nuniform vec3 avatarShoes;\nuniform float avatarHairStyle;\n'+shader.fragmentShader;
+      shader.fragmentShader = 'uniform sampler2D avatarMask;\nuniform vec3 avatarSkinRatio;\nuniform vec3 avatarShirt;\nuniform vec3 avatarPants;\nuniform float avatarPantsEnabled;\nuniform float avatarTopPattern;\nuniform vec3 avatarHair;\nuniform vec3 avatarShoes;\nuniform float avatarHairStyle;\n'+shader.fragmentShader;
       const tint = head ? `
         vec3 region = texture2D(avatarMask,vMapUv).rgb;
         if (avatarHairStyle != 1.0 && region.g > .4 && vMapUv.y > .66 && vMapUv.x > .5) discard;
@@ -159,13 +160,17 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       ` : `
         vec3 region = texture2D(avatarMask,vMapUv).rgb;
         float shade = clamp(dot(diffuseColor.rgb,vec3(.2126,.7152,.0722))/.16,.24,1.8);
-        diffuseColor.rgb = mix(diffuseColor.rgb,avatarShirt*shade,region.r);
-        diffuseColor.rgb = mix(diffuseColor.rgb,avatarShoes*shade,region.g);
+        float pantsRegion=step(.5,region.r)*step(.5,region.g);
+        float shirtRegion=region.r*(1.0-pantsRegion);
+        float stripes=mix(1.0,.58,step(.5,fract(vMapUv.y*32.0))*avatarTopPattern);
+        diffuseColor.rgb = mix(diffuseColor.rgb,avatarShirt*shade*stripes,shirtRegion);
+        diffuseColor.rgb = mix(diffuseColor.rgb,avatarPants*shade,pantsRegion*avatarPantsEnabled);
+        diffuseColor.rgb = mix(diffuseColor.rgb,avatarShoes*shade,region.g*(1.0-pantsRegion));
         diffuseColor.rgb = mix(diffuseColor.rgb,diffuseColor.rgb*avatarSkinRatio,region.b);
       `;
       shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\n'+tint);
     };
-    material.customProgramCacheKey=()=>head?'maple-child-head-v1':'maple-child-clothes-v1';
+    material.customProgramCacheKey=()=>head?'maple-child-head-v1':'maple-child-clothes-v2';
     return material;
   }
   const tempPosition=new THREE.Vector3(),tempQuaternion=new THREE.Quaternion(),rootInverse=new THREE.Quaternion();
@@ -182,11 +187,15 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
   }
   function setAppearance(actor,appearance) {
     const data=actor.userData.character; data.appearance={...data.appearance,...appearance};
+    data.fallback.children[0].material.color.setHex(data.appearance.shirt??0x496d84);
+    for(const i of [2,4])data.fallback.children[i].material.color.setHex(data.appearance.pants??0x394852);
     if (!data.uniforms) return;
     const a=data.appearance;
     const skin=data.uniforms.avatarSkinRatio.value.setHex(a.skin??0xc99472),reference=new THREE.Color(0xddb399);skin.setRGB(skin.r/reference.r,skin.g/reference.g,skin.b/reference.b);
     data.uniforms.avatarShirt.value.setHex(a.shirt??0x496d84); data.uniforms.avatarHair.value.setHex(a.hair??0x483c35);
     data.uniforms.avatarShoes.value.setHex(a.shoes??0x303f52);
+    data.uniforms.avatarPants.value.setHex(a.pants??0x9daab1);data.uniforms.avatarPantsEnabled.value=a.pants==null?0:1;data.uniforms.avatarTopPattern.value=a.topPattern?1:0;
+    data.accessories.hatMaterial.color.setHex(a.hatColor??0xe0b957);data.accessories.backpackMaterial.color.setHex(a.backpackColor??0x657e92);
     data.uniforms.avatarHairStyle.value=a.style==='ponytail'?1:a.style==='bun'?2:0;
     data.accessories.hair.curls.visible=a.style==='curls'; data.accessories.hair.bun.visible=a.style==='bun';
     data.accessories.hair.material.color.setHex(a.hair??0x483c35);
@@ -218,7 +227,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
         if(eyePosition.z<headPosition.z)visual.rotation.y=Math.PI;
       }
       if(data.customizable){
-        data.uniforms={avatarSkinRatio:{value:new THREE.Color(1,1,1)},avatarShirt:{value:new THREE.Color(0x496d84)},avatarHair:{value:new THREE.Color(0x483c35)},avatarShoes:{value:new THREE.Color(0x303f52)},avatarHairStyle:{value:0}};
+        data.uniforms={avatarPants:{value:new THREE.Color(0x9daab1)},avatarPantsEnabled:{value:0},avatarTopPattern:{value:0},avatarSkinRatio:{value:new THREE.Color(1,1,1)},avatarShirt:{value:new THREE.Color(0x496d84)},avatarHair:{value:new THREE.Color(0x483c35)},avatarShoes:{value:new THREE.Color(0x303f52)},avatarHairStyle:{value:0}};
         data.accessories=makeAccessories();actor.add(data.accessories.head,data.accessories.torso);
       }
       source.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=mesh.receiveShadow=true;mesh.frustumCulled=false;
@@ -257,6 +266,18 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     function aim(bone,child,direction){if(!bone||!child)return;const parent=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),direction.clone().applyQuaternion(parent).normalize());actor.updateMatrixWorld(true);}
     for(const side of ['L','R']){const thigh=find(side,'Thigh'),calf=find(side,'Calf'),foot=find(side,'Foot');aim(thigh,calf,forward.clone().add(new THREE.Vector3(0,-.08,0)));aim(calf,foot,new THREE.Vector3(0,-1,0));const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand');aim(upper,fore,forward.clone().multiplyScalar(.22).add(new THREE.Vector3(0,-1,0)));aim(fore,hand,forward.clone().add(new THREE.Vector3(0,-.15,0)));}
   }
+  function setActivity(actor,type='idle',held=null){actor.userData.character.activity={type,held};}
+  function activityPose(actor,data){
+    const activity=data.activity;if(!activity)return;
+    const {type,held}=activity,forward=new THREE.Vector3(Math.sin(actor.rotation.y),0,Math.cos(actor.rotation.y));
+    const find=(side,part)=>{let result;data.source.traverse(b=>{if(b.isBone&&b.name.replaceAll('_',' ').endsWith(side+' '+part))result=b;});return result;};
+    function aim(bone,child,direction){if(!bone||!child)return;bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),direction.clone().applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize());actor.updateMatrixWorld(true);}
+    if(type!=='idle')for(const side of (type==='brew'?['L','R']:['R'])){const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand'),drinking=type==='sip'||type==='eat';
+      aim(upper,fore,forward.clone().multiplyScalar(drinking?.35:.7).add(new THREE.Vector3(0,-.6,0)));
+      aim(fore,hand,forward.clone().multiplyScalar(drinking?-.2:1).add(new THREE.Vector3(0,drinking?1:.1+Math.sin(data.phase*3)*.15,0)));
+    }
+    if(held&&held.visible){const hand=find('R','Hand');if(hand){held.position.copy(actor.worldToLocal(hand.getWorldPosition(new THREE.Vector3())));held.position.y+=.035;}else held.position.set(.25,1.1,.3);held.rotation.set(0,0,0);}
+  }
   function update(dt,player) {
     for(const actor of actors){
       const data=actor.userData.character,x=actor.position.x,z=actor.position.z;
@@ -272,9 +293,10 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const state=data.seated?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
       data.actions[state].setEffectiveTimeScale(state==='idle'?1:THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9));
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
-      data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
+      data.phase+=dt;data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
+      activityPose(actor,data);
       if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
     }
   }
-  return { create,setAppearance,setSeated,update,actors,ready:()=>Promise.all([...pending]) };
+  return { create,setAppearance,setSeated,setActivity,update,actors,ready:()=>Promise.all([...pending]) };
 }
