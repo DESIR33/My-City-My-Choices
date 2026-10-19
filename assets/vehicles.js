@@ -114,6 +114,9 @@ function rearPanelGeometry(template,minX,minY,maxX,maxY,offset){
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();template.rearPanels.set(key,g);return g;
 }
 export function mountVehicle(group, template, color, index = 0) {
+  // Apply road grade in the car's local forward direction, then its heading.
+  // XYZ pitches a northbound car in the opposite direction on a bridge ramp.
+  group.rotation.order='YXZ';
   if(template?.kind==='premium')return mountPremiumVehicle(group,template,color);
   group.userData.vehicleVisual?.dispose?.();
   group.clear(); const paint = new THREE.MeshPhysicalMaterial({color, metalness: .36, roughness: .29, clearcoat: 1, clearcoatRoughness: .13, envMapIntensity: 1.15});
@@ -140,6 +143,7 @@ export function mountVehicle(group, template, color, index = 0) {
   const brakeMaterial = new THREE.MeshStandardMaterial({color:0x931c19,roughness:.27,emissive:0xff2415,emissiveIntensity:.28});
   const reverseMaterial = new THREE.MeshStandardMaterial({color:0xa9bac4,roughness:.3,emissive:0xe8f4ff,emissiveIntensity:0});
   const led = new THREE.MeshStandardMaterial({color:0xe7eff5,roughness:.2,emissive:0xcde5ff,emissiveIntensity:.65});
+  led.name='Vehicle_Headlamp';
   for(const side of [-1,1]) {
     if(!template)box(body,led,side*.69,.78,2.18,.38,.034,.035);
     if(template){
@@ -171,7 +175,7 @@ export function mountVehicle(group, template, color, index = 0) {
   if(template){body.add(new THREE.Mesh(rearPanelGeometry(template,-.255,.59,.255,.77,.01),dark));body.add(new THREE.Mesh(rearPanelGeometry(template,-.215,.62,.215,.74,.019),plateMaterial));}
   else{box(body,dark,0,.67,-2.28,.55,.19,.035);box(body,plateMaterial,0,.67,-2.305,.43,.12,.012);}
   rig.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
-  const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,paint,travel:0,steering:0,pitch:0,roll:0};
+  const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial:led,paint,travel:0,steering:0,pitch:0,roll:0};
   const sharedGeometry=new Set([unit,template?.body.geometry,...(template?.rearPanels.values()||[])]),ownedGeometry=new Set(),ownedMaterials=new Set();
   body.traverse(o=>{if(!o.isMesh)return;if(!sharedGeometry.has(o.geometry))ownedGeometry.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(![metal,dark,rubber].includes(m))ownedMaterials.add(m);});
   data.dispose=()=>{ownedGeometry.forEach(g=>g.dispose());ownedMaterials.forEach(m=>m.dispose());};
@@ -190,7 +194,8 @@ export function updateVehicleVisual(group, state, dt) {
     }
     wheel.spin.rotation.x=(state.wheelTravel||0)/VEHICLE.wheelRadius;
   }
-  data.brakeMaterial.emissiveIntensity=(state.brake>.08||state.handbrake)?2.6:.28;
+  data.braking=!!(state.brake>.08||state.handbrake||disabled);
+  data.brakeMaterial.emissiveIntensity=data.braking?2.6:.28+(data.nightLevel||0)*.4;
   data.reverseMaterial.emissiveIntensity=state.gear==='R'?1.4:0;
   if(data.hazardMaterial)data.hazardMaterial.emissiveIntensity=disabled?(Math.floor(performance.now()/380)%2?2.5:.05):0;
 }

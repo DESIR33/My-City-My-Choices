@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { createCityAtmosphere } from './city-atmosphere.js';
 
 // All surface textures are original, deterministic, and generated locally.
 function randomSequence(seed = 1) {
@@ -102,10 +103,15 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     q.fillStyle = 'rgba(9,17,21,.3)'; q.fillRect(0, 85, 128, 43);
     q.fillStyle = 'rgba(201,223,227,.12)';
     q.beginPath(); q.moveTo(0, 2); q.lineTo(45, 0); q.lineTo(128, 73); q.lineTo(128, 101); q.closePath(); q.fill();
-    return windowMats[index] = new THREE.MeshPhysicalMaterial({
+    const material = windowMats[index] = new THREE.MeshPhysicalMaterial({
       map: texture(image, anisotropy, true), roughness: .23, metalness: .16,
       clearcoat: .85, clearcoatRoughness: .15, envMapIntensity: .85,
     });
+    if(index % 3 === 0) {
+      material.emissiveMap=material.map;
+      atmosphere.registerGlow(material,{day:0,night:1.25,color:0xffd29a});
+    }
+    return material;
   }
 
   const [shadowImage, sq] = canvas(128);
@@ -259,12 +265,15 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   sun.shadow.bias = -.00012; sun.shadow.normalBias = .025; sun.shadow.radius = 2;
   scene.add(sun, sun.target);
   let lastX = Infinity, lastZ = Infinity;
+  const lastLightDirection=new THREE.Vector3();
   function updateLighting(position) {
     const x = Math.round(position.x / 6) * 6, z = Math.round(position.z / 6) * 6;
-    if (x === lastX && z === lastZ) return;
-    lastX = x; lastZ = z; sun.position.set(x - 75, 100, z - 55);
+    if (x === lastX && z === lastZ && lastLightDirection.distanceToSquared(lightDirection)<1e-8) return;
+    lastX = x; lastZ = z;lastLightDirection.copy(lightDirection);
+    sun.position.set(x,0,z).addScaledVector(lightDirection,137);
     sun.target.position.set(x, 0, z); sun.target.updateMatrixWorld();
   }
+  const atmosphere=createCityAtmosphere({renderer,scene,sky,sun,hemisphere,lightDirection,mobile});
 
   let vehicleEnvironment;
   function captureVehicleEnvironment(position, excluded = []) {
@@ -277,12 +286,17 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
       excluded.forEach(object=>object.visible=false);
       // A static reflection capture does not need six additional shadow passes.
       renderer.shadowMap.enabled=false;
-      probe.update(renderer,scene);
-      vehicleEnvironment=generator.fromCubemap(target.texture);
+      // Capture a neutral daytime reference even when a saved game opens at
+      // night. Its intensity follows the current time without six new renders.
+      vehicleEnvironment=atmosphere.captureDaylight(()=>{
+        updateLighting(position);probe.update(renderer,scene);
+        return generator.fromCubemap(target.texture);
+      });
       return vehicleEnvironment.texture;
     } finally {
       visibility.forEach(([object,visible])=>object.visible=visible);
       renderer.shadowMap.enabled=shadows;
+      updateLighting(position);
       generator.dispose();target.dispose();
     }
   }
@@ -399,6 +413,6 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     asphalt: surface('asphalt', 0x252b30), concrete: surface('concrete', 0x92948f),
     grass: surface('grass', 0x3c6335), masonry: hex => surface('stone', hex),
     brick: hex => surface('brick', hex), siding: hex => surface('siding', hex), roofing: hex => surface('roof', hex),
-    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment,
+    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment, atmosphere,
   };
 }

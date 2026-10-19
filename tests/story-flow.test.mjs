@@ -14,6 +14,10 @@ for(const key of ['standMarker','restaurantMarker','goodsMarker','serviceMarker'
 c.window=c;c.mom=actor(-83,-27);c.maya=actor(10,-11);vm.createContext(c);vm.runInContext(html.split("\n").find(line=>line.startsWith("function parkedObstacle(")),c);
 const script=html.slice(html.indexOf('const player=person('),html.indexOf('const mapCtx='));vm.runInContext('(()=>{'+script+';window.__storyEval=(s)=>eval(s)})()',c);
 const run=s=>c.__storyEval(s);
+// Light controls share the real story modal, but keep their clock in a separate
+// preference. Include their shipped handlers when checking every inline button.
+Object.assign(c,await loadModule('city-time.js'),{visualKit:{atmosphere:{finalizeStreetLights(){},update(){}}}});
+run(html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('let saveClock=0;const clock=')));
 assert.equal(typeof c.closeGamePanel,'function');assert.equal(typeof c.newStory,'function');assert.equal(typeof c.launchNextBusinessDay,'function');
 // Play through the story using the same public handlers as its buttons.
 run('goal=0');doc.querySelector('#begin').onclick();assert.equal(run('stage'),'parent');run('player.position.set(-83,0,-22);near=null');run('interactNow()');assert.equal(doc.querySelector('#panel').innerHTML.includes('At home · Your wallet'),true,'Mom interaction is available from the initial spawn and opens her lesson');c.closeGamePanel();c.walletQuiz(true);assert.equal(run('stage'),'maya');assert.equal(run('cash'),5);c.closeGamePanel();assert.equal(doc.querySelector('#modal').classList.contains('show'),false);
@@ -73,5 +77,35 @@ const responder=actor(136.4,-39);responder.userData={vehicleId:'responder',polic
 run('driving=cars[1];vehicleState=createVehicleState(driving.position.x,driving.position.z,0);removeVehicleObstacle(driving);lastVehicleHit={kind:"static"};triggerCityCrash(6)');assert.ok(loaner.userData.disabled);assert.equal(run('vehicleState.disabled'),true);assert.equal(run('cityLife.incidents.length'),1);run('triggerCityCrash(6)');assert.equal(run('cityLife.incidents.length'),1);run('vehicleAction()');assert.equal(run('driving'),null);
 for(let i=0;i<1400&&!run('response?.arrived');i++)run('updateEmergencyResponse(.1)');assert.ok(run('response.arrived'),'A visible cruiser travels to the accident');assert.ok(responseOfficer.visible);c.openCrashHelp('loaner');run('cash=.74');c.recoverCityCar('loaner',true);assert.ok(loaner.userData.disabled);run('cash=.75');c.recoverCityCar('loaner',true);assert.equal(run('cash'),0);assert.equal(loaner.userData.disabled,false);c.recoverCityCar('loaner',true);assert.equal(run('cash'),0,'Recovery cannot charge twice');
 run('driving=cars[1];driving.position.set(0,0,-30);driving.rotation.y=0;vehicleState=createVehicleState(0,-30,0);vehicleState.speed=5;keys.KeyD=true;updateMove(.1)');assert.ok(run('vehicleState.heading<0'),'Desktop right steering turns toward screen right from behind');run('keys.KeyD=false;vehicleState=createVehicleState(0,-30,0);vehicleState.speed=5;mobileControls.state.x=1;updateMove(.1)');assert.ok(run('vehicleState.heading<0'),'Mobile right steering matches desktop');run('mobileControls.state.x=0;driving=null;vehicleState=null');
+c.closeGamePanel();
+// Exiting a rotated car must leave a clear pedestrian position and working controls.
+function parkForExit(heading){
+  run(`removeVehicleObstacle(cars[1]);driving=cars[1];driving.position.set(0,0,-30);driving.rotation.y=${heading};driving.userData.disabled=false;carSpeed=0;vehicleState=createVehicleState(0,-30,${heading});player.position.copy(driving.position);player.visible=false;keys.KeyW=false;keys.KeyD=false;mobileControls.state.forward=0;mobileControls.state.x=0;stage="done"`);
+}
+for(const input of ['keyboard','touch'])for(const heading of [0,Math.PI/4,-Math.PI/4,.23,1.1,Math.PI/2,2.36,Math.PI,-2.6]){
+  parkForExit(heading);run('vehicleAction()');
+  assert.equal(run('driving'),null,'Exit returns control to the pedestrian');
+  assert.ok(run('player.visible'),'The character is visible after exiting');
+  assert.equal(run('blocked(player.position.x,player.position.z)'),false,`Exit is clear at heading ${heading}`);
+  assert.ok(run('blocked(cars[1].position.x,cars[1].position.z)'),'The parked car still blocks walking through its body');
+  const start={x:run('player.position.x'),z:run('player.position.z')};
+  run(`yaw=${-heading-Math.PI/2};${input==='keyboard'?'keys.KeyW=true':'mobileControls.state.forward=1'}`);
+  for(let i=0;i<6;i++)run('updateMove(.1)');
+  assert.ok(Math.hypot(run('player.position.x')-start.x,run('player.position.z')-start.z)>1,`${input} walking works immediately after exit at heading ${heading}`);
+  run('keys.KeyW=false;mobileControls.state.forward=0');
+}
+// A blocked door uses the other side; two blocked doors keep the driver safely inside.
+parkForExit(Math.PI/4);
+const doorWall={minX:1,maxX:1.6,minZ:-31.6,maxZ:-31};c.obstacles.push(doorWall);
+run('vehicleAction()');assert.equal(run('driving'),null);assert.ok(run('player.position.x<0'),'Exit uses the unobstructed door');
+c.obstacles.splice(c.obstacles.indexOf(doorWall),1);
+parkForExit(Math.PI/4);
+const enclosure={minX:-3,maxX:3,minZ:-33,maxZ:-27};c.obstacles.push(enclosure);
+const beforeExit=c.obstacles.length;
+run('vehicleAction()');assert.equal(run('driving===cars[1]'),true);assert.equal(run('player.visible'),false);assert.ok(run('vehicleState'),'A failed exit preserves driving controls');assert.equal(c.obstacles.length,beforeExit,'A failed exit does not add a parked collider');
+c.obstacles.splice(c.obstacles.indexOf(enclosure),1);
+run('vehicleAction();findNear();interactNow()');assert.equal(run('driving===cars[1]'),true,'The parked car can be entered again');
+assert.equal(run('obstacles.includes(driving.userData.obstacle)'),false,'Entering removes the parked collider');
+run('vehicleAction()');assert.equal(c.obstacles.filter(o=>o===loaner.userData.obstacle).length,1,'Repeated exits register one parked collider');
 c.newStory();assert.equal(storage.has('mapleStreetChapter1'),false);assert.ok(c.reloaded);
-console.log('Story flow passed: business days 1–10 across four businesses, long customer queues, persistent repairs, neighbor-job recovery, garden timing, planner decisions, car ownership, save/restore, café purchases, seating, crash response and repair, steering direction, and duplicate-payment prevention.');
+console.log('Story flow passed: business days 1–10 across four businesses, long customer queues, persistent repairs, neighbor-job recovery, garden timing, planner decisions, car ownership, save/restore, café purchases, seating, crash response and repair, steering direction, keyboard/touch walking after angled vehicle exits, blocked doors, repeated entry/exit, and duplicate-payment prevention.');

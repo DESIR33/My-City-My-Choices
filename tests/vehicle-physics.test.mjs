@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('../assets/vehicle-physics.js',import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/assets/vehicle-physics.js',import.meta.url),'utf8'));
-const {createVehicleState,advanceVehicle,vehicleFootprint,rectanglesOverlap,VEHICLE}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {createVehicleState,advanceVehicle,vehicleFootprint,vehicleBlocksPedestrian,rectanglesOverlap,VEHICLE}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function drive(seconds,input,hz=60,state=createVehicleState(),collision){for(let i=0;i<Math.round(seconds*hz);i++)advanceVehicle(state,typeof input==='function'?input(i/hz):input,1/hz,collision);return state;}
 const result=[];
 for(const hz of [30,60,120])result.push(drive(8,t=>({forward:t<5?1:0,steer:t>=2&&t<4?.4:0}),hz));
@@ -19,5 +19,11 @@ const reverse=createVehicleState();reverse.direction=-1;reverse.speed=-3;drive(.
 const crash=drive(4,{forward:1},60,createVehicleState(),(x,z,h)=>vehicleFootprint(x,z,h).every(p=>p.z<=8));assert.ok(crash.z<=8-VEHICLE.length/2+.001,'Bumper cannot cross wall');assert.equal(crash.speed,0);
 const disabled=createVehicleState();disabled.disabled=true;disabled.speed=8;const noDrive=advanceVehicle(disabled,{forward:1,steer:1},.1);assert.equal(disabled.speed,0);assert.equal(disabled.x,0);assert.equal(disabled.z,0);assert.equal(noDrive.distance,0,'A crashed vehicle cannot drive or coast');
 assert.equal(rectanglesOverlap(vehicleFootprint(0,0,0),vehicleFootprint(0,3,0)),true);assert.equal(rectanglesOverlap(vehicleFootprint(0,0,0),vehicleFootprint(4,0,Math.PI/4)),false);
+const parked={x:10,z:20,heading:Math.PI/4};
+assert.ok(vehicleBlocksPedestrian(10,20,parked),'The car body remains solid');
+assert.ok(vehicleBlocksPedestrian(11.2,21.2,parked),'The rotated body blocks pedestrians along its length');
+assert.ok(vehicleBlocksPedestrian(11.8,21.8,parked),'The bumper preserves pedestrian clearance');
+assert.equal(vehicleBlocksPedestrian(11.8,18.2,parked),false,'Empty space beside a diagonal car is walkable');
+assert.equal(vehicleBlocksPedestrian(8.2,21.8,parked),false,'Both sides of a diagonal car are walkable');
 assert.ok(accelerate.pitch<.04&&Math.abs(high.roll)<.06,'Suspension stays bounded');
 console.log(JSON.stringify({checks:'Vehicle physics passed',speedAfterFiveSecondsMPH:+(startSpeed*2.237).toFixed(1),stoppingDistanceFrom29MPHMetres:+brakeDistance.toFixed(2),frameRates:[30,60,120],coverage:['acceleration','coasting','stopping','reverse delay','handbrake','steering at rest','speed sensitivity','grip cap','reverse steering','bumper collision','rectangle overlap','suspension']},null,2));
