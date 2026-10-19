@@ -266,6 +266,27 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     sun.target.position.set(x, 0, z); sun.target.updateMatrixWorld();
   }
 
+  let vehicleEnvironment;
+  function captureVehicleEnvironment(position, excluded = []) {
+    if(vehicleEnvironment)return vehicleEnvironment.texture;
+    const target=new THREE.WebGLCubeRenderTarget(mobile?64:128,{type:THREE.HalfFloatType});
+    const probe=new THREE.CubeCamera(.15,10000,target),generator=new THREE.PMREMGenerator(renderer);
+    const visibility=excluded.map(object=>[object,object.visible]),shadows=renderer.shadowMap.enabled;
+    probe.position.set(position.x,1.6,position.z);
+    try {
+      excluded.forEach(object=>object.visible=false);
+      // A static reflection capture does not need six additional shadow passes.
+      renderer.shadowMap.enabled=false;
+      probe.update(renderer,scene);
+      vehicleEnvironment=generator.fromCubemap(target.texture);
+      return vehicleEnvironment.texture;
+    } finally {
+      visibility.forEach(([object,visible])=>object.visible=visible);
+      renderer.shadowMap.enabled=shadows;
+      generator.dispose();target.dispose();
+    }
+  }
+
   function shopSign(text, index) {
     const [image, q] = canvas(512); image.height = 128;
     const colors = ['#594733', '#374f49', '#55513f', '#3c5261', '#654b48'];
@@ -378,6 +399,6 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     asphalt: surface('asphalt', 0x252b30), concrete: surface('concrete', 0x92948f),
     grass: surface('grass', 0x3c6335), masonry: hex => surface('stone', hex),
     brick: hex => surface('brick', hex), siding: hex => surface('siding', hex), roofing: hex => surface('roof', hex),
-    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting,
+    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment,
   };
 }

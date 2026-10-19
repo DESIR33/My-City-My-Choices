@@ -32,6 +32,7 @@ import {PLAN_CATEGORIES,freshMoneyPlan,restoreMoneyPlan,planTotals,changeReserve
 import {CAR_OFFERS,TANK_CAPACITY,offerFor,freshCarOwnership,restoreCarOwnership,carBudget,fuelQuote,transactCar,useOwnedCar} from "./assets/vehicle-ownership.js";
 import {VEHICLE,createVehicleState,advanceVehicle,vehicleFootprint,rectanglesOverlap} from "./assets/vehicle-physics.js";
 import {prepareVehicleTemplate,mountVehicle,updateVehicleVisual} from "./assets/vehicles.js";
+import {loadPremiumVehicleTemplates,updateVehicleDetail,setVehicleEnvironment} from "./assets/premium-vehicles.js";
 import {createPedestrianSignal,pedestrianSignalMaterial} from "./assets/pedestrian-signals.js";
 import {vehicleSignalState,pedestrianSignalState} from "./assets/traffic-signals.js";
 import {addPoliceVehicleDetails,updatePoliceVehicleLights} from "./assets/police-vehicles.js";
@@ -133,7 +134,30 @@ function buildPoliceStation(){
 const policeStation=buildPoliceStation();
 for(const [index,spot] of STATION_CARS.entries())policeCar(spot.x,spot.z,spot.heading,false,0,index);
 for(const [index,route] of PATROL_CAR_ROUTES.entries())policeCar(route.x,route.z,route.heading,true,route.speed,index+STATION_CARS.length);
-async function loadDetailedCars(){try{const [compressed,mtlText]=await Promise.all([fetch('assets/maple-mustang.obj.gz').then(r=>{if(!r.ok)throw new Error('Car model unavailable');return r.arrayBuffer()}),fetch('assets/MapleStreetMustang.mtl').then(r=>{if(!r.ok)throw new Error('Car materials unavailable');return r.text()})]);const objText=await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text(),materials=new MTLLoader().parse(mtlText,'assets/');materials.preload();const original=new OBJLoader().setMaterials(materials).parse(objText),template=prepareVehicleTemplate(original);for(const [i,ref] of vehicleRefs.entries()){const activePolice=ref.group.userData.policeVehicle?.active;mountVehicle(ref.group,template,ref.color,i);if(ref.group.userData.policeVehicle){addPoliceVehicleDetails(ref.group,i);ref.group.userData.policeVehicle.active=activePolice;}ref.group.add(visualKit.contactShadow(2.55,5.1,.063))}original.traverse(o=>{if(o.isMesh)o.geometry.dispose()});console.info('Loaded independently animated vehicle rigs for',vehicleRefs.length,'vehicles')}catch(error){console.warn('Detailed car model could not be loaded; keeping shaped fallback vehicles.',error)}}loadDetailedCars();
+async function loadDetailedCars(){try{const [compressed,mtlText]=await Promise.all([fetch('assets/maple-mustang.obj.gz').then(r=>{if(!r.ok)throw new Error('Car model unavailable');return r.arrayBuffer()}),fetch('assets/MapleStreetMustang.mtl').then(r=>{if(!r.ok)throw new Error('Car materials unavailable');return r.text()})]);const objText=await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text(),materials=new MTLLoader().parse(mtlText,'assets/');materials.preload();const original=new OBJLoader().setMaterials(materials).parse(objText),template=prepareVehicleTemplate(original);for(const [i,ref] of vehicleRefs.entries()){const activePolice=ref.group.userData.policeVehicle?.active;mountVehicle(ref.group,template,ref.color,i);if(ref.group.userData.policeVehicle){addPoliceVehicleDetails(ref.group,i);ref.group.userData.policeVehicle.active=activePolice;}ref.group.add(visualKit.contactShadow(2.55,5.1,.063))}original.traverse(o=>{if(o.isMesh)o.geometry.dispose()});console.info('Loaded independently animated vehicle rigs for',vehicleRefs.length,'vehicles')}catch(error){console.warn('Detailed car model could not be loaded; keeping shaped fallback vehicles.',error)}}
+async function loadPremiumCars(){
+  const templates=await loadPremiumVehicleTemplates();
+  for(const [i,ref] of vehicleRefs.entries()){
+    if(ref.group.userData.policeVehicle)continue;
+    const template=templates.get(i%9===0?'senna':'gls')||templates.values().next().value;
+    if(!template)continue;
+    const previous=ref.group.userData.vehicleVisual,travel=previous?.travel||0;
+    mountVehicle(ref.group,template,ref.color,i);
+    ref.group.userData.vehicleVisual.travel=travel;
+    ref.group.add(visualKit.contactShadow(2.55,5.1,.063));
+    if(ref.group===driving&&vehicleState)updateVehicleVisual(ref.group,vehicleState,0);
+  }
+  updateVehicleDetail(vehicleRefs,camera,{mobile:mobileGraphics,focusVehicle:driving});
+  if(templates.size){
+    // Capture the actual neighborhood once. No per-frame cube-map rendering.
+    const capture=()=>{try{
+      const environment=visualKit.captureVehicleEnvironment(player.position,[...vehicleRefs.map(ref=>ref.group),player]);
+      setVehicleEnvironment(vehicleRefs,templates,environment);
+    }catch(error){console.warn('Vehicle reflections retain the sky environment.',error)}};
+    if(window.requestIdleCallback)requestIdleCallback(capture,{timeout:2500});else setTimeout(capture,0);
+  }
+}
+loadDetailedCars().then(loadPremiumCars).catch(error=>console.warn('Premium vehicle loading failed; keeping the existing vehicles.',error));
 function tree(x,z,s=1){scene.add(visualKit.treeModel(x,z,s))}
 function safeTree(x,z,s=.8){if(streets.some(n=>Math.abs(x-n)<8.5||Math.abs(z-n)<8.5))return;if(obstacles.some(o=>x>o.minX-1.8&&x<o.maxX+1.8&&z>o.minZ-1.8&&z<o.maxZ+1.8))return;tree(x,z,s)}
 for(let a=-145;a<=145;a+=30)for(let r of streets)if(!(r===0&&Math.abs(a)<35)){safeTree(r-11,a,.8);safeTree(a,r-11,.8)}
@@ -450,5 +474,5 @@ const mapCtx=document.querySelector("#map").getContext("2d");function drawMap(){
 }
 
 visualKit.decorateCity(streets,buildings,obstacles,civicWorld.seats);batchSignalLenses();console.info("Architecture batching",visualKit.batchArchitecture());
-let saveClock=0;const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);mobileControls.update({driving:!!driving,near});updateMove(dt);civicWorld.update(player.position);updateEmergencyResponse(dt);if(stage!=="goal"&&stage!=="choice"){saveClock+=dt;if(saveClock>=4){saveClock=0;saveGame()}}updateTrafficSignals(dt);advanceTraffic(dt);for(const patrolCar of policeCars)updatePoliceVehicleLights(patrolCar,signalClock);for(const ref of vehicleRefs)if(ref.group.userData.disabled)updateVehicleVisual(ref.group,{disabled:true,brake:1},dt);updateCrossingPedestrians(dt);updatePolicePatrols(dt);characters.update(dt,player);findNear();visualKit.updateLighting(player.position);homeMarker.rotation.y+=dt*.4;mayaMarker.rotation.y+=dt*.4;standMarker.rotation.y+=dt*.4;cameraFollow(dt);renderer.render(scene,camera);drawMap()}animate();addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,mobileGraphics?1.25:1.7))});
+let saveClock=0;const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);mobileControls.update({driving:!!driving,near});updateMove(dt);civicWorld.update(player.position);updateEmergencyResponse(dt);if(stage!=="goal"&&stage!=="choice"){saveClock+=dt;if(saveClock>=4){saveClock=0;saveGame()}}updateTrafficSignals(dt);advanceTraffic(dt);for(const patrolCar of policeCars)updatePoliceVehicleLights(patrolCar,signalClock);for(const ref of vehicleRefs)if(ref.group.userData.disabled)updateVehicleVisual(ref.group,{disabled:true,brake:1},dt);updateCrossingPedestrians(dt);updatePolicePatrols(dt);characters.update(dt,player);findNear();visualKit.updateLighting(player.position);homeMarker.rotation.y+=dt*.4;mayaMarker.rotation.y+=dt*.4;standMarker.rotation.y+=dt*.4;cameraFollow(dt);updateVehicleDetail(vehicleRefs,camera,{mobile:mobileGraphics,focusVehicle:driving});renderer.render(scene,camera);drawMap()}animate();addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,mobileGraphics?1.25:1.7))});
 </script></body></html>

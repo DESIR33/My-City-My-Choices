@@ -3,6 +3,7 @@ import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUt
 import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
 import {mountVehicleWheel} from './vehicle-wheels.js';
 import {VEHICLE} from './vehicle-physics.js';
+import {mountPremiumVehicle,updatePremiumVehicleVisual} from './premium-vehicles.js';
 const unit = new THREE.BoxGeometry(1, 1, 1);
 const metal = new THREE.MeshStandardMaterial({color: 0x85949c, metalness: .92, roughness: .24});
 const dark = new THREE.MeshStandardMaterial({color: 0x11191e, roughness: .62, metalness: .25});
@@ -113,6 +114,8 @@ function rearPanelGeometry(template,minX,minY,maxX,maxY,offset){
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();template.rearPanels.set(key,g);return g;
 }
 export function mountVehicle(group, template, color, index = 0) {
+  if(template?.kind==='premium')return mountPremiumVehicle(group,template,color);
+  group.userData.vehicleVisual?.dispose?.();
   group.clear(); const paint = new THREE.MeshPhysicalMaterial({color, metalness: .36, roughness: .29, clearcoat: 1, clearcoatRoughness: .13, envMapIntensity: 1.15});
   const rig = new THREE.Group(), body = new THREE.Group(); rig.name = 'Vehicle rig'; body.name = 'Sprung body'; rig.add(body); group.add(rig);
   const cache = new Map(); const material = name => {if (!cache.has(name)) cache.set(name, physicalMaterial(name, paint));return cache.get(name);};
@@ -169,11 +172,15 @@ export function mountVehicle(group, template, color, index = 0) {
   else{box(body,dark,0,.67,-2.28,.55,.19,.035);box(body,plateMaterial,0,.67,-2.305,.43,.12,.012);}
   rig.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
   const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,paint,travel:0,steering:0,pitch:0,roll:0};
+  const sharedGeometry=new Set([unit,template?.body.geometry,...(template?.rearPanels.values()||[])]),ownedGeometry=new Set(),ownedMaterials=new Set();
+  body.traverse(o=>{if(!o.isMesh)return;if(!sharedGeometry.has(o.geometry))ownedGeometry.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(![metal,dark,rubber].includes(m))ownedMaterials.add(m);});
+  data.dispose=()=>{ownedGeometry.forEach(g=>g.dispose());ownedMaterials.forEach(m=>m.dispose());};
   group.userData.vehicleVisual=data;group.userData.vehicleDimensions={width:VEHICLE.width,length:VEHICLE.length};
   return data;
 }
 export function updateVehicleVisual(group, state, dt) {
   const data=group.userData.vehicleVisual;if(!data)return;
+  if(data.kind==='premium'){updatePremiumVehicleVisual(group,state);return;}
   const disabled=group.userData.disabled||state.disabled,steering=state.steering||0;data.body.rotation.x=(state.pitch||0)+(disabled?.025:0);data.body.rotation.z=(state.roll||0)+(disabled?.018:0);
   // Small damped load transfer around the chassis; wheels remain planted on the road.
   data.body.position.y=-Math.min(.022,Math.abs(state.pitch||0)*.3+Math.abs(state.roll||0)*.2);
