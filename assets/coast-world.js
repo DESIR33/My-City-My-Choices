@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {COAST_CITY,COAST_BUILDINGS,COAST_MOTORS,COAST_INFO,coastGroundHeight} from './world-rules.js';
+import {createFlamingoHotel} from './flamingo-hotel.js';
 
 // Original procedural architecture and palms; no external imagery or models.
-export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,addCrossingPedestrian,characters,seats,groundHeight=coastGroundHeight,mobile=false}) {
+export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,addCrossingPedestrian,characters,seats,groundSurfaces,groundHeight=coastGroundHeight,mobile=false}) {
   const batches=new Map(),unit=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();
   const mat=(color,roughness=.8,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
   const stucco=[0xf0beb3,0xaad6ce,0xf2dcac,0xbcc6e4,0xe0becf,0xf1e8d5].map(color=>mat(color));
@@ -98,8 +99,17 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
   }
   // Stepped art-deco facades, portholes, rounded balcony corners, and neon
   // accents use common material batches rather than one draw per window.
+  let flamingo=null;
   for(const [i,b] of COAST_BUILDINGS.entries()) {
-    const m=stucco[i%stucco.length],neon=neons[i%neons.length],front=b.x+b.w/2;
+    const front=b.x+b.w/2;
+    if(b.name==='THE FLAMINGO'&&b.height>=30){
+      flamingo=createFlamingoHotel({scene,building:b,obstacles,groundSurfaces,visualKit});
+      buildings.push({...b,coastal:true,shop:false,enterable:true});
+      const entranceWalk=b.x+60-9.3;
+      cube(scene,(front+entranceWalk)/2,.07,b.z,entranceWalk-front,.14,3.2,paving,false);
+      continue;
+    }
+    const m=stucco[i%stucco.length],neon=neons[i%neons.length];
     box(m,b.x,.06,b.z,b.w,b.height,b.d);box(trim,b.x,b.height,b.z,b.w+1,.4,b.d+1);
     box(m,b.x,b.height+.4,b.z,b.w-8,1.4,b.d-8);box(trim,b.x,b.height+1.8,b.z,b.w-7,.25,b.d-7);
     box(glass,front+.08,.8,b.z,.09,2.7,b.d-4);box(dark,front+.16,.2,b.z, .12,2.8,2.2);
@@ -196,5 +206,12 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
     mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Sunshore architecture and street furniture';scene.add(mesh);
   }
   return {buildings:COAST_BUILDINGS,palms,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
-    update(dt){waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}}};
+    flamingo,floors:flamingo?.floors||[],
+    inside:p=>!!flamingo?.inside(p),
+    nearestElevator:p=>flamingo?.nearestElevator(p)||null,
+    isRiding:()=>!!flamingo?.isRiding(),
+    rideTo:(index,actor)=>!!flamingo?.rideTo(index,actor),
+    floorY:()=>flamingo?.floorY?.()??0,
+    entrance:flamingo?.entrance||null,
+    update(dt,playerPosition){waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}flamingo?.update(dt,playerPosition);}};
 }
