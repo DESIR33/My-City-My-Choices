@@ -10,7 +10,7 @@ const C={road:new THREE.MeshStandardMaterial({color:0x252b30}),walk:new THREE.Me
 function cube(parent,x,y,z,w,h,d,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y+h/2,z);parent.add(m);return m;}
 const north=createNorthWorld({scene,visualKit:{treeModel:()=>new THREE.Group(),atmosphere:{registerGlow(){},addStreetLight(){}}},cube,C,obstacles,buildings:[],car(x,z,color,heading,moving,speed,axis='z'){traffic.push({mesh:{position:{x,z},rotation:{y:heading},userData:{}},speed,axis});},traffic,trafficControllers:[],addCornerSignal(){},characters:{create(){}}});
 scene.updateMatrixWorld(true);const {surfaces,markings,supports}=north.bridge,road=surfaces[0],deck=supports.find(m=>m.name==='Bridge structural deck');
-assert.equal(surfaces.length,3);assert.ok(road.geometry.attributes.position.count>1000,'The rendered bridge follows a dense smooth profile');
+assert.equal(surfaces.length,3);assert.equal(markings.length,2,'Shaped markings use only two draw calls');assert.ok(road.geometry.attributes.position.count>1000,'The rendered bridge follows a dense smooth profile');
 for(const mesh of surfaces){const p=mesh.geometry.attributes.position,n=mesh.geometry.attributes.normal;for(let i=0;i<p.count;i++){const rise=mesh===road?0:.15;assert.ok(Math.abs(p.getY(i)-bridgeHeight(p.getZ(i))-rise)<2e-5,'Rendered road and footpaths match gameplay height');assert.ok(n.getY(i)>.99,'Bridge surfaces face upward, including ramps');}}
 // Cast through the actual geometry: the asphalt is always above structural concrete,
 // rather than occupying the very same depth as in the reported screenshot.

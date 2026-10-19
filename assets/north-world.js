@@ -43,7 +43,7 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   volume(BRIDGE.south,BRIDGE.north,12.2,z=>bridgeHeight(z)-.06,z=>bridgeHeight(z)-.8,'Bridge structural deck');
   for(const [a,b] of [[BRIDGE.south,RIVER.south],[RIVER.north,BRIDGE.north]])volume(a,b,12.2,z=>bridgeHeight(z)-.8,()=>-2.2,'Bridge approach abutment');
   for(const z of [RIVER.south,RIVER.north]){box(stone,0,6.5,z,26,.65,4);for(const s of [-1,1]){box(stone,s*12.2,-3,z,1.4,33,4);box(stone,s*12.2,30,z,1.8,1.1,4.3);}}
-  function beam(a,b,width,material){const v=new THREE.Vector3().subVectors(b,a),mesh=new THREE.Mesh(unit,material);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(width,v.length(),width);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());mesh.castShadow=true;scene.add(mesh);}
+  function beam(a,b,width,material){const v=new THREE.Vector3().subVectors(b,a),length=v.length();if(!batches.has(material))batches.set(material,[]);batches.get(material).push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,z:(a.z+b.z)/2,w:width,h:length,d:width,quaternion:new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize())});}
   for(const s of [-1,1]){
     for(const [end,anchor] of [[RIVER.south,BRIDGE.south],[RIVER.north,BRIDGE.north]]){beam(new THREE.Vector3(s*12.2,29,end),new THREE.Vector3(s*12.2,.8,anchor),.15,silver);box(stone,s*12.2,-.07,anchor,2,1,3);}
     for(let z=BRIDGE.south;z>=BRIDGE.north;z-=4){const y=bridgeHeight(z)+.15;box(rail,s*11,y,z,.1,1.25,.1);}
@@ -56,6 +56,14 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   const yellowPaint=roadPaint.clone(),edgePaint=white.clone();for(const paint of [yellowPaint,edgePaint]){paint.polygonOffset=true;paint.polygonOffsetFactor=-2;paint.polygonOffsetUnits=-4;}
   for(let z=-175;z>-1140;z-=12)for(const s of [-1,1])markings.push(strip(s*.15,.11,.018,yellowPaint,z,z-5,'North Road center dash'));
   for(const s of [-1,1])markings.push(strip(s*7.1,.12,.018,edgePaint,-165,-1150,'North Road edge line'));
+  // Keep the shaped paint and hundreds of railing/cable segments inexpensive.
+  // Two paint meshes retain the exact sampled surfaces instead of one draw per dash.
+  const paintParts=markings.splice(0);
+  for(const material of [yellowPaint,edgePaint]){
+    const positions=[],uvs=[],indices=[];
+    for(const mesh of paintParts.filter(m=>m.material===material)){const g=mesh.geometry,offset=positions.length/3;positions.push(...g.attributes.position.array);uvs.push(...g.attributes.uv.array);indices.push(...Array.from(g.index.array,n=>n+offset));scene.remove(mesh);g.dispose();}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));g.setIndex(indices);g.computeVertexNormals();const mesh=new THREE.Mesh(g,material);mesh.name='North Road paint batch';mesh.receiveShadow=true;scene.add(mesh);markings.push(mesh);
+  }
   visualKit.atmosphere.registerGlow(warm,{day:.05,night:1.35});
   const lampGlow=new THREE.MeshStandardMaterial({color:0xffe4b0,emissive:0xffd39a,emissiveIntensity:.1,roughness:.35});
   visualKit.atmosphere.registerGlow(lampGlow,{day:.1,night:2.4});
@@ -98,6 +106,6 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(let i=0;i<6;i++){const z=NORTH_CITY.streets[i],speed=i%2?-7:7;car(-210+i*64,z+(speed>0?2.4:-2.4),[0xd1a82f,0x455965,0x974e35][i%3],speed>0?Math.PI/2:-Math.PI/2,true,speed,'x');Object.assign(traffic.at(-1),{min:-235,max:235});}
   for(const x of [-2.4,2.4]){const speed=x<0?11:-11;car(x,x<0?-380:-940,0x466b72,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1134,max:-176});}
   for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:i%2?'neighbor':'casual'});}
-  for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
+  for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation||0,0);if(p.quaternion)dummy.quaternion.copy(p.quaternion);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
   return {towers:TOWERS,buildings:CITY_BLOCKS,water,bridge:{surfaces:bridgeSurfaces,markings,supports}};
 }
