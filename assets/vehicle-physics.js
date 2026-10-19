@@ -11,6 +11,14 @@ export function vehicleFootprint(x, z, heading, width = VEHICLE.width, length = 
   const s = Math.sin(heading), c = Math.cos(heading);
   return [[-width / 2, -length / 2], [width / 2, -length / 2], [width / 2, length / 2], [-width / 2, length / 2]].map(([a, b]) => ({x: x + a * c + b * s, z: z - a * s + b * c}));
 }
+// Test the pedestrian's radius against the car in its own coordinate system.
+// A world-aligned bounding box includes empty space beside a rotated car's doors.
+export function vehicleBlocksPedestrian(x, z, pose, radius = .5) {
+  const dx = x - pose.x, dz = z - pose.z, s = Math.sin(pose.heading), c = Math.cos(pose.heading);
+  const sideGap = Math.max(Math.abs(dx * c - dz * s) - VEHICLE.width / 2, 0);
+  const endGap = Math.max(Math.abs(dx * s + dz * c) - VEHICLE.length / 2, 0);
+  return sideGap * sideGap + endGap * endGap < radius * radius;
+}
 export function rectanglesOverlap(a, b) {
   for (const polygon of [a, b]) for (let i = 0; i < 2; i++) {
     const edge = {x: polygon[i + 1].x - polygon[i].x, z: polygon[i + 1].z - polygon[i].z}, axis = {x: -edge.z, z: edge.x};
