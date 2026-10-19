@@ -17,7 +17,7 @@ Visit http://localhost:8000. Three.js currently loads from jsDelivr, so the brow
 - **WASD** or arrow keys: walk; while driving, W accelerates, S brakes/reverses, and A/D steer
 - **Space**: handbrake while driving
 - **Mouse**: look around (click the game to capture the mouse)
-- **E**: interact
+- **E**: interact, sit, or stand from a seat
 - **F**: enter or exit a parked car
 - **Touch phones/tablets**: left thumbstick moves; drag the city with another finger to turn the camera. Hold **Run** to sprint. Tap **Talk/Interact** or **Enter car** when nearby. While driving, drag the stick up to accelerate, down to brake/reverse, and sideways to steer; hold **Handbrake** to stop and tap **Exit car** to get out.
 - Touch controls appear on devices with a coarse pointer or after actual touch input; desktop keeps keyboard/mouse controls. Menus pause movement. Losing focus or canceling a touch releases inputs. Portrait and landscape layouts include safe-area spacing and scrollable dialogs.
@@ -94,3 +94,15 @@ When wallet cash is short, the neighbor noticeboard offers one $2 job after each
 Garden plans can be started again after a completed day. They mature when the promised business day starts, and cannot pay merely because a planning menu was opened. Taking the tutorial's day off records zero sales and costs.
 
 `node tests/business-days.test.mjs` checks deterministic events, exact quotes, repairs/upgrades, customer limits, history, and save migration. The story-flow test now plays days 1–10 across all four business types, including long queues, persistent repairs, wage recovery, investment timing, and duplicate-payment protection. Browser visual and device QA remain unverified while the managed preview is unavailable.
+
+## Café, seating, and emergency services
+
+Maple Cafe is at the southwest central block (`-30, -34`). Walk through the open front doorway to explore its interior; the roof and outer walls cut away while inside. The terrace has tables, umbrellas, and chairs. Press E or tap Sit near chairs, benches, or the café sofa. Press E, tap Stand up, or move to stand. At the counter, review a menu and pay from wallet cash; insufficient funds cannot produce an order. Orders use exact cents, respect the money planner, show food at the counter, and save their receipts.
+
+Maple Fire & Rescue occupies the eastern district (`150, -90`) with a detailed procedural fire engine and four uniformed firefighters. The police force retains 20 officers, a station, and five marked cruisers. Police markings and lights survive the detailed vehicle model loading. Civilian and patrol traffic move along both street axes and obey lights and STOP signs.
+
+Collisions with a vehicle or solid object at 1.2 m/s or more disable the vehicle and dispatch a police cruiser through the road network. Exit with F or the mobile Exit car button. When police arrive, interact with the officer or inspect the disabled vehicle. A tow to Maple Motors is free; a fictional $0.75 repair restores driving. Empty wallets cannot buy repairs. Crash state and disabled vehicle positions survive saving. Coasting, cornering load, steering direction, cabin details, mirrors, handles, and hazard lamps are improved; this remains a lightweight driving simulation.
+
+The extra building row across storefront entrances is removed. Downtown buildings are moved off roads/sidewalks, and their approach paths are checked for obstruction.
+
+Checks: `node tests/city-life.test.mjs`, `node tests/traffic-flow.test.mjs`, and `node tests/story-flow.test.mjs` cover payments, sitting/standing handlers, crash disabling, response travel, recovery, traffic rules, and clear building approaches. Rendered visual quality, seated model appearance, and device performance still require browser playtesting.
