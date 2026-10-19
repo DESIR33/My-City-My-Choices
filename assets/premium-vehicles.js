@@ -220,6 +220,9 @@ export function setVehicleEnvironment(refs,templates,environment) {
   for(const ref of refs) {
     const data=(ref.group||ref).userData.vehicleVisual;
     if(data?.kind==='premium')for(const material of data.materials)materials.add(material);
+    else if(data?.rig)data.rig.traverse(object=>{
+      if(object.isMesh)for(const material of (Array.isArray(object.material)?object.material:[object.material]))materials.add(material);
+    });
   }
   for(const material of materials)if(material.isMeshStandardMaterial) {
     material.envMap=environment;material.envMapIntensity=1;material.needsUpdate=true;

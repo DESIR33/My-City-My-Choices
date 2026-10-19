@@ -175,7 +175,7 @@ export function mountVehicle(group, template, color, index = 0) {
   if(template){body.add(new THREE.Mesh(rearPanelGeometry(template,-.255,.59,.255,.77,.01),dark));body.add(new THREE.Mesh(rearPanelGeometry(template,-.215,.62,.215,.74,.019),plateMaterial));}
   else{box(body,dark,0,.67,-2.28,.55,.19,.035);box(body,plateMaterial,0,.67,-2.305,.43,.12,.012);}
   rig.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
-  const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial:led,paint,travel:0,steering:0,pitch:0,roll:0};
+  const data={modelId:template?'mustang':'fallback',modelName:template?'Ford Mustang':'City coupe',rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial:led,paint,travel:0,steering:0,pitch:0,roll:0};
   const sharedGeometry=new Set([unit,template?.body.geometry,...(template?.rearPanels.values()||[])]),ownedGeometry=new Set(),ownedMaterials=new Set();
   body.traverse(o=>{if(!o.isMesh)return;if(!sharedGeometry.has(o.geometry))ownedGeometry.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(![metal,dark,rubber].includes(m))ownedMaterials.add(m);});
   data.dispose=()=>{ownedGeometry.forEach(g=>g.dispose());ownedMaterials.forEach(m=>m.dispose());};
