@@ -26,10 +26,11 @@ function suspension(state, key, target, dt) {
   state[key] += state[velocity] * dt;
 }
 export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
+  if(state.disabled){state.speed=state.throttle=state.yawRate=state.acceleration=0;state.brake=1;state.gear='P';state.rpm=0;return {collided:false,distance:0,impactSpeed:0};}
   const duration = clamp(Number.isFinite(elapsed) ? elapsed : 0, 0, .1);
   const direction = clamp(input.forward || 0, -1, 1), steer = clamp(input.steer || 0, -1, 1);
   const handbrake = !!input.handbrake;
-  let remaining = duration, collided = false, distance = 0;
+  let remaining = duration, collided = false, distance = 0,impactSpeed=0;
   while (remaining > 1e-8) {
     const dt = Math.min(remaining, 1 / 120); remaining -= dt;
     const speed = state.speed, abs = Math.abs(speed), previousHeading = state.heading;
@@ -42,8 +43,9 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
     const braking = handbrake || opposite || (reversing && abs < .1);
     state.throttle = approach(state.throttle, braking ? 0 : Math.abs(direction), 7, dt);
     state.brake = approach(state.brake, braking ? (handbrake ? .8 : Math.abs(direction)) : 0, 16, dt);
-    const engine = state.throttle * (6500 / VEHICLE.mass) * (1 - .68 * clamp(abs / VEHICLE.maxSpeed, 0, 1));
-    const resistance = abs > .02 ? .13 + .00028 * abs * abs + .012 * abs : 0;
+    const cornerLoad=clamp(Math.abs(state.lateralAcceleration)/9.81,0,.85);
+    const engine = state.throttle * (6500 / VEHICLE.mass) * (1 - .68 * clamp(abs / VEHICLE.maxSpeed, 0, 1))*(1-.25*cornerLoad);
+    const resistance = abs > .02 ? .13 + .00042 * abs * abs + .012 * abs + (state.throttle<.05?.045*abs:0) : 0;
     let acceleration = state.direction * engine - Math.sign(speed) * (resistance + state.brake * 9.2);
     if (braking && abs < .1) {state.speed = 0; acceleration = 0; state.throttle = 0;}
     else {
@@ -69,8 +71,10 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
     if (canOccupy(x, z, state.heading)) {state.x = x; state.z = z; state.wheelTravel += step; distance += Math.abs(step);}
     else {
       state.impact = Math.max(state.impact, Math.abs(state.speed));
+      impactSpeed=Math.max(impactSpeed,Math.abs(state.speed));
       state.speed = 0; state.throttle = 0; state.yawRate = 0; state.heading = previousHeading; state.travelHeading = previousHeading;
       collided = true;
+      remaining=0;
     }
     state.lateralAcceleration = state.speed * state.yawRate;
     suspension(state, 'pitch', clamp(state.acceleration * -.005, -.045, .035), dt);
@@ -81,5 +85,5 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
   state.gear = gear;
   const ratio = gear === 'R' ? 3.1 : [0, 3.4, 2.2, 1.5, 1.05][Number(gear)] || 0;
   state.rpm = approach(state.rpm, Math.max(800 + state.throttle * 900, abs / VEHICLE.wheelRadius * 9.55 * ratio * 3.1), 7, duration);
-  return {collided, distance};
+  return {collided, distance,impactSpeed};
 }

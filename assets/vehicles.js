@@ -133,18 +133,26 @@ export function mountVehicle(group, template, color, index = 0) {
     box(body,reverseMaterial,side*.39,.59,-2.29,.1,.045,.03);
     const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.19,16,1,true),metal);exhaust.rotation.x=Math.PI/2;exhaust.position.set(side*.65,.31,-2.24);body.add(exhaust);
     box(body,dark,side*.94,.3,-.05,.08,.11,2.5);
+    box(body,paint,side*1.00,1.02,.75,.18,.10,.24);
+    box(body,dark,side*.95,.86,-.25,.025,.035,.20);
+    box(body,dark,side*.95,.86,.65,.025,.035,.20);
   }
+  // A visible cabin gives the glass depth, with seats and a steering wheel.
+  for(const side of [-1,1]){box(body,dark,side*.43,.61,.18,.55,.17,.64);const back=box(body,dark,side*.43,.88,-.10,.54,.54,.14);back.rotation.x=-.13;box(body,dark,side*.43,1.17,-.13,.28,.18,.13);}
+  const steeringWheel=new THREE.Mesh(new THREE.TorusGeometry(.16,.018,8,24),dark);steeringWheel.position.set(.43,.99,.70);steeringWheel.rotation.x=-.55;body.add(steeringWheel);
+  const hazardMaterial=new THREE.MeshStandardMaterial({color:0xe9a03b,emissive:0xff8d13,emissiveIntensity:0,roughness:.3});
+  for(const side of [-1,1])for(const z of [-2.29,2.2])box(body,hazardMaterial,side*.84,.7,z,.10,.08,.035);
   box(body,dark,0,.67,-2.28,.55,.19,.035);
   // A small stamped plate remains readable without adding another texture or web request.
   box(body,new THREE.MeshStandardMaterial({color:0xc6d0cb,roughness:.48}),0,.67,-2.305,.43,.12,.012);
   rig.traverse(o=>{if(o.isMesh)o.receiveShadow=true;});
-  const data={rig,body,wheels,brakeMaterial,reverseMaterial,paint,travel:0,steering:0,pitch:0,roll:0};
+  const data={rig,body,wheels,brakeMaterial,reverseMaterial,hazardMaterial,paint,travel:0,steering:0,pitch:0,roll:0};
   group.userData.vehicleVisual=data;group.userData.vehicleDimensions={width:VEHICLE.width,length:VEHICLE.length};
   return data;
 }
 export function updateVehicleVisual(group, state, dt) {
   const data=group.userData.vehicleVisual;if(!data)return;
-  const steering=state.steering||0;data.body.rotation.x=state.pitch||0;data.body.rotation.z=state.roll||0;
+  const disabled=group.userData.disabled||state.disabled,steering=state.steering||0;data.body.rotation.x=(state.pitch||0)+(disabled?.025:0);data.body.rotation.z=(state.roll||0)+(disabled?.018:0);
   // Small damped load transfer around the chassis; wheels remain planted on the road.
   data.body.position.y=-Math.min(.022,Math.abs(state.pitch||0)*.3+Math.abs(state.roll||0)*.2);
   for(const wheel of data.wheels) {
@@ -155,4 +163,5 @@ export function updateVehicleVisual(group, state, dt) {
   }
   data.brakeMaterial.emissiveIntensity=(state.brake>.08||state.handbrake)?2.6:.28;
   data.reverseMaterial.emissiveIntensity=state.gear==='R'?1.4:0;
+  if(data.hazardMaterial)data.hazardMaterial.emissiveIntensity=disabled?(Math.floor(performance.now()/380)%2?2.5:.05):0;
 }

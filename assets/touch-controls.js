@@ -60,7 +60,7 @@ export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVe
     if (!enabled) return;
     action.disabled = !near || driving; vehicle.disabled = !driving && near?.kind !== 'car';
     vehicle.textContent = driving ? 'Exit car' : 'Enter car';
-    action.textContent = near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact';
+    action.textContent = near?.kind === 'stand' ? 'Stand up' : near?.kind === 'seat' ? 'Sit' : near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact';
     const mode = driving ? 'drive' : 'walk';
     if (mode !== lastMode) {clear(); lastMode = mode;}
     run.hidden = driving; brake.hidden = !driving;

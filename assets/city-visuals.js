@@ -278,7 +278,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     group.userData.staticArchitecture = true; return group;
   }
 
-  function decorateCity(streets, buildings, obstacles) {
+  function decorateCity(streets, buildings, obstacles, seats = []) {
     const batches = new Map(), unitBox = new THREE.BoxGeometry(1, 1, 1);
     const curb = new THREE.MeshStandardMaterial({ color: 0xaca99f, roughness: .95 });
     const darkMetal = new THREE.MeshStandardMaterial({ color: 0x303b3c, roughness: .55, metalness: .6 });
@@ -307,6 +307,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
       box(tactile, ix + sx * 9.22, .211, iz + sz * 9.22, 1.15, .015, 1.15);
     }
     function clear(x, z) {
+      if(x>125&&(Math.abs(z+30)<18||Math.abs(z+90)<18))return false;
       return !obstacles.some(o => x > o.minX - 1.1 && x < o.maxX + 1.1 && z > o.minZ - 1.1 && z < o.maxZ + 1.1);
     }
     // Benches have connected legs, seat slats, and a supported back; bins sit on pavement.
@@ -317,6 +318,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
       for (const dx of [-.2, 0, .2]) box(wood, x + dx, .68, z, .16, .095, 1.7);
       for (const dz of [-.72, .72]) box(darkMetal, x + side * .27, .69, z + dz, .07, .62, .07);
       for (const y of [.89, 1.09, 1.29]) box(wood, x + side * .27, y, z, .075, .14, 1.7);
+      seats.push({id:'bench-'+seats.length,type:'bench',x,z,height:.565,heading:side<0?Math.PI/2:-Math.PI/2,stand:{x:x-side*1.35,z}});
       const binX = x, binZ = z + 2.3;
       box(darkMetal, binX, .21, binZ, .47, .82, .47);
       box(grate, binX, 1.03, binZ, .51, .07, .51);

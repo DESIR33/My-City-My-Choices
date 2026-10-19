@@ -61,7 +61,7 @@ function makeHair() {
 }
 
 function makeAccessories() {
-  const head = new THREE.Group(), torso = new THREE.Group(), hat = new THREE.Group(), backpack = new THREE.Group();
+  const head = new THREE.Group(), torso = new THREE.Group(), hat = new THREE.Group(), backpack = new THREE.Group(), policeCap = new THREE.Group(), policeBadge = new THREE.Group(), fireHelmet=new THREE.Group(),fireStripes=new THREE.Group();
   const straw = clothMaterial(0xd7ba7a), ribbon = clothMaterial(0x5a6253), fabric = clothMaterial(0x657e92);
   const brim = new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.013,36), straw); brim.position.y = .2; hat.add(brim);
   const profile = [new THREE.Vector2(.126,0),new THREE.Vector2(.123,.025),new THREE.Vector2(.108,.1),new THREE.Vector2(.09,.125),new THREE.Vector2(0,.13)];
@@ -75,8 +75,22 @@ function makeAccessories() {
   }
   hat.traverse(o=>{if(o.isMesh)o.castShadow=true}); backpack.traverse(o=>{if(o.isMesh)o.castShadow=true});
   const hair = makeHair(); head.add(hair.curls,hair.bun,hat); torso.add(backpack);
-  hat.visible = backpack.visible = false;
-  return { head, torso, hat, backpack, hair };
+  const uniform = clothMaterial(0x172b45), uniformTrim = new THREE.MeshStandardMaterial({color:0xb6a56d,roughness:.42,metalness:.48});
+  const cap = new THREE.Mesh(new RoundedBoxGeometry(.25,.14,.27,4,.035),uniform); cap.position.set(0,.195,-.015); policeCap.add(cap);
+  const visor = new THREE.Mesh(new RoundedBoxGeometry(.27,.025,.19,3,.01),uniform); visor.position.set(0,.132,.065); policeCap.add(visor);
+  const capBadge = new THREE.Mesh(new THREE.CircleGeometry(.035,8),uniformTrim); capBadge.position.set(0,.195,.123); policeCap.add(capBadge);
+  const shieldShape = new THREE.Shape(); shieldShape.moveTo(-.035,.045); shieldShape.lineTo(.035,.045); shieldShape.lineTo(.031,-.005); shieldShape.lineTo(0,-.045); shieldShape.lineTo(-.031,-.005); shieldShape.closePath();
+  const badge = new THREE.Mesh(new THREE.ShapeGeometry(shieldShape),uniformTrim); badge.position.set(.075,.045,.115); policeBadge.add(badge);
+  const badgeCenter = new THREE.Mesh(new THREE.CircleGeometry(.009,8),uniform); badgeCenter.position.set(.075,.045,.117); policeBadge.add(badgeCenter);
+  head.add(policeCap); torso.add(policeBadge);
+  const yellow=clothMaterial(0xd5b84e),reflective=clothMaterial(0xd9de9c);
+  const helmet=new THREE.Mesh(new THREE.SphereGeometry(.165,20,12,0,Math.PI*2,0,Math.PI/2),yellow);helmet.position.y=.13;fireHelmet.add(helmet);
+  const helmetBrim=new THREE.Mesh(new THREE.CylinderGeometry(.205,.205,.025,24),yellow);helmetBrim.position.y=.13;fireHelmet.add(helmetBrim);
+  for(const y of [-.13,.1]){const band=new THREE.Mesh(new RoundedBoxGeometry(.34,.045,.23,2,.012),reflective);band.position.set(0,y,0);fireStripes.add(band);}
+  head.add(fireHelmet);torso.add(fireStripes);fireHelmet.visible=fireStripes.visible=false;
+  hat.visible = backpack.visible = policeCap.visible = policeBadge.visible = false;
+  policeCap.traverse(o=>{if(o.isMesh)o.castShadow=true}); policeBadge.traverse(o=>{if(o.isMesh)o.castShadow=true});
+  return { head, torso, hat, backpack, policeCap, policeBadge, fireHelmet,fireStripes,hair };
 }
 
 // Only rotations and a proportionally scaled vertical root motion are retargeted.
@@ -177,10 +191,11 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     data.accessories.hair.material.color.setHex(a.hair??0x483c35);
     data.accessories.hat.visible=!!a.wardrobe?.hat;data.accessories.backpack.visible=!!a.wardrobe?.backpack;
   }
-  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false }) {
+  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false,police=false,firefighter=false }) {
     const actor=new THREE.Group();actor.position.set(x,groundHeight(x,z),z);scene.add(actor);
     const fallback=placeholder(shirt);actor.add(fallback);
-    const data={ model,customizable,interactive,fallback,appearance:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61 };
+    const data={ model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61 };
+    if(police)actor.userData.role='police-officer';
     actor.userData.character=data;actors.push(actor);
     const loading=Promise.all([template(model),motions(MODELS[model].set)]).then(([gltf,clips])=>{
       const source=cloneSkeleton(gltf.scene),visual=new THREE.Group();
@@ -193,20 +208,23 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const leftEye=source.getObjectByName(model==='child'||model==='boy'?'Bip02_LEye':'Bip01_LEye');
       actor.updateMatrixWorld(true);
       if(head&&leftEye){const headPosition=head.getWorldPosition(new THREE.Vector3()),eyePosition=leftEye.getWorldPosition(new THREE.Vector3());if(eyePosition.z<headPosition.z)visual.rotation.y=Math.PI;}
-      if(customizable){
+      if(data.customizable){
         data.uniforms={avatarSkinRatio:{value:new THREE.Color(1,1,1)},avatarShirt:{value:new THREE.Color(0x496d84)},avatarHair:{value:new THREE.Color(0x483c35)},avatarShoes:{value:new THREE.Color(0x303f52)},avatarHairStyle:{value:0}};
         data.accessories=makeAccessories();actor.add(data.accessories.head,data.accessories.torso);
       }
       source.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=mesh.receiveShadow=true;mesh.frustumCulled=false;
-        const prepare=m=>{if(customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=.85;return mat};
+        const prepare=m=>{if(data.customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=.85;return mat};
         mesh.material=Array.isArray(mesh.material)?mesh.material.map(prepare):prepare(mesh.material);
       });
       data.mixer=new THREE.AnimationMixer(source);data.actions={};
       for(const {name,gltf:motion} of clips){const clip=retargetMotion(motion.animations[0],motion.scene,source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}
-      if(customizable){
-        const spine=source.getObjectByName('Bip02_Spine2');
+      if(data.customizable){
+        const spine=source.getObjectByName('Bip02_Spine2')||source.getObjectByName('Bip01_Spine2')||source.getObjectByName('Bip02 Spine2')||source.getObjectByName('Bip01 Spine2');
         data.anchors=[rememberAnchor(actor,head,data.accessories.head),rememberAnchor(actor,spine,data.accessories.torso)];
         setAppearance(actor,data.appearance);
+        data.accessories.policeCap.visible=data.police;
+        data.accessories.policeBadge.visible=data.police;
+        data.accessories.fireHelmet.visible=data.firefighter;data.accessories.fireStripes.visible=data.firefighter;
       }
       fallback.visible=false;data.ready=true;setMotion(data,'idle');data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
       data.mixer.update(0);actor.updateMatrixWorld(true);if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
@@ -221,6 +239,15 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     if(previous)previous.fadeOut(.2);
     next.reset().fadeIn(.2).play();data.active=name;
   }
+  function setSeated(actor,seat=null){const d=actor.userData.character;d.seated=seat;if(!seat&&d.visual)d.visual.position.y=0;}
+  function seatedPose(actor,data){
+    const find=(side,part)=>{let result;data.source.traverse(b=>{if(b.isBone&&b.name.replaceAll('_',' ').endsWith((side?side+' ':'')+part))result=b;});return result;};
+    const pelvis=find('', 'Pelvis');if(!pelvis)return;
+    data.visual.position.y=0;actor.updateMatrixWorld(true);data.visual.position.y+=actor.position.y+data.seated.height+.04-pelvis.getWorldPosition(new THREE.Vector3()).y;actor.updateMatrixWorld(true);
+    const forward=new THREE.Vector3(Math.sin(actor.rotation.y),0,Math.cos(actor.rotation.y));
+    function aim(bone,child,direction){if(!bone||!child)return;const parent=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),direction.clone().applyQuaternion(parent).normalize());actor.updateMatrixWorld(true);}
+    for(const side of ['L','R']){const thigh=find(side,'Thigh'),calf=find(side,'Calf'),foot=find(side,'Foot');aim(thigh,calf,forward.clone().add(new THREE.Vector3(0,-.08,0)));aim(calf,foot,new THREE.Vector3(0,-1,0));const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand');aim(upper,fore,forward.clone().multiplyScalar(.22).add(new THREE.Vector3(0,-1,0)));aim(fore,hand,forward.clone().add(new THREE.Vector3(0,-.15,0)));}
+  }
   function update(dt,player) {
     for(const actor of actors){
       const data=actor.userData.character,x=actor.position.x,z=actor.position.z;
@@ -230,12 +257,12 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       if(!data.ready)continue;
       // Ignore teleports between businesses when selecting a movement animation.
       const speed=dt>0&&displacement<1?displacement/dt:0;data.speed=THREE.MathUtils.damp(data.speed,speed,12,dt);
-      const state=data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
+      const state=data.seated?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
       data.actions[state].setEffectiveTimeScale(state==='idle'?1:THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9));
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
-      data.mixer.update(dt);actor.updateMatrixWorld(true);
+      data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
       if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
     }
   }
-  return { create,setAppearance,update,actors,ready:()=>Promise.all([...pending]) };
+  return { create,setAppearance,setSeated,update,actors,ready:()=>Promise.all([...pending]) };
 }
