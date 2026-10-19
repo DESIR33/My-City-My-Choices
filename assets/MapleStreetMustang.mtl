@@ -1,0 +1,101 @@
+newmtl Gloss_Red
+Ka 0.12 0.015 0.01
+Kd 0.68 0.025 0.018
+Ks 0.85 0.73 0.68
+Ns 110
+illum 2
+newmtl Windows.001
+Ka 0.01 0.025 0.035
+Kd 0.025 0.065 0.08
+Ks 0.55 0.65 0.7
+Ns 100
+d 0.88
+illum 2
+newmtl Glass.001
+Ka 0.01 0.025 0.035
+Kd 0.02 0.06 0.075
+Ks 0.5 0.6 0.65
+Ns 100
+d 0.84
+illum 2
+newmtl Glass.002
+Ka 0.01 0.025 0.035
+Kd 0.018 0.055 0.07
+Ks 0.5 0.6 0.65
+Ns 100
+d 0.82
+illum 2
+newmtl Matte_Black
+Ka 0.01 0.01 0.01
+Kd 0.025 0.03 0.035
+Ks 0.08 0.08 0.08
+Ns 12
+illum 2
+newmtl Gloss_Black
+Ka 0.015 0.015 0.015
+Kd 0.045 0.05 0.055
+Ks 0.5 0.5 0.5
+Ns 90
+illum 2
+newmtl Mirror
+Ka 0.15 0.15 0.15
+Kd 0.56 0.59 0.6
+Ks 0.9 0.9 0.9
+Ns 150
+illum 2
+newmtl Material.001
+Ka 0.14 0.15 0.15
+Kd 0.42 0.45 0.46
+Ks 0.75 0.75 0.75
+Ns 100
+illum 2
+newmtl Material.002
+Ka 0.02 0.02 0.02
+Kd 0.07 0.08 0.085
+Ks 0.3 0.3 0.3
+Ns 60
+illum 2
+newmtl Material.005
+Ka 0.22 0.17 0.12
+Kd 0.72 0.52 0.3
+Ks 0.25 0.22 0.16
+Ns 40
+illum 2
+newmtl Material.006
+Ka 0.22 0.2 0.14
+Kd 0.9 0.82 0.56
+Ks 0.85 0.78 0.58
+Ns 70
+illum 2
+newmtl Material.007
+Ka 0.22 0.08 0.07
+Kd 0.82 0.17 0.12
+Ks 0.8 0.6 0.6
+Ns 80
+illum 2
+newmtl Material
+Ka 0.04 0.04 0.04
+Kd 0.18 0.2 0.2
+Ks 0.38 0.4 0.4
+Ns 60
+illum 2
+newmtl None
+Ka 0.025 0.02 0.018
+Kd 0.12 0.07 0.055
+Ks 0.4 0.35 0.3
+Ns 55
+illum 2
+newmtl White_Light.001
+Ka 0.45 0.38 0.24
+Kd 1.0 0.84 0.52
+Ks 0.9 0.8 0.58
+Ke 0.35 0.24 0.1
+Ns 80
+illum 2
+newmtl White_Light.003
+Ka 0.5 0.15 0.1
+Kd 1.0 0.16 0.11
+Ks 0.7 0.3 0.2
+Ke 0.18 0.025 0.015
+Ns 60
+illum 2

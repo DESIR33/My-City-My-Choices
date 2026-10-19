@@ -14,11 +14,28 @@ Visit http://localhost:8000. Three.js currently loads from jsDelivr, so the brow
 
 ## Controls
 
-- **WASD** or arrow keys: walk / drive
+- **WASD** or arrow keys: walk; while driving, W accelerates, S brakes/reverses, and A/D steer
+- **Space**: handbrake while driving
 - **Mouse**: look around (click the game to capture the mouse)
 - **E**: interact
 - **F**: enter or exit a parked car
 
 ## Prototype scope
 
-The current build is a single-player browser prototype. It includes a procedural city district with roads, buildings, a family home, a market, NPCs, traffic, a mini-map, Chapter 1's business-specific customer activities and money interactions, a welcome screen with player name and appearance choices, a saved story journal, and local save/continue. The first chapter includes a quarter-value question, exact-change practice using pennies, nickels, dimes, quarters, half-dollars, and $1 coins or bills, plus a downtown clothing and gear shop with persistent avatar purchases. The welcome screen uses original concept art; the playable city still uses prototype geometry and is below the supplied references' visual detail. Saves do not sync between devices. More business types and retail stores, online multiplayer, online multiplayer, advanced real-estate simulation, and production-quality character and building assets remain future work.
+The current build is a single-player browser prototype. It includes a procedural city district with roads, buildings, a family home, a market, NPCs, traffic, a mini-map, Chapter 1's business-specific customer activities and money interactions, a welcome screen with player name and appearance choices, a saved story journal, and local save/continue. The first chapter includes a quarter-value question, exact-change practice using pennies, nickels, dimes, quarters, half-dollars, and $1 coins or bills, plus a downtown clothing and gear shop with persistent avatar purchases. The welcome screen uses original concept art; the playable city still uses prototype geometry and is below the supplied references' visual detail. Saves do not sync between devices. More business types and retail stores, online multiplayer, advanced real-estate simulation, and higher-fidelity character and building assets remain future work.
+
+
+## City graphics
+
+The city uses the pinned Three.js 0.180.0 renderer. `assets/city-visuals.js` provides original, deterministic surface textures, a physical sky and reflection environment, a local sun-shadow region, window interiors and glass, leaf-card tree canopies, and street furniture. Architectural surfaces use world-scale texture tiling, and static buildings and shop signs are merged by material to reduce draw calls. Detailed Mustang meshes use physical paint, glass, and metal materials.
+
+The graphics pass also corrects the tower floor stack, porch supports, roof fascia, and home paths. Street details include curb blocks that stop at intersections, tactile pavement, connected benches, bins, drain grates, and manhole covers. Maple Homes has a physical office and matching interaction/map location outside the road.
+
+The game remains a browser prototype with procedural architecture and textured rigged characters. Full WebGL visual QA requires a working browser preview; syntax and scene-geometry checks do not establish final visual quality or a frame-rate target.
+
+
+## Human characters
+
+The former cylinder people are replaced by six self-hosted, textured Microsoft Rocketbox character assets and compatible idle, walking, and running clips (MIT; notices in `assets/characters/`). The playable avatar uses a child mesh, while residents include varied adult and child models with independent skeletons. Skin, hair, shirt, and shoe customization preserves the underlying texture detail; curls, a bun, or the model's ponytail can be selected. Purchased hats and backpacks follow the animated head and torso. Motion retargeting keeps a child's native bone lengths, drops horizontal root motion, and blends movement states. Walking pace and the on-foot camera are adjusted for the child avatar.
+
+`assets/characters.js` loads the meshes and animations, places feet at the actual road/sidewalk/path height, and retains a temporary fallback when an asset cannot load. Meshopt compression was expanded during asset preparation, so no runtime WebAssembly decoder is required. The models improve realism but are not custom scans or a likeness of the player; final facial/cloth rendering and frame rate still require browser visual QA.
