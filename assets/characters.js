@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { characterFacingYaw } from './character-controls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const MODELS = {
@@ -259,10 +260,13 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
   function update(dt,player) {
     for(const actor of actors){
       const data=actor.userData.character,x=actor.position.x,z=actor.position.z;
-      const displacement=Math.hypot(x-data.last.x,z-data.last.y);data.last.set(x,z);
+      const dx=x-data.last.x,dz=z-data.last.y,displacement=Math.hypot(dx,dz);data.last.set(x,z);
       if(!actor.visible)continue;
       actor.position.y=groundHeight(x,z);
       if(!data.ready)continue;
+      // Face the direction of travel from world-space movement so turnarounds and crossing paths
+      // cannot leave the body facing backward while a walk or run clip is playing.
+      if(!data.seated&&displacement>.025&&displacement<1){const heading=characterFacingYaw(dx,dz);if(heading!==null)actor.rotation.y=heading;}
       // Ignore teleports between businesses when selecting a movement animation.
       const speed=dt>0&&displacement<1?displacement/dt:0;data.speed=THREE.MathUtils.damp(data.speed,speed,12,dt);
       const state=data.seated?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
