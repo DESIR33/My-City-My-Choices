@@ -4,13 +4,22 @@ export const CAFE_MENU = Object.freeze([
   {id:'sandwich',name:'Grilled cheese sandwich',description:'Warm bread and melted cheese.',price:200},
   {id:'cocoa',name:'Hot chocolate',description:'A warm cup of cocoa.',price:150},
 ]);
+export const BAKERY_MENU=Object.freeze([
+  {id:'roll',name:'Warm bread roll',description:'A freshly baked roll from the morning batch.',price:50},
+  {id:'croissant',name:'Butter croissant',description:'A flaky pastry baked in our kitchen.',price:125},
+  {id:'muffin',name:'Blueberry muffin',description:'A soft muffin with blueberries.',price:150},
+  {id:'milk',name:'Cold milk',description:'A small cup to enjoy with your pastry.',price:75},
+]);
+export const BAKERY=Object.freeze({x:-42,z:-90,entry:{x:-42,z:-78},counter:{x:-38,z:-96}});
 export const CAFE = Object.freeze({x:-30,z:-34,entry:{x:-30,z:-25},counter:{x:-25,z:-38}});
 export const FIRE_STATION = Object.freeze({x:150,z:-90,entry:{x:137,z:-90}});
-export const freshCityLife = () => ({cafeReceipts:[],cafeSpent:0,disabledVehicles:[],incidents:[]});
+export const freshCityLife = () => ({cafeReceipts:[],cafeSpent:0,bakeryReceipts:[],bakerySpent:0,disabledVehicles:[],incidents:[]});
 export function restoreCityLife(saved) {
   const s=freshCityLife();if(!saved||typeof saved!=='object')return s;
   s.cafeReceipts=Array.isArray(saved.cafeReceipts)?saved.cafeReceipts.slice(-30).filter(r=>CAFE_MENU.some(m=>m.id===r.id)&&Number.isSafeInteger(r.price)&&r.price>0):[];
   s.cafeSpent=Number.isSafeInteger(saved.cafeSpent)&&saved.cafeSpent>=0?saved.cafeSpent:0;
+  s.bakeryReceipts=Array.isArray(saved.bakeryReceipts)?saved.bakeryReceipts.slice(-30).filter(r=>BAKERY_MENU.some(m=>m.id===r.id)&&Number.isSafeInteger(r.price)&&r.price>0):[];
+  s.bakerySpent=Number.isSafeInteger(saved.bakerySpent)&&saved.bakerySpent>=0?saved.bakerySpent:0;
   s.disabledVehicles=Array.isArray(saved.disabledVehicles)?saved.disabledVehicles.filter(v=>typeof v.id==='string'&&Number.isFinite(v.x)&&Number.isFinite(v.z)&&Number.isFinite(v.heading)).slice(0,30):[];
   s.incidents=Array.isArray(saved.incidents)?saved.incidents.filter(i=>typeof i.vehicleId==='string'&&Number.isFinite(i.x)&&Number.isFinite(i.z)).slice(-20):[];
   return s;
@@ -19,6 +28,11 @@ export function buyCafeOrder(state,wallet,id,day=1){
   const item=CAFE_MENU.find(m=>m.id===id);
   if(!item||!Number.isSafeInteger(wallet)||wallet<item.price)return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
   return {ok:true,wallet:wallet-item.price,item,state:{...state,cafeSpent:state.cafeSpent+item.price,cafeReceipts:[...state.cafeReceipts,{id:item.id,name:item.name,price:item.price,day}].slice(-30)}};
+}
+export function buyBakeryOrder(state,wallet,id,day=1){
+  const item=BAKERY_MENU.find(m=>m.id===id);
+  if(!item||!Number.isSafeInteger(wallet)||wallet<item.price)return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
+  return {ok:true,wallet:wallet-item.price,item,state:{...state,bakerySpent:(state.bakerySpent||0)+item.price,bakeryReceipts:[...(state.bakeryReceipts||[]),{id:item.id,name:item.name,price:item.price,day}].slice(-30)}};
 }
 export function recordCrash(state,vehicle,impactSpeed){
   if(!vehicle?.id||!Number.isFinite(impactSpeed)||impactSpeed<1.2||state.disabledVehicles.some(v=>v.id===vehicle.id))return {ok:false,state};

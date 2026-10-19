@@ -197,7 +197,8 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
 
   function forestHeight(x, z) {
     const radius = Math.max(Math.abs(x), Math.abs(z)), t = THREE.MathUtils.smoothstep(radius, 167, 228);
-    return -.07 + t * (5 + 3.5 * Math.sin(x * .024) + 2.8 * Math.cos(z * .031));
+    const corridor=z<-150?THREE.MathUtils.smoothstep(Math.abs(x),18,42):1;
+    return -.07 + corridor * t * (5 + 3.5 * Math.sin(x * .024) + 2.8 * Math.cos(z * .031));
   }
   function addForest() {
     // A continuous terrain skirt, with layered clusters and irregular gaps rather than a fence of repeated trees.
@@ -218,6 +219,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
       const angle = i * 2.39996 + rng() * .16, radius = 181 + rng() * 39;
       const edge = Math.max(Math.abs(Math.sin(angle)), Math.abs(Math.cos(angle)));
       const x = Math.sin(angle) * radius / edge, z = Math.cos(angle) * radius / edge, species = i % 3;
+      if(z<-150&&Math.abs(x)<34)continue;
       const dummy = new THREE.Object3D(); dummy.position.set(x, forestHeight(x, z), z);
       dummy.rotation.y = rng() * Math.PI * 2; dummy.scale.setScalar(.85 + rng() * .95); dummy.updateMatrix(); transforms[species].push(dummy.matrix.clone());
     }
@@ -242,7 +244,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   const lightDirection = new THREE.Vector3(-75, 100, -55).normalize();
   uniforms.sunPosition.value.copy(lightDirection); scene.add(sky);
   scene.background = new THREE.Color(0x8aafc3);
-  scene.fog = new THREE.FogExp2(0x8aafc3, .00115);
+  scene.fog = new THREE.FogExp2(0x8aafc3, .00036);
   const environmentScene = new THREE.Scene(); environmentScene.add(sky.clone());
   const pmrem = new THREE.PMREMGenerator(renderer);
   const environment = pmrem.fromScene(environmentScene, .06, .1, 10000);

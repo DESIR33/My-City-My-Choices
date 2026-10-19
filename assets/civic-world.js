@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {CAFE,FIRE_STATION} from './city-rules.js';
+import {CAFE,BAKERY,FIRE_STATION} from './city-rules.js';
 const unit=new THREE.BoxGeometry(1,1,1);
 export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurfaces,characters}){
   const seats=[],cutaway=[],wood=new THREE.MeshStandardMaterial({color:0x865d3d,roughness:.82}),metal=new THREE.MeshStandardMaterial({color:0x243a3a,metalness:.55,roughness:.44}),cream=new THREE.MeshStandardMaterial({color:0xd5c9ad,roughness:.85}),red=new THREE.MeshStandardMaterial({color:0xa72e24,roughness:.5,metalness:.18}),navy=new THREE.MeshStandardMaterial({color:0x253846,roughness:.76});
@@ -37,6 +37,27 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
   box(scene,wood,-24,.21,-38.8,6,1.05,1.25);obstacle(-24,-38.8,6,1.25);box(scene,cream,-24,1.26,-38.8,6.2,.09,1.4);label(scene,'ORDER HERE',-24,2.25,-39.6,3.5,.5);
   box(scene,navy,-22,1.35,-38.7,.5,.35,.35);for(const x of [-25.6,-25,-24.4]){const cup=new THREE.Mesh(new THREE.CylinderGeometry(.09,.07,.22,12),cream);cup.position.set(x,1.46,-38.4);scene.add(cup);}
   buildings.push({x:-30,z:-34,w:22,d:14,shop:false,height:4.45});
+  // Maple Bakery replaces the former solid shop at the same street address.
+  const bakeryWalls=new THREE.Group();scene.add(bakeryWalls);
+  const bakeryBrick=visualKit.brick(0x395e68),pastry=new THREE.MeshStandardMaterial({color:0xbb783b,roughness:.9});
+  box(scene,visualKit.concrete,-42,.08,-90,14,.13,20);groundSurfaces.push({minX:-49,maxX:-35,minZ:-100,maxZ:-80,top:.21});
+  box(scene,visualKit.concrete,-42,.08,-74.5,22,.13,11);groundSurfaces.push({minX:-53,maxX:-31,minZ:-80,maxZ:-69,top:.21});
+  for(const side of [-1,1]){box(bakeryWalls,bakeryBrick,-42+side*6.85,.21,-90,.3,8.4,20);obstacle(-42+side*6.85,-90,.3,20);box(bakeryWalls,glass,-42+side*4.15,.21,-80,5.5,3.5,.12);obstacle(-42+side*4.15,-80,5.5,.12);}
+  box(bakeryWalls,bakeryBrick,-42,.21,-99.85,14,8.4,.3);obstacle(-42,-99.85,14,.3);
+  box(bakeryWalls,bakeryBrick,-42,3.8,-80,14,4.8,.3);box(bakeryWalls,cream,-42,4,-90,14,.2,20);
+  for(const x of [-46.5,-42,-37.5]){box(bakeryWalls,cream,x,5.2,-79.8,2.2,2,.12);box(bakeryWalls,glass,x,5.35,-79.7,1.9,1.7,.08);}
+  const bakeryRoof=box(scene,metal,-42,8.61,-90,14.6,.3,20.6);
+  box(scene,metal,-42,3.65,-79.2,14,.2,2);label(scene,'MAPLE BAKERY',-42,3.85,-78.15,10,.8);
+  for(const x of [-48,-36])box(scene,wood,x,.21,-78,.13,3.4,.13);
+  // Umbrella tables flank the unbroken central route to the open doorway.
+  for(const x of [-50,-34]){table(x,-74.5,true);chair(x-1.45,-74.5,Math.PI/2);chair(x+1.45,-74.5,-Math.PI/2);}
+  table(-45,-88);chair(-46.45,-88,Math.PI/2);chair(-43.55,-88,-Math.PI/2);chair(-45,-95,0,'bench');
+  box(scene,wood,-38.5,.21,-97,5,1.05,1.3);obstacle(-38.5,-97,5,1.3);box(scene,cream,-38.5,1.26,-97,5.2,.1,1.4);box(scene,glass,-38.5,1.36,-97,5,.55,1.2);label(scene,'FRESHLY BAKED • ORDER HERE',-40,2.5,-99.6,8,.6);
+  for(let i=0;i<7;i++){const bun=new THREE.Mesh(new THREE.SphereGeometry(.16,16,10),pastry);bun.scale.set(1,.6,.8);bun.position.set(-40+i*.5,1.48,-96.8);scene.add(bun);}
+  buildings.push({x:-42,z:-90,w:14,d:20,shop:false,height:8.91});
+  const bakeryInside=p=>p.x>-48.5&&p.x<-35.5&&p.z>-99.5&&p.z<-80;
+  let bakeryOrder=null;
+  function serveBakeryOrder(id){if(bakeryOrder)scene.remove(bakeryOrder);bakeryOrder=new THREE.Group();bakeryOrder.position.set(-38,1.37,-96.4);scene.add(bakeryOrder);box(bakeryOrder,cream,0,0,0,.65,.025,.45);const food=new THREE.Mesh(id==='milk'?new THREE.CylinderGeometry(.1,.08,.25,16):new THREE.SphereGeometry(.18,20,12),id==='milk'?cream:pastry);food.position.y=.15;if(id!=='milk')food.scale.set(id==='croissant'?1.4:1,.7,1);bakeryOrder.add(food);}
   // Fire station with two apparatus bays, a clear driveway, and a staffed forecourt.
   const f=new THREE.Group();f.position.set(FIRE_STATION.x,0,FIRE_STATION.z);f.rotation.y=-Math.PI/2;scene.add(f);
   box(f,visualKit.brick(0x873d30),0,.2,0,25,6.7,19);box(f,cream,0,6.9,0,25.6,.25,19.6);
@@ -56,6 +77,6 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
     if(id==='sandwich'){box(servedOrder,cream,0,.025,0,.38,.05,.28);box(servedOrder,new THREE.MeshStandardMaterial({color:0xd7a841}),0,.075,0,.39,.025,.29);box(servedOrder,cream,0,.1,0,.38,.05,.28);}
     else if(id==='fruit'){const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.2,.12,.12,16),cream);bowl.position.y=.085;servedOrder.add(bowl);for(let i=0;i<5;i++){const fruit=new THREE.Mesh(new THREE.SphereGeometry(.06,12,8),new THREE.MeshStandardMaterial({color:[0x9b3832,0x6a8f40,0xd29a36][i%3]}));fruit.position.set(Math.cos(i*1.3)*.1,.17,Math.sin(i*1.3)*.1);servedOrder.add(fruit);}}
     else{const cup=new THREE.Mesh(new THREE.CylinderGeometry(.11,.085,.23,16),cream);cup.position.y=.14;servedOrder.add(cup);const drink=new THREE.Mesh(new THREE.CircleGeometry(.098,16),new THREE.MeshStandardMaterial({color:id==='juice'?0xe2a13a:0x5f3624}));drink.rotation.x=-Math.PI/2;drink.position.y=.258;servedOrder.add(drink);}}
-  return {seats,chair,firefighters,fireEngine:engine,serveOrder,cafeInside:p=>p.x>-40.5&&p.x<-19.5&&p.z>-40.5&&p.z<-27,
-    update(p){const inside=this.cafeInside(p);for(const o of cutaway)o.visible=!inside;return inside;}};
+  return {seats,chair,firefighters,fireEngine:engine,serveOrder,serveBakeryOrder,bakeryInside,cafeInside:p=>p.x>-40.5&&p.x<-19.5&&p.z>-40.5&&p.z<-27,
+    update(p){const inside=this.cafeInside(p);for(const o of cutaway)o.visible=!inside;const inBakery=bakeryInside(p);bakeryWalls.visible=bakeryRoof.visible=!inBakery;return inside||inBakery;}};
 }

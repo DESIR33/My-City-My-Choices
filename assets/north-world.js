@@ -1,0 +1,78 @@
+import * as THREE from 'three';
+import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight} from './world-rules.js';
+export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters}){
+  const unit=new THREE.BoxGeometry(1,1,1),batches=new Map(),dummy=new THREE.Object3D();
+  const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
+  const stone=mat(0xb7afa0),dark=mat(0x293d47,.36,.5),silver=mat(0x7f9198,.35,.65),gold=mat(0x9c8354,.4,.5),glass=[mat(0x355b6d,.2,.48),mat(0x4d6e78,.22,.4),mat(0x3e555e,.2,.5)],brick=[mat(0x794536),mat(0x8e6247),mat(0x4c605b)],warm=new THREE.MeshStandardMaterial({color:0xc6b183,emissive:0x6d4c20,emissiveIntensity:.3,roughness:.38}),white=mat(0xdbd2ba),roadPaint=mat(0xdfc36d),rail=mat(0x344d52,.45,.65);
+  function box(material,x,y,z,w,h,d,rotation=0){if(!batches.has(material))batches.set(material,[]);batches.get(material).push({x,y:y+h/2,z,w,h,d,rotation});}
+  function solid(x,z,w,d){obstacles.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});}
+  function label(text,x,y,z,w=8,h=.85,color='#1c3541'){
+    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,1024,128);ctx.fillStyle='#f8e9c8';ctx.font='bold 54px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,512,66,990);const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map,roughness:.8,side:THREE.DoubleSide}));mesh.position.set(x,y,z);scene.add(mesh);return mesh;
+  }
+  // Two banks leave the full river channel open under the elevated crossing.
+  cube(scene,0,-.42,625,1800,.35,2350,C.grass,false); // south bank: -550 … 1800
+  cube(scene,0,-.42,-1735,1800,.35,1930,C.grass,false); // north bank: -2700 … -770
+  const waterGeometry=new THREE.PlaneGeometry(1800,220,90,18),positions=waterGeometry.attributes.position;
+  for(let i=0;i<positions.count;i++)positions.setZ(i,.045*Math.sin(positions.getX(i)*.17+positions.getY(i)*.11));waterGeometry.computeVertexNormals();
+  const water=new THREE.Mesh(waterGeometry,new THREE.MeshPhysicalMaterial({color:0x245d70,metalness:.35,roughness:.27,clearcoat:1,clearcoatRoughness:.2}));water.rotation.x=-Math.PI/2;water.position.set(0,RIVER.waterLevel,-660);water.receiveShadow=true;water.name='Rivergate River';scene.add(water);
+  for(const z of [RIVER.south,RIVER.north]){box(stone,0,-2,z,1800,1.92,3);for(let x=-180;x<=180;x+=45)if(Math.abs(x)>20)scene.add(visualKit.treeModel(x,z+(z===RIVER.south?12:-12),1.1));}
+  // A continuous highway and separate footpaths, with sloping approaches.
+  for(const [from,to] of [[-165,-490],[-830,-1150]]){const center=(from+to)/2,length=Math.abs(to-from);cube(scene,0,.01,center,15,.05,length,C.road,false);for(const s of [-1,1])cube(scene,s*9.3,.07,center,3,.14,length,C.walk,false);}
+  function bridgeStrip(x,width,raised,material){const verts=[],uv=[],indices=[];const zs=[-490,-550,-770,-830];for(const z of zs){const y=bridgeHeight(z)+raised;verts.push(x-width/2,y,z,x+width/2,y,z);uv.push(0,z/6,width/6,z/6);}for(let i=0;i<3;i++){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();const m=new THREE.Mesh(g,material);m.receiveShadow=true;m.castShadow=true;scene.add(m);}
+  // Solid abutments support the sloping approaches instead of leaving road sheets in the air.
+  for(const [a,b] of [[-490,-550],[-770,-830]]){const topA=bridgeHeight(a)-.1,topB=bridgeHeight(b)-.1,verts=[-12,-.12,a,12,-.12,a,-12,-.12,b,12,-.12,b,-12,topA,a,12,topA,a,-12,topB,b,12,topB,b],faces=[4,5,6,5,7,6,0,4,2,4,6,2,1,3,5,5,3,7,0,1,4,1,5,4,2,6,3,3,6,7];const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setIndex(faces);geo.computeVertexNormals();const fill=new THREE.Mesh(geo,stone);fill.castShadow=fill.receiveShadow=true;scene.add(fill);}
+  bridgeStrip(0,15,0,C.road);for(const s of [-1,1])bridgeStrip(s*9.3,3,.15,C.walk);
+  box(stone,0,7.2,-660,22.3,.8,220);
+  for(const z of [-550,-770]){box(stone,0,6.5,z,26,.7,4);for(const s of [-1,1]){box(stone,s*12.2,-3,z,1.4,33,4);box(stone,s*12.2,30,z,1.8,1.1,4.3);}} // piers reach the riverbed
+  function beam(a,b,width,material){const v=new THREE.Vector3().subVectors(b,a),mesh=new THREE.Mesh(unit,material);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(width,v.length(),width);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());mesh.castShadow=true;scene.add(mesh);}
+  for(const s of [-1,1]){
+    for(const [end,anchor] of [[-550,-490],[-770,-830]]){beam(new THREE.Vector3(s*12.2,29,end),new THREE.Vector3(s*12.2,.8,anchor),.15,silver);box(stone,s*12.2,-.07,anchor,2,1,3);}
+    for(let z=-490;z>=-830;z-=4){const y=bridgeHeight(z)+.15;box(rail,s*11,y,z,.1,1.25,.1);}
+    for(let z=-490;z>-830;z-=4){const end=Math.max(-830,z-4);beam(new THREE.Vector3(s*11,bridgeHeight(z)+1.4,z),new THREE.Vector3(s*11,bridgeHeight(end)+1.4,end),.11,rail);}
+    for(let z=-550;z>=-770;z-=10){const sag=14+15*Math.pow((z+660)/110,2);beam(new THREE.Vector3(s*12.2,8,z),new THREE.Vector3(s*12.2,sag,z),.05,silver);if(z>-770){const next=z-10,nextY=14+15*Math.pow((next+660)/110,2);beam(new THREE.Vector3(s*12.2,sag,z),new THREE.Vector3(s*12.2,nextY,next),.14,silver);}}
+    // Continuous rails are physical boundaries, including on the two ramps.
+    solid(s*11,-660,.2,340);
+  }
+  for(let z=-175;z>-1140;z-=12){const y=bridgeHeight(z);for(const s of [-1,1])box(roadPaint,s*.15,y+.014,z,.11,.015,5);for(const s of [-1,1])box(white,s*7.1,y+.015,z,.12,.015,10);}
+  function lamp(x,z,y=.21){box(rail,x,y,z,.22,.22,.22);box(rail,x,y+.22,z,.09,7.3,.09);box(rail,x-1.2,y+7.4,z,2.5,.09,.09);box(warm,x-2.3,y+7.25,z,.65,.15,.33);}
+  for(let z=-210;z>-1130;z-=48)for(const s of [-1,1])lamp(s*10.3,z,bridgeHeight(z)+.15);
+  for(const z of [-190,-450,-850,-1100]){for(const x of [-7.7,7.7])box(rail,x,.06,z,.13,6.9,.13);box(rail,0,6.9,z,15.6,.14,.14);box(dark,0,5.4,z,12,1.5,.2);label(z>-550?'NORTHSTAR CITY  ↑':'NORTHSTAR CITY  •  NEXT LEFT / RIGHT',0,6.12,z+.12,11.5,1.2);}
+  // Broad avenues and short, uninterrupted blocks make the city readable on foot.
+  for(const x of NORTH_CITY.avenues)cube(scene,x,.01,-1462.5,15,.05,665,C.road,false);
+  for(const z of NORTH_CITY.streets)cube(scene,0,.01,z,480,.05,15,C.road,false);
+  for(const x of NORTH_CITY.avenues)for(const s of [-1,1]){let start=-1795;for(const z of [...NORTH_CITY.streets,-1130]){if(z-8.5>start)cube(scene,x+s*9.3,.07,(start+z-8.5)/2,3,.14,z-8.5-start,C.walk,false);start=z+8.5;}}
+  for(const z of NORTH_CITY.streets)for(const s of [-1,1]){let start=-240;for(const x of [...NORTH_CITY.avenues,240]){if(x-8.5>start)cube(scene,(start+x-8.5)/2,.07,z+s*9.3,x-8.5-start,.14,3,C.walk,false);start=x+8.5;}}
+  for(const x of NORTH_CITY.avenues)for(const z of NORTH_CITY.streets){const controller={ix:x,iz:z,offset:(Math.abs(x+z)%5),heads:[],pedestrians:[]};trafficControllers.push(controller);for(const [sx,sz] of [[1,1],[-1,-1],[1,-1],[-1,1]])addCornerSignal(x,z,sx,sz,controller);for(const s of [-1,1])for(let k=-5;k<=5;k++){box(white,x+k*1.3,.063,z+s*8.3,.55,.015,3);box(white,x+s*8.3,.063,z+k*1.3,3,.015,.55);}}
+  for(const x of NORTH_CITY.avenues)for(let z=-1780;z<-1135;z+=12)if(!NORTH_CITY.streets.some(n=>Math.abs(n-z)<12))for(const s of [-1,1])box(roadPaint,x+s*.15,.063,z,.11,.015,5);
+  for(const z of NORTH_CITY.streets)for(let x=-230;x<235;x+=12)if(!NORTH_CITY.avenues.some(n=>Math.abs(n-x)<12))for(const s of [-1,1])box(roadPaint,x,.063,z+s*.15,5,.015,.11);
+  for(const [i,t] of TOWERS.entries()){
+    const {x,z,w,d,height}=t,podium=7.2,tier=height*.7;box(stone,x,-.07,z,w+4,.3,d+4);box(dark,x,.23,z,w+2,podium,d+2);box(glass[i%3],x,1,z+d/2+1.02,w-2,5,.08);box(silver,x,0,z+d/2+1.08,2.2,3.2,.1);box(gold,x,3.3,z+d/2+1.2,5,.2,.8);
+    box(glass[i%3],x,podium,z,w,tier-podium,d);box(glass[(i+1)%3],x,tier,z,w-6,height-tier,d-6);
+    for(let y=podium;y<height;y+=3.4){const upper=y>=tier,ww=w-(upper?6:0),dd=d-(upper?6:0);box(i%3===0?gold:silver,x,y,z,ww+.18,.16,dd+.18);for(const s of [-1,1])for(let k=-ww/2+2;k<ww/2;k+=3.2){box(dark,x+k,y,z+s*(dd/2+.06),.11,3.2,.12);if((Math.floor(y)+Math.floor(k)+i)%7===0)box(warm,x+k,y+.5,z+s*(dd/2+.13),1.6,2,.04);}for(const s of [-1,1])for(let k=-dd/2+2;k<dd/2;k+=3.2)box(dark,x+s*(ww/2+.06),y,z+k,.12,3.2,.11);}
+    box(stone,x,height,z,w-5,.45,d-5);box(dark,x,height+.45,z,9,2.5,9);if(i%3===1){box(stone,x,height+3,z,5,7,5);box(silver,x,height+10,z,.25,9,.25);}label(t.name.toUpperCase(),x,4.5,z+d/2+1.15,w-3,1.1);
+    solid(x,z,w+4,d+4);buildings.push({...t,skyscraper:true,shop:false});cube(scene,x,.07,z+d/2+8,4,.14,12,C.walk,false);
+  }
+  for(const [i,b] of CITY_BLOCKS.entries()){
+    const {x,z,w,d,height}=b;box(brick[i%3],x,.1,z,w,height,d);box(stone,x,height,z,w+.5,.35,d+.5);box(dark,x,.3,z+d/2+.1,w-1,2.7,.16);for(const s of [-1,1])box(glass[i%3],x+s*w*.27,.7,z+d/2+.2,w*.32,2,.06);box(gold,x,3.3,z+d/2+.7,w,.22,1.4);
+    for(let y=4.3;y<height-1;y+=3.2)for(let wx=-w/2+2;wx<w/2;wx+=3.1){box(stone,x+wx,y-.15,z+d/2+.1,1.7,1.9,.15);box((i+Math.round(y))%3===0?warm:glass[i%3],x+wx,y,z+d/2+.2,1.4,1.6,.05);}label(b.name,x,3.75,z+d/2+.22,w-1,.7);solid(x,z,w,d);buildings.push({...b,shop:false});cube(scene,x,.07,z+d/2+4,2,.14,8,C.walk,false);
+    if(i%5===0)for(const side of [-1,1]){box(rail,x+side*6,height,z, .12,3,.12);box(rail,x+side*6,height+3,z,1.4,.12,.12);}
+  }
+  // A civic hall and an arched railway terminal break up the commercial skyline.
+  box(stone,220,.1,-1450,28,13,44);box(stone,220,13.1,-1450,30,.45,46);
+  for(const x of [210,215,225,230]){box(stone,x,.1,-1425,.8,9,.8);box(stone,x-.2,9.1,-1425,1.2,.35,1.2);}box(stone,220,9.45,-1425,30,.5,3);box(dark,220,.25,-1427.9,4,5,.12);label('NORTHSTAR CITY HALL',220,10.9,-1427.8,26,1.1);solid(220,-1450,28,44);buildings.push({x:220,z:-1450,w:28,d:44,shop:false,height:13.55});cube(scene,220,.07,-1413,4,.14,26,C.walk,false);
+  box(brick[0],-220,.1,-1330,28,13,44);box(stone,-220,13.1,-1330,29,.4,45);box(glass[1],-220,3,-1307.9,22,7,.1);for(const x of [-229,-223,-217,-211])box(stone,x,3,-1307.8,.35,7,.3);label('UNION TERMINAL',-220,11.4,-1307.7,25,1);solid(-220,-1330,28,44);buildings.push({x:-220,z:-1330,w:28,d:44,shop:false,height:13.5});cube(scene,-220,.07,-1293,4,.14,26,C.walk,false);
+  // A roadside service stop gives a long-distance driver a place to refuel.
+  box(brick[2],220,.1,-1210,22,8,20);box(stone,220,8.1,-1210,23,.4,21);label('NORTHSTAR MOTORS',220,4,-1199.9,20,1);solid(220,-1210,22,20);buildings.push({x:220,z:-1210,w:22,d:20,height:8.5,shop:false});
+  cube(scene,201,.07,-1177,22,.14,16,C.walk,false);for(const z of [-1182,-1172]){box(rail,194,.21,z,.13,3.9,.13);box(rail,204,.21,z,.13,3.9,.13);}box(gold,199,4.11,-1177,13,.3,14);box(stone,194,.21,-1177,1.1,1.4,.65);box(dark,194,1.61,-1177,.85,.6,.5);solid(194,-1177,1.1,.65);label('FUEL & SERVICE',199,4.25,-1169.9,12,.7);
+  // Street trees occupy block interiors and never overlap a road or an entrance.
+  for(const t of TOWERS)for(const s of [-1,1])scene.add(visualKit.treeModel(t.x+s*40,t.z-30,.95));
+  for(let x=-228;x<=228;x+=38){scene.add(visualKit.treeModel(x,-1780,1));scene.add(visualKit.treeModel(x,-1120,1));}
+  for(const z of NORTH_CITY.streets)for(const x of [-222,-94,26,214])lamp(x,z-10.5);
+  // CPU cars stay within their own district instead of wrapping back to Maple Street.
+  for(let i=0;i<4;i++){const x=NORTH_CITY.avenues[i],speed=i%2?-8:8;car(x+(speed>0?-2.4:2.4),-1700+i*94,[0x293f51,0x8f4336,0xb8aea0,0xd3a43a][i],speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1790,max:-1136});}
+  for(let i=0;i<6;i++){const z=NORTH_CITY.streets[i],speed=i%2?-7:7;car(-210+i*64,z+(speed>0?2.4:-2.4),[0xd1a82f,0x455965,0x974e35][i%3],speed>0?Math.PI/2:-Math.PI/2,true,speed,'x');Object.assign(traffic.at(-1),{min:-235,max:235});}
+  for(const x of [-2.4,2.4]){const speed=x<0?11:-11;car(x,x<0?-380:-940,0x466b72,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1134,max:-176});}
+  for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:i%2?'neighbor':'casual'});}
+  for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
+  return {towers:TOWERS,buildings:CITY_BLOCKS,water};
+}
