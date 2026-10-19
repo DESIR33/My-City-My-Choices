@@ -14,6 +14,10 @@ for(const key of ['standMarker','restaurantMarker','goodsMarker','serviceMarker'
 c.window=c;c.mom=actor(-83,-27);c.maya=actor(10,-11);vm.createContext(c);vm.runInContext(html.split("\n").find(line=>line.startsWith("function parkedObstacle(")),c);
 const script=html.slice(html.indexOf('const player=person('),html.indexOf('const mapCtx='));vm.runInContext('(()=>{'+script+';window.__storyEval=(s)=>eval(s)})()',c);
 const run=s=>c.__storyEval(s);
+// Light controls share the real story modal, but keep their clock in a separate
+// preference. Include their shipped handlers when checking every inline button.
+Object.assign(c,await loadModule('city-time.js'),{visualKit:{atmosphere:{finalizeStreetLights(){},update(){}}}});
+run(html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('let saveClock=0;const clock=')));
 assert.equal(typeof c.closeGamePanel,'function');assert.equal(typeof c.newStory,'function');assert.equal(typeof c.launchNextBusinessDay,'function');
 // Play through the story using the same public handlers as its buttons.
 run('goal=0');doc.querySelector('#begin').onclick();assert.equal(run('stage'),'parent');run('player.position.set(-83,0,-22);near=null');run('interactNow()');assert.equal(doc.querySelector('#panel').innerHTML.includes('At home · Your wallet'),true,'Mom interaction is available from the initial spawn and opens her lesson');c.closeGamePanel();c.walletQuiz(true);assert.equal(run('stage'),'maya');assert.equal(run('cash'),5);c.closeGamePanel();assert.equal(doc.querySelector('#modal').classList.contains('show'),false);

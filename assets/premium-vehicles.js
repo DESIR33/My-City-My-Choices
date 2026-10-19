@@ -139,13 +139,14 @@ export function mountPremiumVehicle(group, template, color) {
   group.clear();
   const rig=new THREE.Group();rig.name=template.name+' rig';group.add(rig);
   const paint=paintMaterial(color,template.modelId),brakeMaterial=surfaceMaterial('TailLamp');
+  const headlampMaterial=surfaceMaterial('Headlamp');
   const reverseMaterial=new THREE.MeshStandardMaterial({color:0xbac5cc,roughness:.23,emissive:0xe6f2ff,emissiveIntensity:0});
   const hazardMaterial=new THREE.MeshStandardMaterial({color:0xa45b13,roughness:.3,emissive:0xff8917,emissiveIntensity:0});
   const environment=template.materials.get('Paint').envMap;
   if(environment)paint.envMap=environment;
   const assign=object=>object.traverse(o=>{
     if(!o.isMesh)return;
-    const material=m=>m.name==='Vehicle_Paint'?paint:m.name==='Vehicle_TailLamp'?brakeMaterial:m;
+    const material=m=>m.name==='Vehicle_Paint'?paint:m.name==='Vehicle_TailLamp'?brakeMaterial:m.name==='Vehicle_Headlamp'?headlampMaterial:m;
     o.material=Array.isArray(o.material)?o.material.map(material):material(o.material);
   });
   const auxiliary=auxiliaryLights(template);
@@ -169,10 +170,10 @@ export function mountPremiumVehicle(group, template, color) {
   });
   const front=levels[0].wheels.filter(w=>w.front),back=levels[0].wheels.filter(w=>!w.front);
   const data={kind:'premium',modelId:template.modelId,modelName:template.name,rig,levels,body:levels[2].body,wheels:levels[2].wheels,
-    paint,brakeMaterial,reverseMaterial,hazardMaterial,travel:0,activeLevel:2,
+    paint,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial,travel:0,activeLevel:2,
     wheelbase:Math.abs(front[0].center.z-back[0].center.z),track:Math.abs(front[0].center.x-front[1].center.x),
-    materials:[paint,brakeMaterial,reverseMaterial,hazardMaterial,...template.materials.values()],
-    dispose(){paint.dispose();brakeMaterial.dispose();reverseMaterial.dispose();hazardMaterial.dispose();}};
+    materials:[paint,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial,...template.materials.values()],
+    dispose(){paint.dispose();brakeMaterial.dispose();reverseMaterial.dispose();hazardMaterial.dispose();headlampMaterial.dispose();}};
   group.userData.vehicleVisual=data;
   group.userData.vehicleDimensions={width:VEHICLE.width,length:VEHICLE.length};
   return data;
@@ -190,7 +191,8 @@ export function updatePremiumVehicleVisual(group,state) {
       wheel.spin.rotation.x=(state.wheelTravel||0)/wheel.radius;
     }
   }
-  data.brakeMaterial.emissiveIntensity=(state.brake>.08||state.handbrake||disabled)?2.6:.24;
+  data.braking=!!(state.brake>.08||state.handbrake||disabled);
+  data.brakeMaterial.emissiveIntensity=data.braking?2.6:.24+(data.nightLevel||0)*.4;
   data.reverseMaterial.emissiveIntensity=state.gear==='R'?1.4:0;
   data.hazardMaterial.emissiveIntensity=disabled?(Math.floor(performance.now()/380)%2?2.5:.05):0;
 }

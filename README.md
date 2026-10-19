@@ -127,3 +127,14 @@ Validation: `node tests/north-world.test.mjs` checks the 15 towers, footprints a
 `assets/traffic-signals.js` defines the existing 22-second traffic cycle. Pedestrian axes now mean travel direction, so WALK agrees with parallel green traffic, the hand shows during amber/all-red phases, and crossing pedestrians use the same direction mapping. The car, pedestrian, and all-red phase boundaries are covered by `tests/traffic-signals.test.mjs`.
 
 Vehicle front/side/rear/wheel views and both pedestrian faces were rendered in a local Chromium WebGL fixture for visual review. Screenshots are in `docs/visuals/`. Full physical-device performance remains a separate check.
+
+
+## City light and night driving
+
+The **City light** control opens daylight (3:00 PM), sunset (6:15 PM), and night (10:00 PM) presets. Choosing a preset holds that time; the optional day/night cycle completes a visual day in 24 real minutes. It pauses while menus are open or the page is hidden. Lighting preferences save separately from the story, so changing the time never starts a business day, changes money, or resets progress.
+
+The physical sky, sun direction, shadow region, fog, exposure, ambient fill, and reflection brightness share one timeline. Night adds a moon and a single star batch. Selected neighborhood windows and Northstar windows glow after sunset. Registered street lamps have one instanced batch of soft ground pools; real nearby illumination is limited to four non-shadow-casting street lights on desktop and two on touch devices. The driven car adds two low beams, aligned with its heading and road grade. Moving traffic uses automatic emissive headlights and running tail lamps; parked cars turn their headlights off. Brake, reverse, and disabled-vehicle hazard states retain priority.
+
+Vehicle rotation now applies road pitch before world heading, correcting northbound cars tilting downward on the bridge ramps. The existing static city reflection capture temporarily uses neutral daylight and restores the active lighting even if capture fails; subsequent time changes adjust reflection intensity rather than rendering six new cubemap views.
+
+`node tests/city-lighting.test.mjs` checks presets, malformed and saved preferences, midnight/frame-rate behavior, menu/background pauses, actual menu handlers, real light budgets, headlights on bridge grades, model replacements, brake/reverse states, and reflection-capture recovery. All 15 test files pass, including the vehicle-exit and story regressions. The managed browser preview remains unavailable, so the rendered lighting, mobile layout, and physical-device frame rate still need playtesting.

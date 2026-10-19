@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight} from './world-rules.js';
+import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight,bridgePitch} from './world-rules.js';
 export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters}){
   const unit=new THREE.BoxGeometry(1,1,1),batches=new Map(),dummy=new THREE.Object3D();
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
@@ -34,7 +34,10 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
     solid(s*11,-660,.2,340);
   }
   for(let z=-175;z>-1140;z-=12){const y=bridgeHeight(z);for(const s of [-1,1])box(roadPaint,s*.15,y+.014,z,.11,.015,5);for(const s of [-1,1])box(white,s*7.1,y+.015,z,.12,.015,10);}
-  function lamp(x,z,y=.21){box(rail,x,y,z,.22,.22,.22);box(rail,x,y+.22,z,.09,7.3,.09);box(rail,x-1.2,y+7.4,z,2.5,.09,.09);box(warm,x-2.3,y+7.25,z,.65,.15,.33);}
+  visualKit.atmosphere.registerGlow(warm,{day:.05,night:1.35});
+  const lampGlow=new THREE.MeshStandardMaterial({color:0xffe4b0,emissive:0xffd39a,emissiveIntensity:.1,roughness:.35});
+  visualKit.atmosphere.registerGlow(lampGlow,{day:.1,night:2.4});
+  function lamp(x,z,y=.21){box(rail,x,y,z,.22,.22,.22);box(rail,x,y+.22,z,.09,7.3,.09);box(rail,x-1.2,y+7.4,z,2.5,.09,.09);box(lampGlow,x-2.3,y+7.25,z,.65,.15,.33);visualKit.atmosphere.addStreetLight({x:x-2.3,y:y+7.25,z,groundY:y+.02,pitch:bridgePitch(0,z,0)});}
   for(let z=-210;z>-1130;z-=48)for(const s of [-1,1])lamp(s*10.3,z,bridgeHeight(z)+.15);
   for(const z of [-190,-450,-850,-1100]){for(const x of [-7.7,7.7])box(rail,x,.06,z,.13,6.9,.13);box(rail,0,6.9,z,15.6,.14,.14);box(dark,0,5.4,z,12,1.5,.2);label(z>-550?'NORTHSTAR CITY  ↑':'NORTHSTAR CITY  •  NEXT LEFT / RIGHT',0,6.12,z+.12,11.5,1.2);}
   // Broad avenues and short, uninterrupted blocks make the city readable on foot.
