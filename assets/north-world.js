@@ -16,30 +16,52 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(let i=0;i<positions.count;i++)positions.setZ(i,.045*Math.sin(positions.getX(i)*.17+positions.getY(i)*.11));waterGeometry.computeVertexNormals();
   const water=new THREE.Mesh(waterGeometry,new THREE.MeshPhysicalMaterial({color:0x245d70,metalness:.35,roughness:.27,clearcoat:1,clearcoatRoughness:.2}));water.rotation.x=-Math.PI/2;water.position.set(0,RIVER.waterLevel,-660);water.receiveShadow=true;water.name='Rivergate River';scene.add(water);
   for(const z of [RIVER.south,RIVER.north]){box(stone,0,-2,z,1800,1.92,3);for(let x=-180;x<=180;x+=45)if(Math.abs(x)>20)scene.add(visualKit.treeModel(x,z+(z===RIVER.south?12:-12),1.1));}
-  // A continuous highway and separate footpaths, with sloping approaches.
-  for(const [from,to] of [[-165,-490],[-830,-1150]]){const center=(from+to)/2,length=Math.abs(to-from);cube(scene,0,.01,center,15,.05,length,C.road,false);for(const s of [-1,1])cube(scene,s*9.3,.07,center,3,.14,length,C.walk,false);}
-  function bridgeStrip(x,width,raised,material){const verts=[],uv=[],indices=[];const zs=[-490,-550,-770,-830];for(const z of zs){const y=bridgeHeight(z)+raised;verts.push(x-width/2,y,z,x+width/2,y,z);uv.push(0,z/6,width/6,z/6);}for(let i=0;i<3;i++){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();const m=new THREE.Mesh(g,material);m.receiveShadow=true;m.castShadow=true;scene.add(m);}
-  // Solid abutments support the sloping approaches instead of leaving road sheets in the air.
-  for(const [a,b] of [[-490,-550],[-770,-830]]){const topA=bridgeHeight(a)-.1,topB=bridgeHeight(b)-.1,verts=[-12,-.12,a,12,-.12,a,-12,-.12,b,12,-.12,b,-12,topA,a,12,topA,a,-12,topB,b,12,topB,b],faces=[4,5,6,5,7,6,0,4,2,4,6,2,1,3,5,5,3,7,0,1,4,1,5,4,2,6,3,3,6,7];const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setIndex(faces);geo.computeVertexNormals();const fill=new THREE.Mesh(geo,stone);fill.castShadow=fill.receiveShadow=true;scene.add(fill);}
-  bridgeStrip(0,15,0,C.road);for(const s of [-1,1])bridgeStrip(s*9.3,3,.15,C.walk);
-  box(stone,0,7.2,-660,22.3,.8,220);
-  for(const z of [-550,-770]){box(stone,0,6.5,z,26,.7,4);for(const s of [-1,1]){box(stone,s*12.2,-3,z,1.4,33,4);box(stone,s*12.2,30,z,1.8,1.1,4.3);}} // piers reach the riverbed
+  // One sampled road skin sits above the structural slab. Never put the slab's
+  // top at the asphalt's height: coplanar surfaces flicker severely at distance.
+  const bridgeSurfaces=[],markings=[],supports=[],sampleZ=(from,to)=>{const n=Math.ceil(Math.abs(to-from));return Array.from({length:n+1},(_,i)=>from+(to-from)*i/n);};
+  function strip(x,width,raised,material,from=BRIDGE.south,to=BRIDGE.north,name='Bridge road'){
+    const verts=[],uv=[],indices=[],zs=sampleZ(from,to);
+    for(const z of zs){const y=bridgeHeight(z)+raised;verts.push(x-width/2,y,z,x+width/2,y,z);uv.push((x-width/2)/6,z/6,(x+width/2)/6,z/6);}
+    for(let i=0;i<zs.length-1;i++){const k=i*2;indices.push(k,k+1,k+2,k+1,k+3,k+2);}
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();
+    const m=new THREE.Mesh(g,material);m.name=name;m.receiveShadow=true;m.castShadow=false;scene.add(m);return m;
+  }
+  function volume(from,to,halfWidth,topAt,bottomAt,name){
+    const zs=sampleZ(from,to),verts=[],indices=[];
+    for(const z of zs)verts.push(-halfWidth,topAt(z),z,halfWidth,topAt(z),z,-halfWidth,bottomAt(z),z,halfWidth,bottomAt(z),z);
+    for(let i=0;i<zs.length-1;i++){const k=i*4;indices.push(k,k+1,k+4,k+1,k+5,k+4,k+2,k+6,k+3,k+3,k+6,k+7,k,k+4,k+2,k+2,k+4,k+6,k+1,k+3,k+5,k+3,k+7,k+5);}
+    const last=(zs.length-1)*4;indices.push(0,2,1,1,2,3,last,last+1,last+2,last+1,last+3,last+2);
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(indices);g.computeVertexNormals();const m=new THREE.Mesh(g,stone);m.name=name;m.castShadow=m.receiveShadow=true;scene.add(m);supports.push(m);return m;
+  }
+  for(const [from,to] of [[-165,BRIDGE.south],[BRIDGE.north,-1150]]){const center=(from+to)/2,length=Math.abs(to-from);cube(scene,0,.01,center,15,.05,length,C.road,false);for(const s of [-1,1])cube(scene,s*9.3,.07,center,3,.14,length,C.walk,false);}
+  const bridgeAsphalt=C.road.clone();bridgeAsphalt.polygonOffset=true;bridgeAsphalt.polygonOffsetFactor=-1;bridgeAsphalt.polygonOffsetUnits=-2;
+  bridgeSurfaces.push(strip(0,15,0,bridgeAsphalt));
+  for(const s of [-1,1]){
+    bridgeSurfaces.push(strip(s*9.3,3,.15,C.walk,BRIDGE.south,BRIDGE.north,'Bridge footpath'));
+    volume(BRIDGE.south,BRIDGE.north,.15,z=>bridgeHeight(z)+.15,z=>bridgeHeight(z)-.045,'Bridge curb').position.x=s*7.65;
+  }
+  volume(BRIDGE.south,BRIDGE.north,12.2,z=>bridgeHeight(z)-.06,z=>bridgeHeight(z)-.8,'Bridge structural deck');
+  for(const [a,b] of [[BRIDGE.south,RIVER.south],[RIVER.north,BRIDGE.north]])volume(a,b,12.2,z=>bridgeHeight(z)-.8,()=>-2.2,'Bridge approach abutment');
+  for(const z of [RIVER.south,RIVER.north]){box(stone,0,6.5,z,26,.65,4);for(const s of [-1,1]){box(stone,s*12.2,-3,z,1.4,33,4);box(stone,s*12.2,30,z,1.8,1.1,4.3);}}
   function beam(a,b,width,material){const v=new THREE.Vector3().subVectors(b,a),mesh=new THREE.Mesh(unit,material);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(width,v.length(),width);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize());mesh.castShadow=true;scene.add(mesh);}
   for(const s of [-1,1]){
-    for(const [end,anchor] of [[-550,-490],[-770,-830]]){beam(new THREE.Vector3(s*12.2,29,end),new THREE.Vector3(s*12.2,.8,anchor),.15,silver);box(stone,s*12.2,-.07,anchor,2,1,3);}
-    for(let z=-490;z>=-830;z-=4){const y=bridgeHeight(z)+.15;box(rail,s*11,y,z,.1,1.25,.1);}
-    for(let z=-490;z>-830;z-=4){const end=Math.max(-830,z-4);beam(new THREE.Vector3(s*11,bridgeHeight(z)+1.4,z),new THREE.Vector3(s*11,bridgeHeight(end)+1.4,end),.11,rail);}
-    for(let z=-550;z>=-770;z-=10){const sag=14+15*Math.pow((z+660)/110,2);beam(new THREE.Vector3(s*12.2,8,z),new THREE.Vector3(s*12.2,sag,z),.05,silver);if(z>-770){const next=z-10,nextY=14+15*Math.pow((next+660)/110,2);beam(new THREE.Vector3(s*12.2,sag,z),new THREE.Vector3(s*12.2,nextY,next),.14,silver);}}
-    // Continuous rails are physical boundaries, including on the two ramps.
-    solid(s*11,-660,.2,340);
+    for(const [end,anchor] of [[RIVER.south,BRIDGE.south],[RIVER.north,BRIDGE.north]]){beam(new THREE.Vector3(s*12.2,29,end),new THREE.Vector3(s*12.2,.8,anchor),.15,silver);box(stone,s*12.2,-.07,anchor,2,1,3);}
+    for(let z=BRIDGE.south;z>=BRIDGE.north;z-=4){const y=bridgeHeight(z)+.15;box(rail,s*11,y,z,.1,1.25,.1);}
+    for(let z=BRIDGE.south;z>BRIDGE.north;z-=4){const end=Math.max(BRIDGE.north,z-4);beam(new THREE.Vector3(s*11,bridgeHeight(z)+1.4,z),new THREE.Vector3(s*11,bridgeHeight(end)+1.4,end),.11,rail);}
+    for(let z=RIVER.south;z>=RIVER.north;z-=10){const sag=14+15*Math.pow((z+660)/110,2);beam(new THREE.Vector3(s*12.2,8,z),new THREE.Vector3(s*12.2,sag,z),.05,silver);if(z>RIVER.north){const next=z-10,nextY=14+15*Math.pow((next+660)/110,2);beam(new THREE.Vector3(s*12.2,sag,z),new THREE.Vector3(s*12.2,nextY,next),.14,silver);}}
+    solid(s*11,(BRIDGE.south+BRIDGE.north)/2,.2,BRIDGE.south-BRIDGE.north);
   }
-  for(let z=-175;z>-1140;z-=12){const y=bridgeHeight(z);for(const s of [-1,1])box(roadPaint,s*.15,y+.014,z,.11,.015,5);for(const s of [-1,1])box(white,s*7.1,y+.015,z,.12,.015,10);}
+  // Paint follows the same sampled profile, including each end of every dash.
+  // Polygon offset keeps paint legible without adding a second road surface.
+  const yellowPaint=roadPaint.clone(),edgePaint=white.clone();for(const paint of [yellowPaint,edgePaint]){paint.polygonOffset=true;paint.polygonOffsetFactor=-2;paint.polygonOffsetUnits=-4;}
+  for(let z=-175;z>-1140;z-=12)for(const s of [-1,1])markings.push(strip(s*.15,.11,.018,yellowPaint,z,z-5,'North Road center dash'));
+  for(const s of [-1,1])markings.push(strip(s*7.1,.12,.018,edgePaint,-165,-1150,'North Road edge line'));
   visualKit.atmosphere.registerGlow(warm,{day:.05,night:1.35});
   const lampGlow=new THREE.MeshStandardMaterial({color:0xffe4b0,emissive:0xffd39a,emissiveIntensity:.1,roughness:.35});
   visualKit.atmosphere.registerGlow(lampGlow,{day:.1,night:2.4});
-  function lamp(x,z,y=.21){box(rail,x,y,z,.22,.22,.22);box(rail,x,y+.22,z,.09,7.3,.09);box(rail,x-1.2,y+7.4,z,2.5,.09,.09);box(lampGlow,x-2.3,y+7.25,z,.65,.15,.33);visualKit.atmosphere.addStreetLight({x:x-2.3,y:y+7.25,z,groundY:y+.02,pitch:bridgePitch(0,z,0)});}
+  function lamp(x,z,y=.21){const inward=x>0?-1:1;box(rail,x,y,z,.22,.22,.22);box(rail,x,y+.22,z,.09,7.3,.09);box(rail,x+inward*1.2,y+7.4,z,2.5,.09,.09);box(lampGlow,x+inward*2.3,y+7.25,z,.65,.15,.33);visualKit.atmosphere.addStreetLight({x:x+inward*2.3,y:y+7.25,z,groundY:y+.02,pitch:bridgePitch(0,z,0)});}
   for(let z=-210;z>-1130;z-=48)for(const s of [-1,1])lamp(s*10.3,z,bridgeHeight(z)+.15);
-  for(const z of [-190,-450,-850,-1100]){for(const x of [-7.7,7.7])box(rail,x,.06,z,.13,6.9,.13);box(rail,0,6.9,z,15.6,.14,.14);box(dark,0,5.4,z,12,1.5,.2);label(z>-550?'NORTHSTAR CITY  ↑':'NORTHSTAR CITY  •  NEXT LEFT / RIGHT',0,6.12,z+.12,11.5,1.2);}
+  for(const z of [-190,-450,-850,-1100]){const y=bridgeHeight(z);for(const x of [-7.7,7.7])box(rail,x,y,z,.13,6.9,.13);box(rail,0,y+6.9,z,15.6,.14,.14);box(dark,0,y+5.4,z,12,1.5,.2);label(z>-550?'NORTHSTAR CITY  ↑':'NORTHSTAR CITY  •  NEXT LEFT / RIGHT',0,y+6.12,z+.12,11.5,1.2);}
   // Broad avenues and short, uninterrupted blocks make the city readable on foot.
   for(const x of NORTH_CITY.avenues)cube(scene,x,.01,-1462.5,15,.05,665,C.road,false);
   for(const z of NORTH_CITY.streets)cube(scene,0,.01,z,480,.05,15,C.road,false);
@@ -77,5 +99,5 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(const x of [-2.4,2.4]){const speed=x<0?11:-11;car(x,x<0?-380:-940,0x466b72,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1134,max:-176});}
   for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:i%2?'neighbor':'casual'});}
   for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
-  return {towers:TOWERS,buildings:CITY_BLOCKS,water};
+  return {towers:TOWERS,buildings:CITY_BLOCKS,water,bridge:{surfaces:bridgeSurfaces,markings,supports}};
 }

@@ -101,11 +101,11 @@ Maple Cafe is at the southwest central block (`-30, -34`). Walk through the open
 
 Maple Fire & Rescue occupies the eastern district (`150, -90`) with a detailed procedural fire engine and four uniformed firefighters. The police force retains 20 officers, a station, and five marked cruisers. Police markings and lights survive the detailed vehicle model loading. Civilian and patrol traffic move along both street axes and obey lights and STOP signs.
 
-Collisions with a vehicle or solid object at 1.2 m/s or more disable the vehicle and dispatch a police cruiser through the road network. Exit with F or the mobile Exit car button. When police arrive, interact with the officer or inspect the disabled vehicle. A tow to Maple Motors is free; a fictional $0.75 repair restores driving. Empty wallets cannot buy repairs. Crash state and disabled vehicle positions survive saving. Coasting, cornering load, steering direction, cabin details, mirrors, handles, and hazard lamps are improved; this remains a lightweight driving simulation.
+Collisions with a vehicle or solid object at 1.2 m/s or more stop the car and dispatch a police cruiser through the road network. Hold S or pull the mobile driving stick down to reverse, then steer away and continue. Crashes do not lock engines, require payment, or force a tow. The officer checks the reported location and returns automatically. Earlier saved crash-disabled vehicles are released for free when progress is restored. This remains a lightweight driving simulation.
 
 The extra building row across storefront entrances is removed. Downtown buildings are moved off roads/sidewalks, and their approach paths are checked for obstruction.
 
-Checks: `node tests/city-life.test.mjs`, `node tests/traffic-flow.test.mjs`, and `node tests/story-flow.test.mjs` cover payments, sitting/standing handlers, crash disabling, response travel, recovery, traffic rules, and clear building approaches. Rendered visual quality, seated model appearance, and device performance still require browser playtesting.
+Checks: `node tests/city-life.test.mjs`, `node tests/traffic-flow.test.mjs`, and `node tests/story-flow.test.mjs` cover payments, sitting/standing handlers, driveable crash reports, response travel, legacy recovery, traffic rules, and clear building approaches. Rendered visual quality, seated model appearance, and device performance still require browser playtesting.
 
 
 ## Northstar City and Maple Bakery
@@ -162,3 +162,12 @@ At the counter, press **E**, choose coffee, espresso, latte, or food, review the
 Cafe and bakery shells now remain visible when entered. The indoor camera stays inside room boundaries and below the ceiling, with warm ceiling lights and interior-facing wall materials. No complete wall or roof group is hidden on entry.
 
 All 18 test files pass. Cafe tests construct the real Three.js scene, simulate service and returning customers, reconcile exact payments, check ticket migration and duplicate refusal, test physical pickup/consumption and exclusive seats, and exercise the real indoor camera around both rooms. Browser rendering remains unverified because the managed preview supervisor cannot start in this container.
+
+
+## Rivergate Bridge and collision recovery
+
+The bridge has a separate asphalt skin and lower structural slab, removing the coplanar concrete/asphalt overlap that caused flickering. Both 200 m ramps meet the flat roads and river span smoothly, with a maximum grade below six percent. Road, footpaths, curbs, markings, guardrails, signs, streetlights, and vehicle pitch share the same height profile. Paint follows the ramp instead of intersecting it.
+
+Crashes stop movement at the last safe position without disabling either car. Reverse and forward remain available with keyboard or touch controls. Active reports are deduplicated, NPC cars pause briefly before continuing, and police return after checking the scene. Prior saved disabled cars recover for free; the owned car's crash-induced zero condition is raised enough to drive to service.
+
+All 19 test files pass. `tests/bridge-surface.test.mjs` builds the actual Northstar scene, raycasts the asphalt and supports to prove separation, verifies upward faces and slope-aligned paint, checks grade transitions, and drives across in both directions. Story tests run the real collision/input/dispatch handlers through impact, reverse, forward, police clearance, and old-save recovery. Browser rendering remains unverified because the managed preview supervisor is unavailable.
