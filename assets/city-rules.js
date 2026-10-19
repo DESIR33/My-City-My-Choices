@@ -64,9 +64,9 @@ export function buyBakeryOrder(state,wallet,id,day=1){
   return {ok:true,wallet:wallet-item.price,item,state:{...state,bakerySpent:(state.bakerySpent||0)+item.price,bakeryReceipts:[...(state.bakeryReceipts||[]),{id:item.id,name:item.name,price:item.price,day}].slice(-30)}};
 }
 export function recordCrash(state,vehicle,impactSpeed){
-  if(!vehicle?.id||!Number.isFinite(impactSpeed)||impactSpeed<1.2||state.disabledVehicles.some(v=>v.id===vehicle.id))return {ok:false,state};
+  if(!vehicle?.id||!Number.isFinite(impactSpeed)||impactSpeed<1.2||state.incidents.some(i=>i.vehicleId===vehicle.id&&['dispatched','attending'].includes(i.status)))return {ok:false,state};
   const incident={vehicleId:vehicle.id,x:vehicle.x,z:vehicle.z,heading:vehicle.heading,impactSpeed,status:'dispatched'};
-  return {ok:true,incident,state:{...state,disabledVehicles:[...state.disabledVehicles,{...vehicle}],incidents:[...state.incidents,incident].slice(-20)}};
+  return {ok:true,incident,state:{...state,incidents:[...state.incidents,incident].slice(-20)}};
 }
 export function repairCrash(state,wallet,id){
   if(wallet<75||!state.disabledVehicles.some(v=>v.id===id))return {ok:false,state,wallet};
