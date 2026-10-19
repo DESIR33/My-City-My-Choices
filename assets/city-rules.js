@@ -1,4 +1,7 @@
 export const CAFE_MENU = Object.freeze([
+  {id:'coffee',name:'Fresh brewed coffee',description:'Ground, brewed, and poured by our cashier.',price:100},
+  {id:'espresso',name:'Espresso',description:'A freshly pulled espresso shot.',price:125},
+  {id:'latte',name:'Cafe latte',description:'Espresso with freshly steamed milk.',price:175},
   {id:'fruit',name:'Fresh fruit bowl',description:'Apple, berries, and orange slices.',price:75},
   {id:'juice',name:'Orange juice',description:'A small glass of orange juice.',price:125},
   {id:'sandwich',name:'Grilled cheese sandwich',description:'Warm bread and melted cheese.',price:200},
@@ -13,7 +16,7 @@ export const BAKERY_MENU=Object.freeze([
 export const BAKERY=Object.freeze({x:-42,z:-90,entry:{x:-42,z:-78},counter:{x:-38,z:-96}});
 export const CAFE = Object.freeze({x:-30,z:-34,entry:{x:-30,z:-25},counter:{x:-25,z:-38}});
 export const FIRE_STATION = Object.freeze({x:150,z:-90,entry:{x:137,z:-90}});
-export const freshCityLife = () => ({cafeReceipts:[],cafeSpent:0,bakeryReceipts:[],bakerySpent:0,disabledVehicles:[],incidents:[]});
+export const freshCityLife = () => ({cafeReceipts:[],cafeSpent:0,cafeService:{nextTicket:1,pending:null,till:0,customerSales:0,ledger:[]},bakeryReceipts:[],bakerySpent:0,disabledVehicles:[],incidents:[]});
 export function restoreCityLife(saved) {
   const s=freshCityLife();if(!saved||typeof saved!=='object')return s;
   s.cafeReceipts=Array.isArray(saved.cafeReceipts)?saved.cafeReceipts.slice(-30).filter(r=>CAFE_MENU.some(m=>m.id===r.id)&&Number.isSafeInteger(r.price)&&r.price>0):[];
@@ -22,12 +25,38 @@ export function restoreCityLife(saved) {
   s.bakerySpent=Number.isSafeInteger(saved.bakerySpent)&&saved.bakerySpent>=0?saved.bakerySpent:0;
   s.disabledVehicles=Array.isArray(saved.disabledVehicles)?saved.disabledVehicles.filter(v=>typeof v.id==='string'&&Number.isFinite(v.x)&&Number.isFinite(v.z)&&Number.isFinite(v.heading)).slice(0,30):[];
   s.incidents=Array.isArray(saved.incidents)?saved.incidents.filter(i=>typeof i.vehicleId==='string'&&Number.isFinite(i.x)&&Number.isFinite(i.z)).slice(-20):[];
+  const service=saved.cafeService;
+  if(service&&typeof service==='object'){
+    const n=v=>Number.isSafeInteger(v)&&v>=0?v:0;
+    s.cafeService={nextTicket:Math.max(1,n(service.nextTicket)),pending:null,till:n(service.till),customerSales:n(service.customerSales),ledger:Array.isArray(service.ledger)?service.ledger.filter(r=>Number.isSafeInteger(r.price)&&r.price>0).slice(-30):[]};
+    const held=service.held;if(held&&CAFE_MENU.some(m=>m.id===held.id)&&Number.isFinite(held.remaining)&&held.remaining>0)s.cafeService.held={id:held.id,remaining:Math.min(35,held.remaining)};
+    const p=service.pending;
+    if(p&&CAFE_MENU.some(m=>m.id===p.id)&&Number.isSafeInteger(p.ticket)&&['queued','preparing','ready'].includes(p.status))s.cafeService.pending={ticket:p.ticket,id:p.id,status:p.status,remaining:Number.isFinite(p.remaining)?Math.max(0,Math.min(12,p.remaining)):6};
+  }
   return s;
 }
+// Every price and ledger amount is an integer number of cents.
 export function buyCafeOrder(state,wallet,id,day=1){
-  const item=CAFE_MENU.find(m=>m.id===id);
+  const item=CAFE_MENU.find(m=>m.id===id),service=state.cafeService||freshCityLife().cafeService;
+  if(service.pending)return {ok:false,state,wallet,reason:'Collect your paid order before ordering again.'};
   if(!item||!Number.isSafeInteger(wallet)||wallet<item.price)return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
-  return {ok:true,wallet:wallet-item.price,item,state:{...state,cafeSpent:state.cafeSpent+item.price,cafeReceipts:[...state.cafeReceipts,{id:item.id,name:item.name,price:item.price,day}].slice(-30)}};
+  const ticket=service.nextTicket,receipt={ticket,id:item.id,name:item.name,price:item.price,day,collected:false};
+  return {ok:true,wallet:wallet-item.price,item,state:{...state,cafeSpent:state.cafeSpent+item.price,cafeReceipts:[...state.cafeReceipts,receipt].slice(-30),cafeService:{...service,nextTicket:ticket+1,till:service.till+item.price,ledger:[...service.ledger,{ticket,id,price:item.price,customer:'player'}].slice(-30),pending:{ticket,id,status:'queued',remaining:id==='latte'?9:6}}}};
+}
+export function progressCafeOrder(state,dt){
+  const p=state.cafeService?.pending;
+  if(!p||p.status==='ready'||!Number.isFinite(dt)||dt<=0)return false;
+  p.status='preparing';p.remaining=Math.max(0,p.remaining-dt);
+  if(p.remaining===0){p.status='ready';return true;}return false;
+}
+export function collectCafeOrder(state){
+  const p=state.cafeService?.pending;if(!p||p.status!=='ready')return {ok:false,state};
+  return {ok:true,id:p.id,ticket:p.ticket,state:{...state,cafeReceipts:state.cafeReceipts.map(r=>r.ticket===p.ticket?{...r,collected:true}:r),cafeService:{...state.cafeService,pending:null,held:{id:p.id,remaining:35}}}};
+}
+export function payCafeCustomer(state,customer,id){
+  const item=CAFE_MENU.find(m=>m.id===id),s=state.cafeService;
+  if(!s||!item||!Number.isSafeInteger(customer.wallet)||customer.wallet<item.price)return false;
+  customer.wallet-=item.price;s.till+=item.price;s.customerSales++;s.ledger.push({ticket:s.nextTicket++,customer:customer.id,id,price:item.price});s.ledger=s.ledger.slice(-30);return true;
 }
 export function buyBakeryOrder(state,wallet,id,day=1){
   const item=BAKERY_MENU.find(m=>m.id===id);
