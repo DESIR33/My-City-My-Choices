@@ -16,12 +16,12 @@ let vehicle=physics.createVehicleState(-2.4,-150,Math.PI),distance=0;for(let i=0
 for(const target of [{x:2,z:-660},{x:-60,z:-1500},{x:130,z:-1390}]){const path=northResponseRoute({x:136.4,z:-39},target);for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i],n=Math.ceil(Math.hypot(b.x-a.x,b.z-a.z));for(let j=0;j<=n;j++){const x=a.x+(b.x-a.x)*j/n,z=a.z+(b.z-a.z)*j/n;if(z<-150)assert.ok(worldDrivable(x,z),'Responders reach the north district across the bridge');}}}
 // Execute the real bakery/café construction and inspect its collision surfaces.
 class Position{set(x,y,z){Object.assign(this,{x,y,z});return this}copy(p){Object.assign(this,p);return this}add(p){this.x+=p.x;this.y+=p.y;this.z+=p.z;return this}multiplyScalar(n){this.x*=n;this.y*=n;this.z*=n;return this}sub(p){this.x-=p.x;this.y-=p.y;this.z-=p.z;return this}normalize(){return this}}
-class Object3D{constructor(){this.position=new Position();this.rotation={};this.scale={set(){}};this.children=[];this.quaternion={setFromUnitVectors(){}};}add(c){this.children.push(c)}remove(){} }
+class Object3D{constructor(){this.position=new Position();this.rotation={set(x,y,z){Object.assign(this,{x,y,z});return this}};this.scale={set(){}};this.children=[];this.quaternion={setFromUnitVectors(){}};}add(c){this.children.push(c)}remove(){} }
 class Mesh extends Object3D{constructor(geometry,material){super();Object.assign(this,{geometry,material})}}
 const THREE=new Proxy({Group:Object3D,Mesh,Vector3:class extends Position{constructor(x=0,y=0,z=0){super();this.set(x,y,z)}},SRGBColorSpace:'srgb'}, {get:(o,k)=>o[k]||class{constructor(...args){this.args=args}}});
 const rules=await moduleFrom(await read('assets/city-rules.js')),obstacles=[],buildings=[],surfaces=[];
 const source=(await read('assets/civic-world.js')).replace(/^import .*;\n/gm,'').replace('export function createCivicWorld','function createCivicWorld');
-const context={...rules,THREE,document:{createElement:()=>({getContext:()=>({fillRect(){},fillText(){}})})}};vm.createContext(context);vm.runInContext(source,context);
+const context={...rules,THREE,document:{createElement:()=>({getContext:()=>({fillRect(){},fillText(){},clearRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){}})})}};vm.createContext(context);vm.runInContext(source,context);
 const scene=new Object3D(),civic=context.createCivicWorld({scene,visualKit:{brick:()=>({}),concrete:{},asphalt:{}},obstacles,buildings,groundSurfaces:surfaces,characters:{create:()=>({})}});
 const blocked=(x,z)=>obstacles.some(o=>x>o.minX-.5&&x<o.maxX+.5&&z>o.minZ-.5&&z<o.maxZ+.5);
 for(let z=-69;z>=-95;z-=.1)assert.equal(blocked(-42,z),false,'The bakery doorway and central aisle stay open');for(let x=-42;x<=-38;x+=.1)assert.equal(blocked(x,-95),false,'The counter is reachable');assert.ok(civic.bakeryInside({x:-38,z:-95}));assert.ok(civic.seats.filter(s=>s.z===-74.5).length>=4,'The bakery terrace has usable seating');
