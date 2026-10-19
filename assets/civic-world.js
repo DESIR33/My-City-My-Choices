@@ -64,13 +64,76 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
   for(const side of [-1,1]){box(f,metal,side*6,.25,9.58,8,4.5,.15);box(f,red,side*6,.35,9.7,7.6,4.2,.1);for(let y=.7;y<4.5;y+=.5)box(f,cream,side*6,y,9.77,7.4,.035,.04);}
   label(f,'MAPLE FIRE & RESCUE',0,5.65,9.67,20,1.05);obstacle(150,-90,20,25);buildings.push({x:150,z:-90,w:20,d:25,shop:false,height:7.15});
   box(scene,visualKit.asphalt,132,.015,-90,20,.045,26);groundSurfaces.push({minX:122,maxX:142,minZ:-103,maxZ:-77,top:.06});
-  const engine=new THREE.Group();engine.position.set(135,.06,-90);engine.rotation.y=-Math.PI/2;scene.add(engine);
-  box(engine,metal,0,.45,0,2.3,.3,6.8);box(engine,red,0,.7,1.8,2.38,2.0,2.8);box(engine,red,0,.7,-1.55,2.38,1.65,3.8);
-  const engineGlass=new THREE.MeshStandardMaterial({color:0x284957,metalness:.2,roughness:.18});box(engine,engineGlass,0,1.55,3.22,2.05,.93,.025);
-  for(const side of [-1,1]){box(engine,engineGlass,side*1.205,1.55,1.85,.025,.85,2.2);box(engine,cream,side*1.21,1.08,-1.5,.04,1.1,3.4);box(engine,cream,side*1.22,.8,1.75,.03,.16,2.5);for(const z of [-2.5,-1.1,2.25]){const tire=new THREE.Mesh(new THREE.CylinderGeometry(.49,.49,.32,24),new THREE.MeshStandardMaterial({color:0x171b1d,roughness:.96}));tire.rotation.z=Math.PI/2;tire.position.set(side*1.1,.49,z);engine.add(tire);const hub=new THREE.Mesh(new THREE.CylinderGeometry(.25,.25,.34,20),cream);hub.rotation.z=Math.PI/2;hub.position.copy(tire.position);engine.add(hub);}for(let z=-3;z<0;z+=.45){const coupling=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.08,12),metal);coupling.rotation.z=Math.PI/2;coupling.position.set(side*1.26,1.36,z);engine.add(coupling);}}
-  for(const side of [-1,1])box(engine,metal,side*.65,2.48,-1.05,.065,.08,4);for(let z=-2.9;z<.8;z+=.38)box(engine,metal,0,2.48,z,1.3,.065,.065);
-  for(const side of [-1,1]){const sign=label(engine,'FIRE & RESCUE',side*1.235,1.65,-1.3,3.1,.45);sign.rotation.y=side*Math.PI/2;}
-  box(engine,cream,0,.65,3.31,2.55,.28,.2);const beaconMat=new THREE.MeshStandardMaterial({color:0xff3830,emissive:0xdd1208,emissiveIntensity:.65});box(engine,beaconMat,0,2.75,1.5,1.4,.12,.25);obstacle(135,-90,7.4,2.6);
+  const engine=buildFireEngine(scene,box,obstacle);
+  function buildFireEngine(scene,box,obstacle){
+    const engine=new THREE.Group();engine.name='fire-engine';engine.position.set(133.5,.06,-90);engine.rotation.y=-Math.PI/2;scene.add(engine);
+    const paint=new THREE.MeshPhysicalMaterial({color:0xc01f18,roughness:.26,metalness:.18,clearcoat:1,clearcoatRoughness:.14});
+    const black=new THREE.MeshStandardMaterial({color:0x14181c,roughness:.42,metalness:.35});
+    const chrome=new THREE.MeshStandardMaterial({color:0xd5dbe0,roughness:.18,metalness:.94});
+    const rubber=new THREE.MeshStandardMaterial({color:0x17191c,roughness:.97});
+    const glass=new THREE.MeshPhysicalMaterial({color:0x173038,roughness:.06,metalness:.12,transparent:true,opacity:.62,clearcoat:1,side:THREE.DoubleSide});
+    const gold=new THREE.MeshStandardMaterial({color:0xf2c94b,roughness:.32,metalness:.28,emissive:0x5c430c,emissiveIntensity:.12});
+    const white=new THREE.MeshStandardMaterial({color:0xf7f4ee,roughness:.4});
+    const lamp=new THREE.MeshStandardMaterial({color:0xfff6d8,emissive:0xfff0c4,emissiveIntensity:.85,roughness:.18});
+    const amber=new THREE.MeshStandardMaterial({color:0xffb03a,emissive:0xff8600,emissiveIntensity:.55,roughness:.28});
+    const emergency=new THREE.MeshStandardMaterial({color:0xff2c22,emissive:0xff140c,emissiveIntensity:.9,roughness:.22});
+    const clearLamp=new THREE.MeshStandardMaterial({color:0xe7f3ff,emissive:0xcfe6ff,emissiveIntensity:.7,roughness:.18});
+    const hoseMat=new THREE.MeshStandardMaterial({color:0x8d221c,roughness:.72});
+    const plate=new THREE.MeshStandardMaterial({color:0x9aa3a8,roughness:.38,metalness:.72});
+    function pane(mat,x,y,z,w,h,rx=0,ry=0){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);m.position.set(x,y,z);m.rotation.set(rx,ry,0);engine.add(m);return m;}
+    function wheel(x,z,radius=.5,width=.26){const tire=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,width,28),rubber);tire.rotation.z=Math.PI/2;tire.position.set(x,radius,z);tire.castShadow=tire.receiveShadow=true;engine.add(tire);const hub=new THREE.Mesh(new THREE.CylinderGeometry(radius*.46,radius*.46,width*.42,18),chrome);hub.rotation.z=Math.PI/2;hub.position.set(x,radius,z);engine.add(hub);const cap=new THREE.Mesh(new THREE.CylinderGeometry(radius*.16,radius*.16,width*.62,12),paint);cap.rotation.z=Math.PI/2;cap.position.set(x,radius,z);engine.add(cap);for(let i=0;i<5;i++){const lug=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,width*.5,8),chrome);lug.rotation.z=Math.PI/2;lug.position.set(x,radius+Math.cos(i*1.2566)*radius*.28,z+Math.sin(i*1.2566)*radius*.28);engine.add(lug);}}
+    function decal(text,x,y,z,w,h,ry,color='#f8e7a2',font=150){const c=document.createElement('canvas');c.width=1024;c.height=256;const q=c.getContext('2d');q.clearRect(0,0,1024,256);q.fillStyle=color;q.font=`bold ${font}px Arial`;q.textAlign='center';q.textBaseline='middle';q.fillText(text,512,132);const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map,transparent:true,roughness:.45,metalness:.05,side:THREE.DoubleSide,depthWrite:false}));m.position.set(x,y,z);m.rotation.y=ry;engine.add(m);return m;}
+    for(const side of [-1,1])box(engine,chrome,side*.78,.32,.05,.09,.16,8.15);
+    box(engine,black,0,.28,0,2.05,.12,8.3);
+    box(engine,paint,0,.58,2.28,2.48,1.22,3.55);
+    box(engine,paint,0,1.78,2.02,2.42,1.18,2.72);
+    box(engine,white,0,2.92,1.95,2.28,.08,2.35);
+    box(engine,paint,0,.78,-1.95,2.5,1.62,4.85);
+    box(engine,black,0,2.28,-2.15,2.05,.22,3.55);
+    pane(glass,0,2.22,3.52,2.22,1.02,-.42,0);
+    for(const side of [-.45,.45]){const wiper=box(engine,black,side,1.95,3.72,.05,.04,.72);wiper.rotation.x=-.7;wiper.rotation.z=side*-.15;}
+    for(const side of [-1,1]){
+      pane(glass,side*1.235,2.18,2.62,.95,.62,0,side*Math.PI/2);
+      pane(glass,side*1.235,2.12,1.35,.78,.58,0,side*Math.PI/2);
+      box(engine,black,side*1.232,1.22,2.15,.03,1.55,.045);
+      box(engine,black,side*1.232,1.18,.55,.03,1.45,.04);
+      box(engine,chrome,side*1.27,1.22,1.72,.04,.08,.18);
+      box(engine,chrome,side*1.27,1.18,.15,.04,.08,.16);
+      const mirror=box(engine,black,side*1.42,2.15,3.15,.28,.16,.1);mirror.rotation.y=side*.25;
+      pane(glass,side*1.42,2.15,3.12,.18,.1,0,side*(Math.PI/2+.25));
+      box(engine,gold,side*1.255,1.22,-1.9,.03,.16,4.35);
+      box(engine,white,side*1.26,.95,-1.9,.02,.07,4.35);
+      box(engine,plate,side*1.32,.4,1.55,.32,.07,1.15);
+      for(const z of [-3.35,-2.15,-.95]){box(engine,paint,side*1.2,.95,z,.08,1.15,1.05);box(engine,black,side*1.248,.95,z,.02,.02,1.08);box(engine,black,side*1.248,.95,z+0,.02,1.18,.025);box(engine,chrome,side*1.28,1.15,z+.28,.035,.05,.16);}
+      decal('MAPLE',side*1.29,1.55,-2.55,2.15,.42,side*Math.PI/2,'#f8e7a2',170);
+      decal('FIRE & RESCUE',side*1.29,1.55,-.85,1.7,.28,side*Math.PI/2,'#fff8e8',92);
+    }
+    box(engine,chrome,0,.48,4.18,2.55,.28,.28);
+    box(engine,black,0,.78,4.12,1.55,.72,.08);
+    for(let i=0;i<5;i++)box(engine,chrome,0,.58+i*.14,4.18,1.42,.035,.04);
+    for(const side of [-1,1]){box(engine,lamp,side*.95,.72,4.16,.38,.22,.06);box(engine,amber,side*1.18,.48,4.16,.22,.12,.05);box(engine,emergency,side*.42,1.55,4.08,.28,.1,.05);box(engine,clearLamp,side*.78,2.55,3.55,.16,.08,.05);}
+    decal('E-1',0,1.95,4.1,.7,.32,0,'#f8e7a2',150);
+    box(engine,black,0,2.95,2.15,1.55,.14,.42);
+    for(const [x,mat] of [[-.52,emergency],[-.18,clearLamp],[.18,emergency],[.52,clearLamp]])box(engine,mat,x,3.02,2.15,.26,.12,.32);
+    box(engine,chrome,0,3.12,1.15,.22,.28,.22);
+    const bell=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12),chrome);bell.scale.y=.7;bell.position.set(0,3.02,1.55);engine.add(bell);
+    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.055,.09,.48,12),chrome);nozzle.rotation.x=1.15;nozzle.position.set(0,2.72,-.15);nozzle.castShadow=true;engine.add(nozzle);
+    for(const x of [-.42,.42]){const roll=new THREE.Mesh(new THREE.TorusGeometry(.32,.1,12,20),hoseMat);roll.rotation.y=Math.PI/2;roll.position.set(x,2.22,-2.35);roll.castShadow=true;engine.add(roll);}
+    box(engine,hoseMat,-.7,2.18,-3.15,.28,.28,1.1);box(engine,white,.7,2.18,-3.15,.28,.28,1.1);
+    for(const side of [-.34,.34])box(engine,chrome,side,2.48,-1.85,.05,.05,3.7);
+    for(let z=-3.55;z<.05;z+=.28)box(engine,chrome,0,2.48,z,.64,.028,.03);
+    for(const side of [-1,1]){for(const z of [-1.15,-2.45]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,.08,14),chrome);cap.rotation.z=Math.PI/2;cap.position.set(side*1.3,1.28,z);engine.add(cap);box(engine,side<0?emergency:lamp,side*1.32,1.05,z,.04,.16,.16);}}
+    box(engine,plate,1.22,1.15,-.35,.06,.55,.7);for(const [dx,dy,color] of [[0,.12,0xc23a32],[.12,-.05,0xf2c94b],[-.12,-.05,0x4aa3d8]]){const gauge=new THREE.Mesh(new THREE.CircleGeometry(.055,14),new THREE.MeshStandardMaterial({color,roughness:.35,emissive:color,emissiveIntensity:.25}));gauge.position.set(1.26,1.15+dy,-.35+dx);gauge.rotation.y=Math.PI/2;engine.add(gauge);}
+    const chevron=document.createElement('canvas');chevron.width=512;chevron.height=256;const cq=chevron.getContext('2d');cq.fillStyle='#f4f1ea';cq.fillRect(0,0,512,256);cq.fillStyle='#c01f18';for(let i=-2;i<8;i++){cq.beginPath();cq.moveTo(i*70,0);cq.lineTo(i*70+46,0);cq.lineTo(i*70+150,256);cq.lineTo(i*70+104,256);cq.closePath();cq.fill();}const chevronMap=new THREE.CanvasTexture(chevron);chevronMap.colorSpace=THREE.SRGBColorSpace;const chevronMesh=new THREE.Mesh(new THREE.PlaneGeometry(2.35,.7),new THREE.MeshStandardMaterial({map:chevronMap,roughness:.5}));chevronMesh.position.set(0,1.15,-4.32);chevronMesh.rotation.y=Math.PI;engine.add(chevronMesh);
+    for(const side of [-1,1]){box(engine,emergency,side*.85,.55,-4.28,.32,.14,.04);box(engine,amber,side*.4,.55,-4.28,.18,.1,.04);box(engine,lamp,side*1.05,1.55,-4.22,.16,.1,.04);}
+    decal('KEEP BACK',0,.82,-4.34,1.15,.16,Math.PI,'#1a1c1e',110);
+    wheel(1.22,2.95);wheel(-1.22,2.95);
+    for(const z of [-1.2,-2.55])for(const side of [-1,1]){wheel(side*1.02,z,.5,.22);wheel(side*1.28,z,.5,.22);box(engine,black,side*1.15,.5,z,.08,.08,.55);}
+    for(const z of [2.95,-1.2,-2.55])box(engine,black,0,.5,z,2.1,.08,.08);
+    box(engine,black,0,.22,-4.05,2.2,.08,.12);
+    obstacle(133.5,-90,8.95,2.75);
+    return engine;
+  }
   const firefighters=[];for(let i=0;i<4;i++){const actor=characters.create({x:133+i*2,z:-100,model:i%2?'casual':'neighbor',firefighter:true,interactive:true});firefighters.push(actor);}
   let servedOrder=null;
   function serveOrder(id){if(servedOrder)scene.remove(servedOrder);servedOrder=new THREE.Group();servedOrder.position.set(-25,1.35,-38.2);scene.add(servedOrder);box(servedOrder,metal,0,0,0,.65,.025,.45);

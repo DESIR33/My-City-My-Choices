@@ -207,7 +207,15 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const head=source.getObjectByName(model==='child'||model==='boy'?'Bip02_Head':'Bip01_Head');
       const leftEye=source.getObjectByName(model==='child'||model==='boy'?'Bip02_LEye':'Bip01_LEye');
       actor.updateMatrixWorld(true);
-      if(head&&leftEye){const headPosition=head.getWorldPosition(new THREE.Vector3()),eyePosition=leftEye.getWorldPosition(new THREE.Vector3());if(eyePosition.z<headPosition.z)visual.rotation.y=Math.PI;}
+      // Eyes sit in front of the head on these Rocketbox meshes (+Z in the actor's rest pose).
+      // Measure that in actor space. World Z also includes the yaw already applied by a patrol
+      // or crosswalk, so a character facing down the street looked "backward" and received a
+      // permanent extra half-turn. The walk clips themselves face the same +Z direction.
+      if(head&&leftEye){
+        const headPosition=actor.worldToLocal(head.getWorldPosition(new THREE.Vector3()));
+        const eyePosition=actor.worldToLocal(leftEye.getWorldPosition(new THREE.Vector3()));
+        if(eyePosition.z<headPosition.z)visual.rotation.y=Math.PI;
+      }
       if(data.customizable){
         data.uniforms={avatarSkinRatio:{value:new THREE.Color(1,1,1)},avatarShirt:{value:new THREE.Color(0x496d84)},avatarHair:{value:new THREE.Color(0x483c35)},avatarShoes:{value:new THREE.Color(0x303f52)},avatarHairStyle:{value:0}};
         data.accessories=makeAccessories();actor.add(data.accessories.head,data.accessories.torso);
