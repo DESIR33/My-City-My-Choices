@@ -5,6 +5,8 @@ const unit = new THREE.BoxGeometry(1, 1, 1);
 const metal = new THREE.MeshStandardMaterial({color: 0x85949c, metalness: .92, roughness: .24});
 const dark = new THREE.MeshStandardMaterial({color: 0x11191e, roughness: .62, metalness: .25});
 const rubber = new THREE.MeshStandardMaterial({color: 0x171b1e, roughness: .97});
+const brakeRotor = new THREE.MeshStandardMaterial({color: 0x687077, metalness: .86, roughness: .38});
+const brakeCaliper = new THREE.MeshStandardMaterial({color: 0x9d3528, metalness: .52, roughness: .32});
 function box(parent, material, x, y, z, w, h, d) {
   const mesh = new THREE.Mesh(unit, material); mesh.position.set(x, y, z); mesh.scale.set(w, h, d);
   mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh); return mesh;
@@ -115,6 +117,9 @@ export function mountVehicle(group, template, color, index = 0) {
       const rim = new THREE.Mesh(new THREE.CylinderGeometry(.225,.225,.252,24),metal);rim.rotation.z=Math.PI/2;spin.add(rim);
       for(let j=0;j<5;j++){const spoke=box(spin,dark,Math.sign(center.x)*.13,Math.sin(j*Math.PI/2.5)*.11,Math.cos(j*Math.PI/2.5)*.11,.012,.045,.2);spoke.rotation.x=-j*Math.PI/2.5;}
     }
+    // Ventilated brake rotors rotate with the wheel; calipers stay fixed to the steering/suspension pivot.
+    const rotor = new THREE.Mesh(new THREE.CylinderGeometry(.225,.225,.022,32),brakeRotor);rotor.rotation.z=Math.PI/2;spin.add(rotor);
+    const caliper = box(pivot,brakeCaliper,Math.sign(center.x)*.055,.005,.125,.075,.19,.12);caliper.castShadow=true;
     // Fine tread blocks sit on the existing tyre surface, not oversized discs or floating rims.
     const tread = new THREE.InstancedMesh(unit,rubber,48), dummy = new THREE.Object3D();
     for(let j=0;j<48;j++){const a=j/48*Math.PI*2;dummy.position.set(0,Math.cos(a)*.324,Math.sin(a)*.324);dummy.rotation.x=a;dummy.scale.set(.21,.009,.018);dummy.updateMatrix();tread.setMatrixAt(j,dummy.matrix);}
