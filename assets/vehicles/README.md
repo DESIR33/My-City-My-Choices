@@ -19,9 +19,13 @@ move the steering pivots. The cars fit the existing collision footprint. Paint
 color, ownership IDs, saved poses, disabled states, lights, and wheel travel stay
 under the existing game systems. Police cars retain their existing rig and livery.
 
-The two compressed assets total 2.8 MB. The owned car and a few civilian cars use
-the Senna; other civilian cars use the
-GLS. Near detail is limited to four cars on desktop and two on touch devices.
+The two compressed assets total 2.8 MB. The civilian fleet now retains the supplied
+Ford Mustang alongside the Mercedes-Benz GLS and McLaren Senna: 14 Mustangs, 14 SUVs,
+and 7 McLarens across the 35 civilian slots. `vehicle-fleet.js` assigns 12 body-paint
+options deterministically and separately from the police roster. Every model has
+multiple colors, and both districts contain all three models. The owned coupe is
+a Mustang; purchasing or restoring it preserves its offer paint. Police livery is
+unchanged. Premium near detail is limited to four cars on desktop and two on touch devices.
 Medium detail is limited to ten and five respectively. Remaining cars use the
 same model's simplified silhouette. Geometry is shared between instances.
 
@@ -29,7 +33,10 @@ A single 128px desktop / 64px mobile cube-map capture supplies real neighborhood
 reflections. This is a static capture near the player when the assets finish
 loading. It is not ray tracing or a reflection updated for every car. The sky
 environment remains available if capture fails. Model-loading failures preserve
-the existing shaped cars; one available premium model can cover the other.
+the existing shaped cars. If a premium download fails, the available premium
+model and existing Ford remain mixed instead of replacing every car with one SUV.
+All three brands share the city reflection environment. No additional model
+downloads or runtime dependencies are needed for this fleet update.
 
 ## Rebuild
 

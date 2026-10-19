@@ -138,3 +138,12 @@ The physical sky, sun direction, shadow region, fog, exposure, ambient fill, and
 Vehicle rotation now applies road pitch before world heading, correcting northbound cars tilting downward on the bridge ramps. The existing static city reflection capture temporarily uses neutral daylight and restores the active lighting even if capture fails; subsequent time changes adjust reflection intensity rather than rendering six new cubemap views.
 
 `node tests/city-lighting.test.mjs` checks presets, malformed and saved preferences, midnight/frame-rate behavior, menu/background pauses, actual menu handlers, real light budgets, headlights on bridge grades, model replacements, brake/reverse states, and reflection-capture recovery. All 15 test files pass, including the vehicle-exit and story regressions. The managed browser preview remains unavailable, so the rendered lighting, mobile layout, and physical-device frame rate still need playtesting.
+
+
+## Civilian fleet diversity
+
+The city uses a stable mix of 14 Ford Mustangs, 14 Mercedes-Benz GLS SUVs, and 7 McLaren Sennas, plus the five existing police cruisers. Twelve paint options span pearl white, silver, graphite, cobalt blue, cherry red, forest green, champagne, orange, teal, ivory, yellow, and burgundy. Each model receives several colors. Assignments repeat consistently after reload, with civilian slots counted separately from police so both districts keep the mix. Nearby loaner prompts identify the loaded vehicle model.
+
+The premium loader retains the existing Mustang rigs instead of replacing nearly every civilian car with the Mercedes. If a premium download fails, the remaining asset is mixed with the Ford. Paint changes reach actual body materials and remain independent per car. Purchased-car colors, vehicle IDs and positions, police livery, disabled states, wheel/brake behavior, and existing premium detail budgets are preserved. The Mustang now shares the city's reflection capture with the other brands. No additional models are downloaded.
+
+`node tests/fleet-diversity.test.mjs` executes the real fleet loader with the shipped models and checks all 35 civilian assignments, both districts, independent body colors, owned paint, police preservation, partial downloads, wheel/brake states, and premium detail limits. All 16 test files pass. New browser rendering and physical-device performance remain unverified because the managed preview supervisor is unavailable.
