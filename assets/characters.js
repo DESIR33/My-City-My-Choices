@@ -257,6 +257,18 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     function aim(bone,child,direction){if(!bone||!child)return;const parent=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),direction.clone().applyQuaternion(parent).normalize());actor.updateMatrixWorld(true);}
     for(const side of ['L','R']){const thigh=find(side,'Thigh'),calf=find(side,'Calf'),foot=find(side,'Foot');aim(thigh,calf,forward.clone().add(new THREE.Vector3(0,-.08,0)));aim(calf,foot,new THREE.Vector3(0,-1,0));const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand');aim(upper,fore,forward.clone().multiplyScalar(.22).add(new THREE.Vector3(0,-1,0)));aim(fore,hand,forward.clone().add(new THREE.Vector3(0,-.15,0)));}
   }
+  function setActivity(actor,type='idle',held=null){actor.userData.character.activity={type,held};}
+  function activityPose(actor,data){
+    const activity=data.activity;if(!activity)return;
+    const {type,held}=activity,forward=new THREE.Vector3(Math.sin(actor.rotation.y),0,Math.cos(actor.rotation.y));
+    const find=(side,part)=>{let result;data.source.traverse(b=>{if(b.isBone&&b.name.replaceAll('_',' ').endsWith(side+' '+part))result=b;});return result;};
+    function aim(bone,child,direction){if(!bone||!child)return;bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),direction.clone().applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize());actor.updateMatrixWorld(true);}
+    if(type!=='idle')for(const side of (type==='brew'?['L','R']:['R'])){const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand'),drinking=type==='sip'||type==='eat';
+      aim(upper,fore,forward.clone().multiplyScalar(drinking?.35:.7).add(new THREE.Vector3(0,-.6,0)));
+      aim(fore,hand,forward.clone().multiplyScalar(drinking?-.2:1).add(new THREE.Vector3(0,drinking?1:.1+Math.sin(data.phase*3)*.15,0)));
+    }
+    if(held&&held.visible){const hand=find('R','Hand');if(hand){held.position.copy(actor.worldToLocal(hand.getWorldPosition(new THREE.Vector3())));held.position.y+=.035;}else held.position.set(.25,1.1,.3);held.rotation.set(0,0,0);}
+  }
   function update(dt,player) {
     for(const actor of actors){
       const data=actor.userData.character,x=actor.position.x,z=actor.position.z;
@@ -272,9 +284,10 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const state=data.seated?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
       data.actions[state].setEffectiveTimeScale(state==='idle'?1:THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9));
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
-      data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
+      data.phase+=dt;data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
+      activityPose(actor,data);
       if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
     }
   }
-  return { create,setAppearance,setSeated,update,actors,ready:()=>Promise.all([...pending]) };
+  return { create,setAppearance,setSeated,setActivity,update,actors,ready:()=>Promise.all([...pending]) };
 }
