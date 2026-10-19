@@ -5,6 +5,13 @@ const unit = new THREE.BoxGeometry(1, 1, 1);
 const metal = new THREE.MeshStandardMaterial({color: 0x85949c, metalness: .92, roughness: .24});
 const dark = new THREE.MeshStandardMaterial({color: 0x11191e, roughness: .62, metalness: .25});
 const rubber = new THREE.MeshStandardMaterial({color: 0x171b1e, roughness: .97});
+let headlightLevel = .2;
+const headlightMaterials = new Set();
+function useHeadlight(material) {
+  headlightMaterials.add(material);
+  material.emissiveIntensity = headlightLevel;
+  return material;
+}
 function box(parent, material, x, y, z, w, h, d) {
   const mesh = new THREE.Mesh(unit, material); mesh.position.set(x, y, z); mesh.scale.set(w, h, d);
   mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh); return mesh;
@@ -70,7 +77,7 @@ function physicalMaterial(name, paint) {
   let mat;
   if (name === 'Gloss_Red') mat = paint;
   else if (/Windows|Glass/.test(name)) mat = new THREE.MeshPhysicalMaterial({color: 0x243a46, metalness: .15, roughness: .12, clearcoat: 1, clearcoatRoughness: .07, envMapIntensity: 1.3});
-  else if (/White_Light|Material.006/.test(name)) mat = new THREE.MeshStandardMaterial({color: 0xdcecff, metalness: .2, roughness: .22, emissive: 0xd1e4ff, emissiveIntensity: .45});
+  else if (/White_Light|Material.006/.test(name)) mat = useHeadlight(new THREE.MeshStandardMaterial({color: 0xdcecff, metalness: .2, roughness: .22, emissive: 0xd1e4ff, emissiveIntensity: headlightLevel}));
   else if (/Material.007/.test(name)) mat = new THREE.MeshStandardMaterial({color: 0xaa3e15, roughness: .3, metalness: .2});
   else if (name === 'Material.005') mat = dark;
   else if (/Mirror|Material.001/.test(name)) mat = metal;
@@ -126,7 +133,7 @@ export function mountVehicle(group, template, color, index = 0) {
   box(body,dark,0,.30,2.24,1.56,.065,.1);
   const brakeMaterial = new THREE.MeshStandardMaterial({color:0x931c19,roughness:.27,emissive:0xff2415,emissiveIntensity:.28});
   const reverseMaterial = new THREE.MeshStandardMaterial({color:0xa9bac4,roughness:.3,emissive:0xe8f4ff,emissiveIntensity:0});
-  const led = new THREE.MeshStandardMaterial({color:0xe7eff5,roughness:.2,emissive:0xcde5ff,emissiveIntensity:.65});
+  const led = useHeadlight(new THREE.MeshStandardMaterial({color:0xe7eff5,roughness:.2,emissive:0xcde5ff,emissiveIntensity:headlightLevel}));
   for(const side of [-1,1]) {
     box(body,led,side*.69,.78,2.18,.38,.034,.035);
     for(let j=0;j<3;j++)box(body,brakeMaterial,side*(.49+j*.13),.77,-2.28,.065,.25,.035);
@@ -166,5 +173,4 @@ export function updateVehicleVisual(group, state, dt) {
   if(data.hazardMaterial)data.hazardMaterial.emissiveIntensity=disabled?(Math.floor(performance.now()/380)%2?2.5:.05):0;
   if(data.headlightMaterial)data.headlightMaterial.emissiveIntensity=headlightLevel;
 }
-let headlightLevel=.2;
-export function setHeadlightLevel(level){if(Number.isFinite(level))headlightLevel=Math.max(0,Math.min(4,level));}
+export function setHeadlightLevel(level){if(!Number.isFinite(level))return;headlightLevel=Math.max(0,Math.min(4,level));for(const material of headlightMaterials)material.emissiveIntensity=headlightLevel;}
