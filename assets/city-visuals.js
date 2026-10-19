@@ -203,7 +203,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
 
   function forestHeight(x, z) {
     const radius = Math.max(Math.abs(x), Math.abs(z)), t = THREE.MathUtils.smoothstep(radius, 167, 228);
-    const corridor=z<-150?THREE.MathUtils.smoothstep(Math.abs(x),18,42):1;
+    const corridor=Math.abs(z)>150?THREE.MathUtils.smoothstep(Math.abs(x),18,42):1;
     return -.07 + corridor * t * (5 + 3.5 * Math.sin(x * .024) + 2.8 * Math.cos(z * .031));
   }
   function addForest() {
@@ -225,7 +225,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
       const angle = i * 2.39996 + rng() * .16, radius = 181 + rng() * 39;
       const edge = Math.max(Math.abs(Math.sin(angle)), Math.abs(Math.cos(angle)));
       const x = Math.sin(angle) * radius / edge, z = Math.cos(angle) * radius / edge, species = i % 3;
-      if(z<-150&&Math.abs(x)<34)continue;
+      if(Math.abs(z)>150&&Math.abs(x)<34)continue;
       const dummy = new THREE.Object3D(); dummy.position.set(x, forestHeight(x, z), z);
       dummy.rotation.y = rng() * Math.PI * 2; dummy.scale.setScalar(.85 + rng() * .95); dummy.updateMatrix(); transforms[species].push(dummy.matrix.clone());
     }

@@ -10,7 +10,7 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,1024,128);ctx.fillStyle='#f8e9c8';ctx.font='bold 54px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,512,66,990);const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map,roughness:.8,side:THREE.DoubleSide}));mesh.position.set(x,y,z);scene.add(mesh);return mesh;
   }
   // Two banks leave the full river channel open under the elevated crossing.
-  cube(scene,0,-.42,625,1800,.35,2350,C.grass,false); // south bank: -550 … 1800
+  cube(scene,0,-.42,225,1800,.35,1550,C.grass,false); // south bank ends at the new coastline: -550 … 1000
   cube(scene,0,-.42,-1735,1800,.35,1930,C.grass,false); // north bank: -2700 … -770
   const waterGeometry=new THREE.PlaneGeometry(1800,220,90,18),positions=waterGeometry.attributes.position;
   for(let i=0;i<positions.count;i++)positions.setZ(i,.045*Math.sin(positions.getX(i)*.17+positions.getY(i)*.11));waterGeometry.computeVertexNormals();
