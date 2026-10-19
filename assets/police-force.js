@@ -25,6 +25,17 @@ export const POLICE_ROSTER = streets.flatMap((street, streetIndex) =>
   })),
 );
 
+export const POLICE_STATION = Object.freeze({x:150,z:-30});
+export const STATION_CARS = Object.freeze([
+  {x:136.4,z:-39,heading:-Math.PI/2},
+  {x:136.4,z:-30,heading:-Math.PI/2},
+  {x:136.4,z:-21,heading:-Math.PI/2},
+]);
+export const PATROL_CAR_ROUTES = Object.freeze([
+  {x:125,z:-145,heading:0,speed:6},
+  {x:115,z:145,heading:Math.PI,speed:-5.6},
+]);
+
 export function advancePolicePatrol(patrol, dt) {
   if (patrol.dwell > 0) {
     patrol.dwell = Math.max(0, patrol.dwell - dt);
