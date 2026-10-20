@@ -51,3 +51,4 @@ export function jobSteps(state) {
     {id:'pay', done:!!state.paid, text:'Check your wallet for the $2 pay'},
   ];
 }
+

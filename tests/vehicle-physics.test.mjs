@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const source=await readFile(new URL('../assets/vehicle-physics.js',import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/assets/vehicle-physics.js',import.meta.url),'utf8'));
+const source=await readFile(new URL('../assets/vehicle-physics.js',import.meta.url),'utf8').catch(()=>readFile(new URL('../assets/vehicle-physics.js',import.meta.url),'utf8'));
 const {createVehicleState,advanceVehicle,vehicleFootprint,vehicleBlocksPedestrian,rectanglesOverlap,VEHICLE}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 function drive(seconds,input,hz=60,state=createVehicleState(),collision){for(let i=0;i<Math.round(seconds*hz);i++)advanceVehicle(state,typeof input==='function'?input(i/hz):input,1/hz,collision);return state;}
 const result=[];
@@ -17,7 +17,8 @@ const low=createVehicleState(),high=createVehicleState();low.speed=3;high.speed=
 const straightPull=createVehicleState(),cornerPull=createVehicleState();straightPull.speed=cornerPull.speed=12;drive(.75,{forward:1},60,straightPull);drive(.75,{forward:1,steer:.8},60,cornerPull);assert.ok(cornerPull.speed<straightPull.speed-.25,'Cornering consumes tire grip and reduces acceleration');
 const reverse=createVehicleState();reverse.direction=-1;reverse.speed=-3;drive(.4,{forward:-1,steer:.6},60,reverse);assert.ok(reverse.heading<0,'Reversing changes turn direction');
 const crash=drive(4,{forward:1},60,createVehicleState(),(x,z,h)=>vehicleFootprint(x,z,h).every(p=>p.z<=8));assert.ok(crash.z<=8-VEHICLE.length/2+.001,'Bumper cannot cross wall');assert.equal(crash.speed,0);
-const disabled=createVehicleState();disabled.disabled=true;disabled.speed=8;const noDrive=advanceVehicle(disabled,{forward:1,steer:1},.1);assert.equal(disabled.speed,0);assert.equal(disabled.x,0);assert.equal(disabled.z,0);assert.equal(noDrive.distance,0,'A crashed vehicle cannot drive or coast');
+const contactZ=crash.z;drive(2,{forward:-1},60,crash,(x,z,h)=>vehicleFootprint(x,z,h).every(p=>p.z<=8));assert.ok(crash.z<contactZ-2,'A collision allows reversing away from the wall');assert.equal(crash.gear,'R');drive(3,{forward:1},60,crash,(x,z,h)=>vehicleFootprint(x,z,h).every(p=>p.z<=8));assert.ok(crash.z>contactZ-2,'The car can select forward again after reversing');
+const disabled=createVehicleState();disabled.disabled=true;disabled.speed=8;const noDrive=advanceVehicle(disabled,{forward:1,steer:1},.1);assert.equal(disabled.speed,0);assert.equal(disabled.x,0);assert.equal(disabled.z,0);assert.equal(noDrive.distance,0,'An explicit disabled flag still stops a vehicle');
 assert.equal(rectanglesOverlap(vehicleFootprint(0,0,0),vehicleFootprint(0,3,0)),true);assert.equal(rectanglesOverlap(vehicleFootprint(0,0,0),vehicleFootprint(4,0,Math.PI/4)),false);
 const parked={x:10,z:20,heading:Math.PI/4};
 assert.ok(vehicleBlocksPedestrian(10,20,parked),'The car body remains solid');

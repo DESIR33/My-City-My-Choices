@@ -92,3 +92,4 @@ export function skyFromDate(date = new Date(), coords) {
   const sunset = localHour(times.sunset);
   return {realHour, sunrise, sunset, skyHour: skyHourForLocal(realHour, sunrise, sunset), latitude, longitude};
 }
+

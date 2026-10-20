@@ -49,3 +49,4 @@ const startedInside = createVisitor(route, {index:3, dwell:2});
 assert.equal(visitorInside(startedInside, cafe), true, 'A neighbor can already be visible inside');
 
 console.log('Local life passed: real sunset, night after sunset, work clothes, one-time job pay, and a neighbor walking inside.');
+

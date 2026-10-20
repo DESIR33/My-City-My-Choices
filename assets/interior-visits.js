@@ -30,3 +30,4 @@ export function stepVisitor(visitor, dt) {
 export function visitorInside(visitor, bounds) {
   return visitor.x > bounds.minX && visitor.x < bounds.maxX && visitor.z > bounds.minZ && visitor.z < bounds.maxZ;
 }
+

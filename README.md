@@ -40,9 +40,9 @@ The game remains a browser prototype with procedural architecture and textured r
 
 ## Human characters
 
-The former cylinder people are replaced by six self-hosted, textured Microsoft Rocketbox character assets and compatible idle, walking, and running clips (MIT; notices in `assets/characters/`). The playable avatar uses a child mesh, while residents include varied adult and child models with independent skeletons. Moving residents turn toward their measured travel direction so crossing turnarounds do not leave them walking backward. Skin, hair, shirt, and shoe customization preserves the underlying texture detail; curls, a bun, or the model's ponytail can be selected. Purchased hats and backpacks follow the animated head and torso. Motion retargeting keeps a child's native bone lengths, drops horizontal root motion, and blends movement states. Walking pace and the on-foot camera are adjusted for the child avatar.
+The former cylinder people are replaced by six self-hosted, textured Microsoft Rocketbox character assets and compatible idle, walking, and running clips (MIT; notices in `assets/characters/`). The playable avatar uses a child mesh, while residents include varied adult and child models with independent skeletons. Skin, hair, shirt, and shoe customization preserves the underlying texture detail; curls, a bun, or the model's ponytail can be selected. Purchased hats and backpacks follow the animated head and torso. Motion retargeting keeps a child's native bone lengths, drops horizontal root motion, and blends movement states. Walking pace and the on-foot camera are adjusted for the child avatar.
 
-`assets/characters.js` loads the meshes and animations, places feet at the actual road/sidewalk/path height, and retains a temporary fallback when an asset cannot load. Story interactions are refreshed when activated, and Mom/Maya are prioritized within a wider approach radius so their first dialogue is reliably reachable. Meshopt compression was expanded during asset preparation, so no runtime WebAssembly decoder is required. The models improve realism but are not custom scans or a likeness of the player; final facial/cloth rendering and frame rate still require browser visual QA.
+`assets/characters.js` loads the meshes and animations, places feet at the actual road/sidewalk/path height, and retains a temporary fallback when an asset cannot load. Meshopt compression was expanded during asset preparation, so no runtime WebAssembly decoder is required. The models improve realism but are not custom scans or a likeness of the player; final facial/cloth rendering and frame rate still require browser visual QA.
 
 
 ## City color and landscape update
@@ -54,11 +54,11 @@ Phones use a 1.25 pixel ratio cap and 1024-pixel sun shadows; desktop retains it
 
 ## Vehicle design and handling
 
-`assets/vehicles.js` normalizes the supplied Mustang to approximately 4.72 m long, 2.02 m wide (including mirrors), and 1.36 m tall. Export remnants that distorted scaling and ground clearance are removed. Closed source wheel caps are replaced by four independently animated assemblies from `assets/vehicle-wheels.js`: shaped black tires with circumferential grooves, open split-spoke alloys, machined lips, recessed drilled rotors, and fixed calipers. Wheel geometry is shared between cars and batched by material. Paint and glazing use smoothed normals; smoked windows reveal rounded seats and a dashboard. Rear lenses and trim are projected onto the curved body, with flush coupe handles, a mesh grille, brake lamps, reverse lamps, and a supported exhaust/diffuser. Distance-based wheel rotation and inner/outer front steering are retained. A shaped coupe with windows is available during loading. Geometry is shared across cars.
+`assets/vehicles.js` normalizes the supplied Mustang to approximately 4.72 m long, 2.02 m wide (including mirrors), and 1.36 m tall. Export remnants that distorted scaling and ground clearance are removed. The source wheels are split into four independently animated assemblies, with distance-based rotation, inner/outer front steering angles, tread detail, physical paint and glass, dark grille slats, brake lamps, and reverse lamps. A shaped coupe with windows is available during loading. Geometry is shared across cars.
 
 `assets/vehicle-physics.js` uses fixed substeps, a wheelbase steering model, a lateral grip cap, progressive pedals, drag/coasting, brakes, a short direction-change delay, and damped body pitch/roll. Automatic gears and RPM appear beside speed. Steering lock reduces at speed; a moving car must stop before the player exits. Road and object collisions use the rotated vehicle footprint, including bumpers, and traffic leaves space around nearby cars. The chase camera eases behind the vehicle and temporarily yields to manual camera input. Keyboard and touch use the same simulation.
 
-Run `npm ci` followed by `npm test` for all regression suites, including `tests/vehicle-visuals.test.mjs` (open wheel geometry, road contact, model import, glazing, steering and lamp states). Three.js is pinned to the same 0.180.0 version used by the browser; the npm dependency is for development checks only. Run `node tests/vehicle-physics.test.mjs` for acceleration, braking, reverse, grip, collision, and 30/60/120 Hz checks. This is a lightweight road-driving model with visual load transfer, not a full rigid-body or deformable-car simulation. Final appearance and handling feel still require browser/device playtesting.
+Run `node tests/vehicle-physics.test.mjs` for acceleration, braking, reverse, grip, collision, and 30/60/120 Hz checks. This is a lightweight road-driving model with visual load transfer, not a full rigid-body or deformable-car simulation. Final appearance and handling feel still require browser/device playtesting.
 
 
 ## Maple Motors: ownership and running costs
@@ -101,11 +101,11 @@ Maple Cafe is at the southwest central block (`-30, -34`). Walk through the open
 
 Maple Fire & Rescue occupies the eastern district (`150, -90`) with a detailed procedural fire engine and four uniformed firefighters. The police force retains 20 officers, a station, and five marked cruisers. Police markings and lights survive the detailed vehicle model loading. Civilian and patrol traffic move along both street axes and obey lights and STOP signs.
 
-Collisions with a vehicle or solid object at 1.2 m/s or more disable the vehicle and dispatch a police cruiser through the road network. Exit with F or the mobile Exit car button. When police arrive, interact with the officer or inspect the disabled vehicle. A tow to Maple Motors is free; a fictional $0.75 repair restores driving. Empty wallets cannot buy repairs. Crash state and disabled vehicle positions survive saving. Coasting, cornering load, steering direction, cabin details, mirrors, handles, and hazard lamps are improved; this remains a lightweight driving simulation.
+Collisions with a vehicle or solid object at 1.2 m/s or more stop the car and dispatch a police cruiser through the road network. Hold S or pull the mobile driving stick down to reverse, then steer away and continue. Crashes do not lock engines, require payment, or force a tow. The officer checks the reported location and returns automatically. Earlier saved crash-disabled vehicles are released for free when progress is restored. This remains a lightweight driving simulation.
 
 The extra building row across storefront entrances is removed. Downtown buildings are moved off roads/sidewalks, and their approach paths are checked for obstruction.
 
-Checks: `node tests/city-life.test.mjs`, `node tests/traffic-flow.test.mjs`, and `node tests/story-flow.test.mjs` cover payments, sitting/standing handlers, crash disabling, response travel, recovery, traffic rules, and clear building approaches. Rendered visual quality, seated model appearance, and device performance still require browser playtesting.
+Checks: `node tests/city-life.test.mjs`, `node tests/traffic-flow.test.mjs`, and `node tests/story-flow.test.mjs` cover payments, sitting/standing handlers, driveable crash reports, response travel, legacy recovery, traffic rules, and clear building approaches. Rendered visual quality, seated model appearance, and device performance still require browser playtesting.
 
 
 ## Northstar City and Maple Bakery
@@ -119,14 +119,6 @@ Use **World map** (desktop or mobile) or **M** on desktop to see both districts 
 Maple Bakery occupies its original address (`-42, -90`). A central terrace path leads through a real doorway to the counter; roof and outer walls cut away inside. Two umbrella tables and four usable chairs sit outside, with more seating inside. Read the menu, review the price and remaining cash, then pay for bread, croissants, muffins, or milk. Orders cannot use protected savings, produce food without enough wallet cash, or charge twice. Bakery receipts survive saving and old saves gain empty bakery history automatically.
 
 Validation: `node tests/north-world.test.mjs` checks the 15 towers, footprints and entrance clearance, a full 1 km drive using the actual vehicle dynamics, river boundaries, bridge continuity, police routes, actual bakery collision geometry, seating, payment refusal/exact payments, and save migration. `tests/story-flow.test.mjs` additionally exercises bakery UI handlers, stale/cross-shop payment rejection, northern saves, and the working north fuel stop. All existing test suites and JavaScript syntax checks pass. Rendered visual quality and desktop/mobile playtesting remain unverified because the managed browser preview is unavailable.
-
-## Pedestrian signal visual pass
-
-`assets/pedestrian-signals.js` replaces the elongated stick figure and tiny text with square LED faces: a filled white walking silhouette and an orange raised hand. The display sits behind a recessed bezel and three-sided sun hood, with shared textures and housing geometry. Symbols are drawn locally without image downloads or fonts.
-
-`assets/traffic-signals.js` defines the existing 22-second traffic cycle. Pedestrian axes now mean travel direction, so WALK agrees with parallel green traffic, the hand shows during amber/all-red phases, and crossing pedestrians use the same direction mapping. The car, pedestrian, and all-red phase boundaries are covered by `tests/traffic-signals.test.mjs`.
-
-Vehicle front/side/rear/wheel views and both pedestrian faces were rendered in a local Chromium WebGL fixture for visual review. Screenshots are in `docs/visuals/`. Full physical-device performance remains a separate check.
 
 
 ## City light and night driving
@@ -160,3 +152,48 @@ The waterfront includes a raised promenade, six usable ocean-facing benches, umb
 **Sunshore Motors** is on the west curb just past the entrance (`-15, 1114`). Bring an owned car nearby, get out, and interact with the pump for fuel or service. These use the existing wallet and transport plan; protected savings remain separate. Saved car/player positions work in the south, and crashes dispatch police along the actual connecting road and coastal street grid. Free community loaners and the existing roadside recovery remain available.
 
 All 17 test files pass. `tests/coast-world.test.mjs` constructs the actual Three.js scene and checks road and footpath continuity, a 1.9 km drive using vehicle physics, road/building clearance, physical rail gaps, dry-beach/ocean boundaries, sand heights, clear entrances, palm and lighting geometry, coastal traffic signals, residents, seats, police routes, and saved car poses. Story tests exercise the actual fuel, refusal, save/restore, information-board, world-map, and destination handlers; fleet tests now check all 50 civilian slots. Browser rendering and physical-device performance remain unverified because the managed preview supervisor is unavailable.
+
+## Maple Cafe service and building interiors
+
+Maple Cafe has eight varied customers and a cashier. Customers pay from separate cent-based wallets, queue at the register, wait while the cashier moves to the espresso machine, receive their order, reserve a chair, eat or drink, and leave. Four patrons start dining indoors and on the terrace; arrivals keep the cafe active. Cash gestures, brewing steam, handover cups, consumption poses, and a live service board make the stages visible. Several cafe seats remain available to the player.
+
+At the counter, press **E**, choose coffee, espresso, latte, or food, review the price, and pay with wallet cash. Close the panel to let service continue. The cashier processes paid tickets in order; return to the counter when notified and press **E → Collect**. Paid tickets, remaining preparation time, receipts, register totals, and held items survive saves. Pickup cannot charge or fulfill twice. The player carries a physical cup or meal and consumes it while seated. NPC payments are recorded separately from the player's budget and savings.
+
+Cafe and bakery shells now remain visible when entered. The indoor camera stays inside room boundaries and below the ceiling, with warm ceiling lights and interior-facing wall materials. No complete wall or roof group is hidden on entry.
+
+All 18 test files pass. Cafe tests construct the real Three.js scene, simulate service and returning customers, reconcile exact payments, check ticket migration and duplicate refusal, test physical pickup/consumption and exclusive seats, and exercise the real indoor camera around both rooms. Browser rendering remains unverified because the managed preview supervisor cannot start in this container.
+
+
+## Rivergate Bridge and collision recovery
+
+The bridge has a separate asphalt skin and lower structural slab, removing the coplanar concrete/asphalt overlap that caused flickering. Both 200 m ramps meet the flat roads and river span smoothly, with a maximum grade below six percent. Road, footpaths, curbs, markings, guardrails, signs, streetlights, and vehicle pitch share the same height profile. Paint follows the ramp instead of intersecting it.
+
+Crashes stop movement at the last safe position without disabling either car. Reverse and forward remain available with keyboard or touch controls. Active reports are deduplicated, NPC cars pause briefly before continuing, and police return after checking the scene. Prior saved disabled cars recover for free; the owned car's crash-induced zero condition is raised enough to drive to service.
+
+All 19 test files pass. `tests/bridge-surface.test.mjs` builds the actual Northstar scene, raycasts the asphalt and supports to prove separation, verifies upward faces and slope-aligned paint, checks grade transitions, and drives across in both directions. Story tests run the real collision/input/dispatch handlers through impact, reverse, forward, police clearance, and old-save recovery. Browser rendering remains unverified because the managed preview supervisor is unavailable.
+
+## Thread & Sole and My wardrobe
+
+Thread & Sole at `(42, 30)` is open from the first city day. Open **World map → Thread & Sole**, walk through the central glass storefront opening, and press **E** to browse. The enterable interior has clothing racks, display mannequins, a fitting mirror, a cashier, and warm ceiling lights. The indoor camera keeps the room visible and stays below its roof. Trees are excluded from its doorway and footprint.
+
+The collection includes 14 purchasable T-shirts, jeans/trousers, sneakers, sun hats, and backpacks. Review the basket and choose **Buy & wear**; purchases use wallet cash and the existing spending plan, with savings kept separate. Prices and receipts use integer cents. Purchased items stay owned after reloading, and earlier shirt/shoes/hat/backpack purchases migrate automatically.
+
+Use the **My wardrobe** button anywhere on foot to change between owned pieces for free, remove a hat or bag, or return to the original outfit. Top, trouser, shoe, hat, and backpack colors update on the actual avatar; the coastal top also has stripes. Buying several pieces in one category equips the last one and keeps all of them available. Clothes cannot be purchased remotely or while driving, and duplicate checkout does not charge again.
+
+All 20 Node test files pass. Wardrobe tests cover every catalogue purchase, exact cents, affordability and duplicate refusal, saved ownership/equipment/receipts, old-save migration, free outfit changes, a clear physical store route, indoor camera bounds, and the actual character shader and appearance functions. Story tests exercise real store and wardrobe UI handlers, protected savings, remote-purchase refusal, and save/restore. Browser rendering remains unverified because the managed preview supervisor is unavailable.
+
+## Natural coastal palms
+
+The coastal corridor and Sunshore now share three distinct coconut and royal palm forms, with fuller layered crowns, broad folded leaflets, tapered curved trunks, textured ring scars/fibres, green crownshafts, a few mature fronds, and coconut clusters on nearby coconut trees. Darker leaf colors use correct color-space conversion rather than the washed-out pale green of the earlier mesh. Each placement has varied proportions and orientation; crowns have gentle, independently phased wind movement.
+
+Bark maps are generated once and shared. Nearby trees use folded 3D leaflets; distant trees retain their silhouette with roughly 2,000 triangles each. Geographic instance batches keep draw calls bounded, and touch devices use a smaller high-detail radius. All existing palm placements and clear pedestrian approaches are retained, with collision sizes matching the fuller trunk bases. Wind pauses with the game.
+
+All 21 Node test files pass. The new palm tests construct real Three.js geometry, inspect finite positions/normals, crown width, trunk taper, bark maps, near/far triangle budgets, complete instance coverage, mobile detail selection, and the real wind shader. Coastal tests still drive the full road without collisions and check hotel entrances and beach access. Mesh shapes were also reviewed in offline rendered previews. Browser rendering and physical-device performance remain unverified because the managed preview supervisor is unavailable.
+
+### Bicycles and motorcycles
+
+Eight free two-wheelers are parked across Maple, Northstar and Sunshore. World map → Cycle & Moto gives directions. Approach one and press **F** or **E**; touch players can use **Ride**. **W/↑** pedals or opens the throttle, **S/↓** brakes, **A/D** steers, **Space** applies the rear brake, **R+S** walks backward, and **F** dismounts when stopped. On touch, use the driving stick, Rear brake, Walk back + down, and Dismount. Bike locations and the mounted ride persist in the existing save.
+
+The bicycle has animated cranks and pedals, freewheeling, power-limited acceleration and drag. The motorcycle has automatic gears, an RPM display and stronger acceleration/braking. Handling uses fixed physics substeps, a wheelbase steering model, a combined braking/cornering grip limit, speed/radius-based lean and bridge grade forces. Detailed original meshes include tyres, spokes/cast wheels, drilled discs, cables, forks, drivetrain/engine parts, mirrors and lights. Rider IK follows the actual grips, saddle, pedals and pegs, with automatic bicycle/motorcycle helmets. These are assisted game physics with automatic balance; they do not simulate manual clutch/countersteering, falls or a full real-world motorcycle suspension/tyre model.
+
+Validation includes the shipped character skeleton, finite geometry and draw budgets, model articulation, both keyboard/touch flows, collisions and walk-back recovery, save/restore, slopes, and 30/60/120 Hz physics. Browser visual QA remains blocked by the cloud browser's disabled WebGL context; native Three geometry and gameplay checks run without that context.
