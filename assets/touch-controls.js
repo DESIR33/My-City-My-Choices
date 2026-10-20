@@ -54,17 +54,17 @@ export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVe
   hold(run, 'run'); hold(brake, 'brake');
   window.addEventListener('blur', clear); document.addEventListener('visibilitychange', () => {if (document.hidden) clear();});
   let lastMode = '', wasBlocked = false;
-  function update({driving, near}) {
+  function update({driving, rideKind=null, near}) {
     const blocked = isBlocked(); root.hidden = !enabled || blocked;
     if (blocked && !wasBlocked) clear(); wasBlocked = blocked;
     if (!enabled) return;
-    action.disabled = !near || driving; vehicle.disabled = !driving && near?.kind !== 'car';
-    vehicle.textContent = driving ? 'Exit car' : 'Enter car';
-    action.textContent = near?.kind === 'stand' ? 'Stand up' : near?.kind === 'seat' ? 'Sit' : near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact';
+    action.disabled = !near || driving; vehicle.disabled = !driving && !['car','ride'].includes(near?.kind);
+    vehicle.textContent = rideKind ? 'Dismount' : near?.kind==='ride' ? 'Ride' : driving ? 'Exit car' : 'Enter car';
+    action.textContent = near?.kind === 'stand' ? 'Stand up' : near?.kind === 'seat' ? 'Sit' : near?.kind === 'ride' ? 'Ride' : near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact';
     const mode = driving ? 'drive' : 'walk';
     if (mode !== lastMode) {clear(); lastMode = mode;}
-    run.hidden = driving; brake.hidden = !driving;
-    stick.setAttribute('aria-label', driving ? 'Drag up to accelerate, down to brake or reverse; left and right to steer' : 'Drag to walk');
+    run.hidden = driving&&!rideKind;run.textContent=rideKind?'Walk back':'Run';brake.hidden=!driving;brake.textContent=rideKind?'Rear brake':'Handbrake';
+    stick.setAttribute('aria-label', rideKind ? 'Drag up to pedal or accelerate, down to brake; hold Walk back with down to move backward' : driving ? 'Drag up to accelerate, down to brake or reverse; left and right to steer' : 'Drag to walk');
     document.querySelector('#stickLabel').textContent = driving ? 'STEER / DRIVE' : 'MOVE';
     hint.textContent = driving ? 'Drag the city to look · Stick to drive' : 'Drag the city to look around';
   }

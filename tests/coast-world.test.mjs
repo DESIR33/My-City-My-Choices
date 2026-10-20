@@ -76,7 +76,7 @@ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 const trafficCode=html.slice(html.indexOf('function advanceTraffic(dt)'),html.indexOf('const playerStopDwell='));
 const cpu=new THREE.Group();cpu.position.set(-2.4,0,1208);
 const physics=await import('../assets/vehicle-physics.js');
-const trafficContext={...physics,traffic:[{mesh:cpu,speed:7,axis:'z',min:1050,max:2070}],vehicleRefs:[{group:cpu}],trafficControllers:[{ix:0,iz:1240,offset:0}],stopJunctions:[],signalClock:12,driving:null,groundHeight,bridgePitch:()=>0,updateVehicleVisual(){}};
+const trafficContext={...physics,traffic:[{mesh:cpu,speed:7,axis:'z',min:1050,max:2070}],vehicleRefs:[{group:cpu}],trafficControllers:[{ix:0,iz:1240,offset:0}],stopJunctions:[],signalClock:12,riding:null,twoWheelWorld:{vehicles:[]},driving:null,groundHeight,bridgePitch:()=>0,updateVehicleVisual(){}};
 vm.createContext(trafficContext);vm.runInContext(trafficCode,trafficContext);
 for(let i=0;i<450;i++)trafficContext.advanceTraffic(.1);
 assert.ok(cpu.position.z<1230.5,'Coastal traffic waits before the red light, not in the middle of the intersection');
@@ -85,3 +85,5 @@ assert.ok(html.includes('incident.z>158?southResponseRoute'),'The actual dispatc
 assert.ok(html.includes('createCoastWorld({')&&html.includes('coastWorld.update('),'The coast is constructed and animated in the shipped game');
 const northSource=await readFile(new URL('../assets/north-world.js',import.meta.url),'utf8');assert.ok(northSource.includes('225,1800,.35,1550'),'The former grass bank no longer covers the new ocean');
 console.log('Coastal world passed: actual scene construction, 24 buildings, palms, 1.9 km drive, road/footpath continuity, physical rail gaps, beach boundaries and slopes, clear hotel paths, traffic and residents, police routes, lighting registrations, boardwalk seating, and saved coastal car positions.');
+const {RIDE_SPAWNS}=await import('../assets/two-wheel-models.js'),{twoWheelFootprint}=await import('../assets/two-wheel-physics.js');
+for(const p of RIDE_SPAWNS.filter(p=>p.z>1040)){const shape=twoWheelFootprint(p.x,p.z,p.heading,p.kind);assert.ok(shape.every(q=>p.kind==='motorcycle'?worldDrivable(q.x,q.z):worldWalkable(q.x,q.z)),p.id+' has an accessible riding surface');assert.ok(!obstacles.some(o=>rectanglesOverlap(shape,[{x:o.minX,z:o.minZ},{x:o.maxX,z:o.minZ},{x:o.maxX,z:o.maxZ},{x:o.minX,z:o.maxZ}])),p.id+' clears actual coastal furniture and architecture');}

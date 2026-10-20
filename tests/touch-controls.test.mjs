@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const source = await readFile(new URL('../assets/touch-controls.js', import.meta.url), 'utf8').catch(() => readFile(new URL('../dist/assets/touch-controls.js', import.meta.url), 'utf8'));
+const source = await readFile(new URL('../assets/touch-controls.js', import.meta.url), 'utf8').catch(() => readFile(new URL('../assets/touch-controls.js', import.meta.url), 'utf8'));
 const {createTouchControls} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 class Element {
   constructor() {this.events = new Map(); this.style = {}; this.hidden = false; this.disabled = false; this.classes = new Set(); this.classList = {add: c => this.classes.add(c), remove: c => this.classes.delete(c), toggle: (c, on) => on ? this.classes.add(c) : this.classes.delete(c)};}
@@ -37,6 +37,7 @@ function setup(touch = true) {
   assert.equal(t.el('#touchVehicle').textContent, 'Exit car'); assert.equal(t.el('#touchVehicle').disabled, false);
   t.el('#touchBrake').emit('pointerdown', {pointerId: 4}); assert.ok(c.state.brake);
   t.win.emit('blur'); assert.equal(c.state.brake, false);
+  c.update({driving:true,rideKind:'motorcycle',near:null});assert.equal(t.el('#touchRun').hidden,false);assert.equal(t.el('#touchRun').textContent,'Walk back');assert.equal(t.el('#touchVehicle').textContent,'Dismount');t.el('#touchRun').emit('pointerdown',{pointerId:8});assert.ok(c.state.run);t.el('#touchRun').emit('pointerup',{pointerId:8});assert.equal(c.state.run,false);
   t.el('#touchVehicle').emit('click'); assert.equal(t.counts().vehicles, 1);
   t.el('#moveStick').emit('pointerdown', {clientY: 15}); assert.ok(c.state.forward > 0);
   t.block(true); c.update({driving: false, near: null}); assert.equal(t.el('#mobileControls').hidden, true); assert.equal(c.state.forward, 0);

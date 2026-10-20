@@ -42,7 +42,7 @@ export function createCafeActivity({scene,characters,civicWorld,onReady=()=>{}})
       const player=playerActor.position;
       clock+=dt;const service=state.cafeService;if(!service)return;
       const held=service.held;
-      if(held&&held.remaining>0){if(heldId!==held.id||!playerHeld){if(playerHeld)playerActor.remove(playerHeld);playerHeld=['sandwich','fruit'].includes(held.id)?meal():cup();playerActor.add(playerHeld);heldId=held.id;}held.remaining=Math.max(0,held.remaining-(playerActor.userData.character?.seated?dt:0));activity(playerActor,playerActor.userData.character?.seated?(['sandwich','fruit'].includes(held.id)?'eat':'sip'):'carry',playerHeld);}
+      if(held&&held.remaining>0){if(heldId!==held.id||!playerHeld){if(playerHeld)playerActor.remove(playerHeld);playerHeld=['sandwich','fruit'].includes(held.id)?meal():cup();playerActor.add(playerHeld);heldId=held.id;}playerHeld.visible=!playerActor.userData.character?.riding;held.remaining=Math.max(0,held.remaining-(playerActor.userData.character?.seated?dt:0));activity(playerActor,playerActor.userData.character?.seated?(['sandwich','fruit'].includes(held.id)?'eat':'sip'):'carry',playerHeld);}
       if(!held||held.remaining<=0){if(playerHeld){playerActor.remove(playerHeld);playerHeld=null;heldId=null;activity(playerActor,'idle');}if(held)delete service.held;}
       const inCafe=civicWorld.cafeInside(player),inBakery=civicWorld.bakeryInside(player);lights.forEach((l,i)=>l.visible=i===2?inBakery:inCafe);
       if(!initialized){initialized=true;for(const c of customers.filter(c=>c.phase==='initialSeat')){if(reserve(c)&&payCafeCustomer(state,c,c.item))sit(c);else {c.phase='queue';queue.push(c);}}}
