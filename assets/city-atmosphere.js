@@ -86,7 +86,7 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
     poolMaterial.opacity=sample.night*.26;if(poolMesh)poolMesh.visible=sample.night>.02;
   }
   function updateVehicles(refs,focusVehicle) {
-    const shared=new Set();
+    const shared=new Set(),lowBeam=Math.max(sample.night,lastRain*.8);
     for(const ref of refs) {
       const car=ref.group||ref, data=car.userData.vehicleVisual;if(!data)continue;
       let cached=vehicleCache.get(car);
@@ -98,8 +98,8 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
       // Moving/response vehicles and the player's vehicle use auto low beams.
       const running=car===focusVehicle||car.userData.traffic||car.userData.responding;
       const enabled=!!running&&!car.userData.disabled;
-      data.nightLevel=enabled?sample.night:0;
-      if(data.headlampMaterial)data.headlampMaterial.emissiveIntensity=enabled?.35+sample.night*2:.06;
+      data.nightLevel=enabled?lowBeam:0;
+      if(data.headlampMaterial)data.headlampMaterial.emissiveIntensity=enabled?.35+lowBeam*2:.06;
       if(data.brakeMaterial&&!data.braking)data.brakeMaterial.emissiveIntensity=.24+data.nightLevel*.4;
       for(const material of cached.materials)shared.add(material);
     }
@@ -128,8 +128,8 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
     updateVehicles(vehicles,focusVehicle);
     if(focusVehicle)focusVehicle.updateWorldMatrix(true,false);
     headLights.forEach((light,i)=>{
-      const active=!!focusVehicle&&!focusVehicle.userData.disabled&&sample.night>.02;
-      light.visible=active;light.intensity=active?210*sample.night:0;
+      const lowBeam=Math.max(sample.night,lastRain*.8),active=!!focusVehicle&&!focusVehicle.userData.disabled&&lowBeam>.02;
+      light.visible=active;light.intensity=active?210*lowBeam:0;
       if(active){const side=i?1:-1,height=focusVehicle.userData.vehicleVisual?.modelId==='gls'?.86:.61;
         vector.set(side*.7,height,2.18);target.set(side*.95,.10,31);
         light.position.copy(focusVehicle.localToWorld(vector));light.target.position.copy(focusVehicle.localToWorld(target));light.target.updateMatrixWorld();}
@@ -137,10 +137,10 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
     return sample;
   }
   function captureDaylight(capture) {
-    const hour=Number.isFinite(lastHour)?lastHour:15,lights=[...lampLights,...headLights],visible=lights.map(light=>light.visible);
+    const hour=Number.isFinite(lastHour)?lastHour:15,rain=Number.isFinite(lastRain)?lastRain:0,lights=[...lampLights,...headLights],visible=lights.map(light=>light.visible);
     applyPalette(15);lights.forEach(light=>light.visible=false);
     try{return capture();}
-    finally{applyPalette(hour);lights.forEach((light,i)=>light.visible=visible[i]);}
+    finally{applyPalette(hour,rain);lights.forEach((light,i)=>light.visible=visible[i]);}
   }
   return {addStreetLight,registerGlow,finalizeStreetLights,update,captureDaylight,
     get sample(){return sample;},get streetLamps(){return streetLamps;},get lampLights(){return lampLights;},get headLights(){return headLights;},get poolMesh(){return poolMesh;}};
