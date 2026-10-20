@@ -740,7 +740,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       if (inside(position)) cutaway = true;
       else if (position.x > front+.8 || position.x < back-1 || Math.abs(position.z-bz) > hz+1) cutaway = false;
     }
-    shell.visible = entrance.visible = !cutaway;
+    shell.visible = entrance.visible = true;
     const approach = position && Math.abs(position.z-bz) < 2.4 && position.x > front-1.2 && position.x < front+8;
     const entranceTarget = (approach || cutaway) ? 1 : 0;
     entranceOpen += (entranceTarget-entranceOpen)*Math.min(1, dt*4.5);
@@ -800,9 +800,11 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
 
   return {
     floors, inside, nearestElevator, rideTo, update, presentInterior,
+    interior(p){if(!inside(p))return null;return {minX:room.x0+.3,maxX:room.x1-.3,minZ:room.z0+.3,maxZ:room.z1-.3,ceiling:[6.85,11.55,16.2][currentFloor]};},
     isRiding: () => ride.active,
     floorY: () => floorSurface.top,
     entrance: {x:front+5, z:bz},
     building,
   };
 }
+

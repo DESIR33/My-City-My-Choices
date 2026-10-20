@@ -1,14 +1,14 @@
 import * as THREE from 'three';
+import {createFlamingoHotel} from './flamingo-hotel.js';
 import {createPalmGrove} from './palm-trees.js';
 import {COAST_CITY,COAST_BUILDINGS,COAST_MOTORS,COAST_INFO,coastGroundHeight} from './world-rules.js';
-import {createFlamingoHotel} from './flamingo-hotel.js';
 
 // Original procedural architecture and palms; no external imagery or models.
 export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,addCrossingPedestrian,characters,seats,groundSurfaces,groundHeight=coastGroundHeight,mobile=false}) {
   const batches=new Map(),unit=new THREE.BoxGeometry(1,1,1),dummy=new THREE.Object3D();
   const mat=(color,roughness=.8,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-  const stucco=[0xf0beb3,0xaad6ce,0xf2dcac,0xbcc6e4,0xe0becf,0xf1e8d5].map(color=>mat(color));
-  const trim=mat(0xf1ecd8),dark=mat(0x263c46,.48,.25),metal=mat(0xa8b6b5,.36,.75),wood=mat(0x9e8053),paint=mat(0xe7d9aa),paving=mat(0xcdbf9e);
+  const stucco=[0xf0beb3,0xaad6ce,0xf2dcac,0xbcc6e4,0xe0becf,0xf1e8d5].map(color=>visualKit.stucco?.(color)||mat(color));
+  const trim=mat(0xf1ecd8),dark=mat(0x263c46,.48,.25),metal=mat(0xa8b6b5,.36,.75),wood=visualKit.wood?.(0x9e8053)||mat(0x9e8053),paint=mat(0xe7d9aa),paving=visualKit.pbr?.surface('concrete',0xcdbf9e)||mat(0xcdbf9e);
   paving.userData.walkSurface=true;
   const glass=visualKit.windowMaterial(3),warm=mat(0xffd6a4);
   visualKit.atmosphere.registerGlow(warm,{day:.03,night:1.5,color:0xffbd76});
@@ -180,6 +180,6 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
     items.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
     mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Sunshore architecture and street furniture';scene.add(mesh);
   }
-  return {buildings:COAST_BUILDINGS,palms,palmGrove,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
-    update(dt,eye){palmGrove.update(dt,eye);waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}}};
+  return {floors:flamingo?.floors||[],inside:p=>flamingo?.inside(p)||false,interior:p=>flamingo?.interior(p)||null,nearestElevator:p=>flamingo?.nearestElevator(p)||null,isRiding:()=>flamingo?.isRiding()||false,rideTo:(index,actor)=>flamingo?.rideTo(index,actor)||false,floorY:()=>flamingo?.floorY()??.21,buildings:COAST_BUILDINGS,palms,palmGrove,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
+    update(dt,eye){flamingo?.update(dt,eye);palmGrove.update(dt,eye);waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}}};
 }
