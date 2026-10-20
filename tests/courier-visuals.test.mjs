@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {createCourierVisuals} from '../assets/courier-visuals.js';
+const scene=new THREE.Scene(),actor=new THREE.Group(),v=createCourierVisuals({scene,groundHeight:()=>.21}),target={x:-42,z:-78};v.update(target,'pickup',actor,1);assert.ok(v.root.visible);assert.equal(v.root.position.y,.21);assert.equal(v.parcel.visible,false);v.update(target,'delivery',actor,2);assert.equal(v.parcel.visible,true);assert.equal(v.parcel.parent,actor);const torso=new THREE.Group();actor.userData.character={accessories:{torso}};actor.add(torso);v.update(target,'delivery',actor,3);assert.equal(v.parcel.parent,torso);assert.equal(v.parcel.position.z,-.235);actor.visible=false;v.update(target,'delivery',actor,4);assert.equal(v.parcel.visible,false);v.update(null,null,actor,4);assert.equal(v.root.visible,false);for(const object of [v.root,v.parcel])object.traverse(m=>{if(m.isMesh)assert.ok([...m.geometry.attributes.position.array].every(Number.isFinite));});
+console.log('Courier visuals passed: grounded destination marker, sealed parcel, actual torso anchor, car visibility and completed/cancelled cleanup.');
