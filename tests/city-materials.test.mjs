@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {generateSurfaceMaps,createCityMaterials,applyWorldSurfaceUV,SURFACE_PROFILES} from '../assets/city-materials.js';
+for(const kind of Object.keys(SURFACE_PROFILES)){
+ const a=generateSurfaceMaps(kind,64),b=generateSurfaceMaps(kind,64);assert.deepEqual(a,b,'Original maps are reproducible');assert.equal(a.color.length,64*64*4);let min=255,max=0;
+ for(let i=0;i<a.normal.length;i+=4){const x=a.normal[i]/255*2-1,y=a.normal[i+1]/255*2-1,z=a.normal[i+2]/255*2-1;assert.ok(Math.abs(Math.hypot(x,y,z)-1)<.015,'Normals have unit length');assert.ok(z>0);assert.equal(a.orm[i+2],0,'Stone/wood/pavement are dielectric');assert.equal(a.orm[i+3],255);min=Math.min(min,a.color[i]);max=Math.max(max,a.color[i]);}assert.ok(max-min>5,'Visible surface variation');
+}
+const pbr=createCityMaterials({anisotropy:4}),a=pbr.surface('brick',0x8e6247),b=pbr.surface('brick',0x4c605b);assert.equal(a.map,b.map,'Tints share texture allocations');assert.equal(a.normalMap,b.normalMap);assert.equal(a.roughnessMap,a.aoMap);assert.equal(a.map.colorSpace,THREE.SRGBColorSpace);assert.equal(a.normalMap.colorSpace,THREE.NoColorSpace);assert.ok(a.map.generateMipmaps);assert.equal(a.map.wrapS,THREE.RepeatWrapping);
+const road=pbr.surface('asphalt',0x41484c),bridge=pbr.surface('asphalt',0x3d4448),dry=road.color.clone();pbr.setWetness(1);assert.ok(road.roughness<.4&&bridge.roughness<.4);assert.ok(road.clearcoat>.7);assert.ok(road.color.r<dry.r);pbr.setWetness(0);assert.equal(road.color.getHex(),dry.getHex());assert.equal(road.roughness,1);
+const shader={vertexShader:THREE.ShaderLib.physical.vertexShader,fragmentShader:THREE.ShaderLib.physical.fragmentShader};applyWorldSurfaceUV(shader,3);assert.ok(shader.vertexShader.includes('cityP=instanceMatrix*cityP'));assert.ok(shader.vertexShader.includes('cityP=modelMatrix*cityP'));assert.ok(shader.vertexShader.includes('vNormalMapUv=cityUV'));assert.ok(shader.vertexShader.includes('vAoMapUv=cityUV'));assert.ok(shader.fragmentShader.includes('roughnessmap_fragment'));pbr.dispose();
+console.log('City materials passed: deterministic colour/normal/ORM maps, shared tinted PBR materials, dielectric values, colour spaces, normal lengths, world-instance UV injection and reversible wetness.');

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import {createCityMaterials} from './city-materials.js';
 import { createCityAtmosphere } from './city-atmosphere.js';
 
 // All surface textures are original, deterministic, and generated locally.
@@ -24,9 +25,10 @@ function texture(image, anisotropy, color = false) {
 
 export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const cache = new Map();
+  const cache = new Map(),pbr=createCityMaterials({anisotropy});
 
   function surface(kind, hex) {
+    if(kind!=='grass')return pbr.surface(kind,hex);
     const key = `${kind}:${hex}`;
     if (cache.has(key)) return cache.get(key);
     const [image, q] = canvas(), [heightImage, h] = canvas();
@@ -319,7 +321,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     const batches = new Map(), unitBox = new THREE.BoxGeometry(1, 1, 1);
     const curb = new THREE.MeshStandardMaterial({ color: 0xaca99f, roughness: .95 });
     const darkMetal = new THREE.MeshStandardMaterial({ color: 0x303b3c, roughness: .55, metalness: .6 });
-    const wood = new THREE.MeshStandardMaterial({ color: 0x826342, roughness: .85 });
+    const wood = surface('wood',0x826342);
     const grate = new THREE.MeshStandardMaterial({ color: 0x252d2e, roughness: .88, metalness: .3 });
     function box(mat, x, y, z, w, h, d, rotation = 0) {
       if (!batches.has(mat)) batches.set(mat, []);
@@ -410,9 +412,9 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   }
 
   return {
-    asphalt: surface('asphalt', 0x252b30), concrete: surface('concrete', 0x92948f),
+    asphalt: surface('asphalt', 0x41484c), concrete: surface('concrete', 0x92948f),
     grass: surface('grass', 0x3c6335), masonry: hex => surface('stone', hex),
     brick: hex => surface('brick', hex), siding: hex => surface('siding', hex), roofing: hex => surface('roof', hex),
-    windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment, atmosphere,
+    stucco:hex=>surface('stucco',hex),wood:hex=>surface('wood',hex),pbr,windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment, atmosphere,
   };
 }

@@ -38,6 +38,7 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
   const duration = clamp(Number.isFinite(elapsed) ? elapsed : 0, 0, .1);
   const direction = clamp(input.forward || 0, -1, 1), steer = clamp(input.steer || 0, -1, 1);
   const handbrake = !!input.handbrake;
+  const surface=input.surface||{},gripScale=clamp(surface.grip??1,.35,1.2),rolling=clamp(surface.rollingResistance??1,.5,3),grade=clamp(surface.grade??0,-.3,.3);
   let remaining = duration, collided = false, distance = 0,impactSpeed=0;
   while (remaining > 1e-8) {
     const dt = Math.min(remaining, 1 / 120); remaining -= dt;
@@ -53,8 +54,8 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
     state.brake = approach(state.brake, braking ? (handbrake ? .8 : Math.abs(direction)) : 0, 16, dt);
     const cornerLoad=clamp(Math.abs(state.lateralAcceleration)/9.81,0,.85);
     const engine = state.throttle * (6500 / VEHICLE.mass) * (1 - .68 * clamp(abs / VEHICLE.maxSpeed, 0, 1))*Math.sqrt(Math.max(.2,1-cornerLoad*cornerLoad));
-    const resistance = abs > .02 ? .13 + .00042 * abs * abs + .012 * abs + (state.throttle<.05?.045*abs:0) : 0;
-    let acceleration = state.direction * engine - Math.sign(speed) * (resistance + state.brake * 9.2);
+    const resistance = abs > .02 ? .13*rolling + .00042 * abs * abs + .012 * abs + (state.throttle<.05?.045*abs:0) : 0;
+    let acceleration = state.direction * engine - Math.sign(speed) * (resistance + state.brake * 9.2*gripScale)-9.81*grade;
     if (braking && abs < .1) {state.speed = 0; acceleration = 0; state.throttle = 0;}
     else {
       state.speed = clamp(speed + acceleration * dt, -VEHICLE.maxReverse, VEHICLE.maxSpeed);
@@ -65,7 +66,7 @@ export function advanceVehicle(state, input, elapsed, canOccupy = () => true) {
     const maxSteer = .57 / (1 + abs * .055);
     state.steering = approach(state.steering, steer * maxSteer, Math.abs(steer) > .05 ? 5.5 : 7, dt);
     const beta = Math.atan(.5 * Math.tan(state.steering));
-    const grip = (handbrake ? .48 : .92) * 9.81;
+    const grip = (handbrake ? .48 : .92) * 9.81*gripScale*Math.sqrt(Math.max(.25,1-Math.pow(state.brake*.78,2))); 
     const desiredYaw = state.speed * Math.cos(beta) * Math.tan(state.steering) / VEHICLE.wheelbase;
     const limitedYaw = clamp(desiredYaw, -grip / Math.max(abs, 1), grip / Math.max(abs, 1));
     state.yawRate = Math.abs(state.speed) < .05 ? 0 : approach(state.yawRate, limitedYaw, 10, dt);

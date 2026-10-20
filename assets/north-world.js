@@ -3,7 +3,7 @@ import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight,bri
 export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters}){
   const unit=new THREE.BoxGeometry(1,1,1),batches=new Map(),dummy=new THREE.Object3D();
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-  const stone=mat(0xb7afa0),dark=mat(0x293d47,.36,.5),silver=mat(0x7f9198,.35,.65),gold=mat(0x9c8354,.4,.5),glass=[mat(0x355b6d,.2,.48),mat(0x4d6e78,.22,.4),mat(0x3e555e,.2,.5)],brick=[mat(0x794536),mat(0x8e6247),mat(0x4c605b)],warm=new THREE.MeshStandardMaterial({color:0xc6b183,emissive:0x6d4c20,emissiveIntensity:.3,roughness:.38}),white=mat(0xdbd2ba),roadPaint=mat(0xdfc36d),rail=mat(0x344d52,.45,.65);
+  const stone=visualKit.masonry?.(0xb7afa0)||mat(0xb7afa0),dark=mat(0x293d47,.36,.5),silver=mat(0x7f9198,.35,.65),gold=mat(0x9c8354,.4,.5),glass=[0x55707b,0x6e858c,0x536771].map(c=>new THREE.MeshPhysicalMaterial({color:c,roughness:.16,metalness:.05,clearcoat:1,ior:1.5,envMapIntensity:1.15})),brick=[0x794536,0x8e6247,0x4c605b].map(c=>visualKit.brick?.(c)||mat(c)),warm=new THREE.MeshStandardMaterial({color:0xc6b183,emissive:0x6d4c20,emissiveIntensity:.3,roughness:.38}),white=mat(0xdbd2ba),roadPaint=mat(0xdfc36d),rail=mat(0x344d52,.45,.65);
   function box(material,x,y,z,w,h,d,rotation=0){if(!batches.has(material))batches.set(material,[]);batches.get(material).push({x,y:y+h/2,z,w,h,d,rotation});}
   function solid(x,z,w,d){obstacles.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});}
   function label(text,x,y,z,w=8,h=.85,color='#1c3541'){
@@ -34,7 +34,7 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(indices);g.computeVertexNormals();const m=new THREE.Mesh(g,stone);m.name=name;m.castShadow=m.receiveShadow=true;scene.add(m);supports.push(m);return m;
   }
   for(const [from,to] of [[-165,BRIDGE.south],[BRIDGE.north,-1150]]){const center=(from+to)/2,length=Math.abs(to-from);cube(scene,0,.01,center,15,.05,length,C.road,false);for(const s of [-1,1])cube(scene,s*9.3,.07,center,3,.14,length,C.walk,false);}
-  const bridgeAsphalt=C.road.clone();bridgeAsphalt.polygonOffset=true;bridgeAsphalt.polygonOffsetFactor=-1;bridgeAsphalt.polygonOffsetUnits=-2;
+  const bridgeAsphalt=visualKit.pbr?.surface('asphalt',0x3d4448)||C.road.clone();bridgeAsphalt.polygonOffset=true;bridgeAsphalt.polygonOffsetFactor=-1;bridgeAsphalt.polygonOffsetUnits=-2;
   bridgeSurfaces.push(strip(0,15,0,bridgeAsphalt));
   for(const s of [-1,1]){
     bridgeSurfaces.push(strip(s*9.3,3,.15,C.walk,BRIDGE.south,BRIDGE.north,'Bridge footpath'));
