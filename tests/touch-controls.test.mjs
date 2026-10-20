@@ -54,3 +54,11 @@ function setup(touch = true) {
   t.media.emit('change', {matches: false}); assert.equal(t.controls.enabled, false);
 }
 console.log('Touch input passed: simultaneous movement/camera, pointer ownership, cancellation, actions, driving controls, menu/focus resets, and desktop-only keyboard layout.');
+
+{
+ const t=setup();t.controls.update({driving:false,near:null});assert.equal(t.el('#touchInteract').hidden,true);assert.equal(t.el('#touchVehicle').hidden,true);assert.equal(t.el('#touchRun').hidden,false);
+ t.controls.update({driving:false,near:{kind:'parent'}});assert.equal(t.el('#touchInteract').hidden,false);assert.equal(t.el('#touchVehicle').hidden,true);
+ t.controls.update({driving:false,near:{kind:'car'}});assert.equal(t.el('#touchInteract').hidden,true);assert.equal(t.el('#touchVehicle').hidden,false,'Only one enter-vehicle action appears');
+ t.controls.update({driving:true,near:null});assert.equal(t.el('#touchInteract').hidden,true);assert.equal(t.el('#touchVehicle').hidden,false);assert.equal(t.el('#touchRun').hidden,true);assert.equal(t.el('#touchBrake').hidden,false);
+ t.controls.update({driving:true,rideKind:'bicycle',near:null});assert.equal(t.el('#touchRun').hidden,false);assert.equal(t.el('#touchVehicle').textContent,'Dismount');
+}
