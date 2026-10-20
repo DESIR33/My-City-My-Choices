@@ -40,44 +40,70 @@ function dataTexture(w, h, paint, repeatX = 1, repeatY = 1) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = 8;
+  texture.anisotropy = 16;
   texture.generateMipmaps = true;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.needsUpdate = true;
   return texture;
 }
-function marble(tint, vein) {
+function marble(tint, vein, slab = 0) {
   return dataTexture(512, 512, (x, y) => {
-    const n = fbm(x*.008, y*.008), warp = fbm(x*.004+2, y*.004);
-    const band = Math.abs(Math.sin(x*.008 + y*.003 + warp*4 + n*2));
-    const v = Math.pow(band, 4)*.55;
-    const grout = Math.min(x%256, 256-(x%256)) < 3 || Math.min(y%256, 256-(y%256)) < 3;
-    const speckle = (hash(x, y)-.5)*5;
+    const shift = slab ? hash(Math.floor(x/slab), Math.floor(y/slab)) : 0;
+    const n = fbm((x+shift*90)*.007, (y+shift*40)*.007);
+    const warp = fbm(x*.0035+2.2, y*.003);
+    const band = Math.abs(Math.sin(x*.007 + y*.0016 + warp*4.5 + n*2.2 + shift));
+    const v = Math.pow(1-band, 2.6)*.72 + (n-.35)*.35;
+    let joint = 0;
+    if (slab) {
+      const jx = Math.min(x%slab, slab-(x%slab)), jy = Math.min(y%slab, slab-(y%slab));
+      joint = Math.max(0, 1-Math.min(jx, jy)/22);
+    }
+    const speckle = (hash(x, y)-.5)*8;
     return tint.map((channel, i) => {
-      const stone = channel*(1-v)+vein[i]*v+speckle;
-      return Math.max(0, Math.min(255, grout ? stone*.78 : stone));
+      let stone = channel*(1-Math.max(0, Math.min(1, v))) + vein[i]*Math.max(0, Math.min(1, v)) + speckle;
+      stone *= 1-joint*.34;
+      return Math.max(0, Math.min(255, stone));
     });
   }, 1, 1);
 }
 function wood() {
-  return dataTexture(256, 256, (x, y) => {
-    const g = Math.sin((y + fbm(x*.04, y*.01)*90)*.35)*.5+.5;
-    const tone = 92+g*70+(hash(x,y)-.5)*12;
-    return [tone*.62, tone*.4, tone*.24];
+  return dataTexture(256, 512, (x, y) => {
+    const ring = Math.sin((y*.08) + fbm(x*.03, y*.008)*18)*.5+.5;
+    const pore = hash(x, Math.floor(y/3)) > .82 ? -28 : 0;
+    const tone = 78+ring*88+pore+(hash(x, y)-.5)*8;
+    return [tone*.55, tone*.34, tone*.18];
   });
 }
 function fabric(rgb) {
   return dataTexture(128, 128, (x, y) => {
-    const weave = ((x+y)%4<2?.06:-.04)+(hash(x,y)-.5)*.08;
+    const loop = fbm(x*.18, y*.18);
+    const weave = ((x+y)%5<2?.05:-.03)+(loop-.5)*.18;
     return rgb.map(channel => Math.max(0, Math.min(255, channel*(1+weave))));
   });
 }
-function carpet() {
+function carpet(base, accent) {
   return dataTexture(256, 256, (x, y) => {
-    const pile = fbm(x*.08, y*.08);
-    const dye = .9+pile*.12;
-    return [92*dye, 78*dye, 70*dye];
+    const pile = fbm(x*.045, y*.045);
+    const tuft = fbm(x*.16+3, y*.16);
+    const motif = Math.sin(x*.035)*Math.sin(y*.035);
+    const dye = .84+pile*.18+tuft*.05+motif*.035;
+    return base.map((v, i) => Math.max(0, Math.min(255, (v*.78+accent[i]*.22)*dye+(hash(x, y)-.5)*5)));
+  });
+}
+function softField(tint, vein) {
+  return dataTexture(128, 128, (x, y) => {
+    const n = fbm(x*.015, y*.015), m = fbm(x*.006+4, y*.006);
+    const v = n*.6+m*.4;
+    return tint.map((channel, i) => Math.max(0, Math.min(255, channel*(.82+v*.2)*.72+vein[i]*v*.4+(hash(x, y)-.5)*3)));
+  });
+}
+function borderedRug() {
+  return dataTexture(256, 256, (x, y) => {
+    const u = x/255, v = y/255, edge = u<.07||u>.93||v<.07||v>.93;
+    const pile = fbm(x*.05, y*.05);
+    const src = edge ? [78, 54, 44] : [188, 164, 140];
+    return src.map(channel => Math.max(0, Math.min(255, channel*(.9+pile*.12))));
   });
 }
 
@@ -156,28 +182,37 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     }
   }
 
-  const plaster = new THREE.MeshStandardMaterial({color:0xf4f1eb, roughness:.86, metalness:0, side:THREE.DoubleSide, fog:false});
-  const stoneMap = marble([232, 226, 218], [168, 160, 150]);
-  stoneMap.repeat.set(.42, .42);
-  const stone = new THREE.MeshPhysicalMaterial({map:stoneMap, bumpMap:stoneMap, bumpScale:.006, color:0xd9d0c6, roughness:.55, metalness:0, clearcoat:.08, clearcoatRoughness:.6, side:THREE.DoubleSide, fog:false});
-  const darkStoneMap = marble([92, 90, 88], [48, 46, 44]);
-  darkStoneMap.repeat.set(.55, .55);
-  const darkStone = new THREE.MeshPhysicalMaterial({map:darkStoneMap, bumpMap:darkStoneMap, bumpScale:.008, roughness:.46, metalness:.08, clearcoat:.08, side:THREE.DoubleSide, fog:false});
-  const woodMap = wood(); woodMap.repeat.set(1.1, 1.1);
-  const walnut = new THREE.MeshStandardMaterial({map:woodMap, bumpMap:woodMap, bumpScale:.03, roughness:.48, metalness:0, side:THREE.DoubleSide, fog:false});
-  const steel = new THREE.MeshPhysicalMaterial({color:0xc8ccd1, roughness:.24, metalness:1, clearcoat:.45, clearcoatRoughness:.2, envMapIntensity:1.15, side:THREE.DoubleSide, fog:false});
-  const brass = new THREE.MeshPhysicalMaterial({color:0xb08d57, roughness:.3, metalness:1, clearcoat:.4, clearcoatRoughness:.22, envMapIntensity:1.25, side:THREE.DoubleSide, fog:false});
-  const glass = new THREE.MeshPhysicalMaterial({color:0xe7eeea, roughness:.04, metalness:0, transmission:1, thickness:.04, ior:1.5, transparent:true, side:THREE.DoubleSide, fog:false});
-  const charcoalMap = fabric([58, 60, 64]);
-  const charcoal = new THREE.MeshStandardMaterial({map:charcoalMap, bumpMap:charcoalMap, bumpScale:.015, roughness:.92, side:THREE.DoubleSide, fog:false});
-  const sandMap = fabric([214, 204, 190]);
-  const sand = new THREE.MeshStandardMaterial({map:sandMap, bumpMap:sandMap, bumpScale:.012, roughness:.9, side:THREE.DoubleSide, fog:false});
-  const carpetMap = carpet(); carpetMap.repeat.set(1.6, 1.6);
-  const carpetMat = new THREE.MeshStandardMaterial({map:carpetMap, bumpMap:carpetMap, bumpScale:.04, roughness:.96, side:THREE.DoubleSide, fog:false});
-  const linen = new THREE.MeshStandardMaterial({color:0xf7f4ef, roughness:.84, side:THREE.DoubleSide, fog:false});
+  const plaster = new THREE.MeshStandardMaterial({color:0xd4cfc6, roughness:.9, metalness:0, side:THREE.DoubleSide, fog:false});
+  const stoneMap = marble([186, 176, 164], [96, 86, 76], 0);
+  stoneMap.repeat.set(.16, .16);
+  const stone = new THREE.MeshPhysicalMaterial({map:stoneMap, bumpMap:stoneMap, bumpScale:.025, roughness:.62, metalness:.03, clearcoat:.04, clearcoatRoughness:.5, envMapIntensity:.25, side:THREE.DoubleSide, fog:false});
+  const floorMap = softField([198, 184, 166], [150, 132, 112]);
+  floorMap.repeat.set(.04, .04);
+  const stoneFloor = new THREE.MeshPhysicalMaterial({map:floorMap, roughness:.55, metalness:.02, clearcoat:.08, clearcoatRoughness:.5, envMapIntensity:.12, color:0xfff3e6, side:THREE.DoubleSide, fog:false});
+  const darkStoneMap = marble([72, 66, 60], [36, 32, 30], 0);
+  darkStoneMap.repeat.set(.3, .3);
+  const darkStone = new THREE.MeshPhysicalMaterial({map:darkStoneMap, bumpMap:darkStoneMap, bumpScale:.02, roughness:.46, metalness:.16, clearcoat:.08, side:THREE.DoubleSide, fog:false});
+  const woodMap = wood(); woodMap.repeat.set(.85, 1.4);
+  const walnut = new THREE.MeshStandardMaterial({map:woodMap, bumpMap:woodMap, bumpScale:.045, roughness:.42, metalness:0, envMapIntensity:.35, side:THREE.DoubleSide, fog:false});
+  const steel = new THREE.MeshPhysicalMaterial({color:0xd2d6db, roughness:.18, metalness:1, clearcoat:.55, clearcoatRoughness:.16, envMapIntensity:1.35, side:THREE.DoubleSide, fog:false});
+  const brass = new THREE.MeshPhysicalMaterial({color:0xc4a15a, roughness:.26, metalness:1, clearcoat:.5, clearcoatRoughness:.18, envMapIntensity:1.4, side:THREE.DoubleSide, fog:false});
+  const glass = new THREE.MeshPhysicalMaterial({color:0xe7eeea, roughness:.05, metalness:0, transmission:.92, thickness:.12, ior:1.5, transparent:true, opacity:.45, side:THREE.DoubleSide, fog:false});
+  const charcoalMap = fabric([62, 66, 72]);
+  const charcoal = new THREE.MeshStandardMaterial({map:charcoalMap, bumpMap:charcoalMap, bumpScale:.02, roughness:.86, side:THREE.DoubleSide, fog:false});
+  const sandMap = fabric([206, 190, 168]);
+  const sand = new THREE.MeshStandardMaterial({map:sandMap, bumpMap:sandMap, bumpScale:.02, roughness:.84, side:THREE.DoubleSide, fog:false});
+  const rustMap = fabric([120, 72, 58]);
+  const rust = new THREE.MeshStandardMaterial({map:rustMap, bumpMap:rustMap, bumpScale:.02, roughness:.84, side:THREE.DoubleSide, fog:false});
+  const carpetMap = softField([92, 78, 68], [58, 46, 40]); carpetMap.repeat.set(.045, .045);
+  const carpetMat = new THREE.MeshStandardMaterial({map:carpetMap, roughness:.97, color:0xf0e4d8, side:THREE.DoubleSide, fog:false});
+  const suiteCarpetMap = softField([120, 86, 72], [78, 52, 44]); suiteCarpetMap.repeat.set(.04, .04);
+  const suiteCarpet = new THREE.MeshStandardMaterial({map:suiteCarpetMap, roughness:.97, color:0xf3e2d4, side:THREE.DoubleSide, fog:false});
+  const linenMap = fabric([236, 228, 216]);
+  const linen = new THREE.MeshStandardMaterial({map:linenMap, bumpMap:linenMap, bumpScale:.02, roughness:.8, side:THREE.DoubleSide, fog:false});
   const leafMat = new THREE.MeshStandardMaterial({color:0x2d5a3c, roughness:.8, side:THREE.DoubleSide, fog:false});
-  const glowMat = new THREE.MeshStandardMaterial({color:0xfff4e4, emissive:0xffe2b8, emissiveIntensity:2.4, roughness:.4, fog:false});
-  const coveMat = new THREE.MeshStandardMaterial({color:0xfff6ea, emissive:0xffe6c4, emissiveIntensity:1.6, roughness:.5, side:THREE.DoubleSide, fog:false});
+  const glowMat = new THREE.MeshStandardMaterial({color:0xfff4e4, emissive:0xffd7a2, emissiveIntensity:1.35, roughness:.4, fog:false});
+  const coveMat = new THREE.MeshStandardMaterial({color:0xfff6ea, emissive:0xffe0b0, emissiveIntensity:1.15, roughness:.5, side:THREE.DoubleSide, fog:false});
+  const lights = [];
   const cityGlass = visualKit?.windowMaterial?.(2) || glass;
   const stucco = new THREE.MeshStandardMaterial({color:0xe0becf, roughness:.82});
   const trim = new THREE.MeshStandardMaterial({color:0xf1ecd8, roughness:.78});
@@ -259,9 +294,9 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       box(parent, mat, (a+b)/2, y, (c+d)/2, b-a, height, d-c);
     }
   }
-  slab(interior, stone, floors[0].y);
+  slab(interior, stoneFloor, floors[0].y);
   slab(interior, carpetMat, floors[1].y);
-  slab(interior, carpetMat, floors[2].y);
+  slab(interior, suiteCarpet, floors[2].y);
   function ceiling(y, h = .12) {
     const parts = [
       [room.x0, hole.x0, room.z0, room.z1],
@@ -279,8 +314,14 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   const innerT = .18;
   box(interior, plaster, bx, .21, zNorth+.78, building.w-1.6, 16, innerT);
   box(interior, stone, bx, .21, zSouth-.78, building.w-1.6, 16, innerT);
-  box(interior, darkStone, bx, .21, zSouth-.64, building.w-2.4, 1.08, .06);
-  box(interior, brass, bx, 1.28, zSouth-.6, building.w-2.4, .035, .045);
+  box(interior, walnut, bx, .21, zSouth-.64, building.w-2.4, 1.05, .08);
+  box(interior, brass, bx, 1.26, zSouth-.58, building.w-2.4, .04, .05);
+  for (const y of [6.42, 11.15, 15.82]) {
+    box(interior, walnut, bx, y, zSouth-1.02, building.w-2.3, .14, .16);
+    box(interior, walnut, bx, y, zNorth+1.02, building.w-2.3, .14, .16);
+    box(interior, walnut, back+1.05, y, bz, .16, .14, building.d-2.4);
+    box(interior, walnut, front-.95, y, bz, .16, .14, building.d-2.4);
+  }
   box(interior, plaster, back+.78, .21, bz, innerT, 16, building.d-1.8);
   box(interior, plaster, front-.7, 3.2, bz, innerT, 13, building.d-1.8);
   box(interior, plaster, front-.7, .21, bz-sideCenter, innerT, 3.0, sideSpan-.4);
@@ -335,16 +376,16 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     cyl(g, brass, .24, 0, .24, .035, .32, .035);
     blocker(x, z, .8, .8, floorSets[0]);
   }
-  function table(x, z) {
-    const g = new THREE.Group(); g.position.set(x, floors[0].y, z); interior.add(g);
+  function table(x, z, y = floors[0].y, bucket = floorSets[0]) {
+    const g = new THREE.Group(); g.position.set(x, y, z); interior.add(g);
     cyl(g, brass, 0, 0, 0, .04, .34, .04);
     cyl(g, brass, 0, .34, 0, .28, .025, .28);
     const top = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, .02, 32), glass);
     top.position.y = .38; g.add(top);
-    blocker(x, z, 1.15, 1.15, floorSets[0]);
+    blocker(x, z, 1.15, 1.15, bucket);
   }
-  function tree(x, z, h = 2.5) {
-    const g = new THREE.Group(); g.position.set(x, floors[0].y, z); interior.add(g);
+  function tree(x, z, h = 2.5, y = floors[0].y, bucket = floorSets[0]) {
+    const g = new THREE.Group(); g.position.set(x, y, z); interior.add(g);
     cyl(g, darkStone, 0, 0, 0, .32, .42, .32, 20);
     cyl(g, walnut, 0, .42, 0, .06, h*.45, .06, 8);
     for (let i = 0; i < 9; i++) {
@@ -354,26 +395,57 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       leaf.rotation.y = a; leaf.rotation.x = -.4; g.add(leaf);
     }
     const crown = new THREE.Mesh(sphere, leafMat); crown.scale.set(.55, .7, .55); crown.position.y = .7+h*.45; g.add(crown);
-    blocker(x, z, .7, .7, floorSets[0]);
+    blocker(x, z, .7, .7, bucket);
   }
-  sofa(X(9), Z(8), 0, charcoal, 2.7);
-  sofa(X(9), Z(-8), Math.PI, sand, 2.7);
-  sofa(X(-16), Z(6), Math.PI/2, charcoal, 2.3);
-  chair(X(6.2), Z(5.2), .4);
-  chair(X(7.4), Z(3.4), 2.2);
-  chair(X(12.6), Z(5.6), -1.2);
-  table(X(8.6), Z(4.6));
-  table(X(-15.2), Z(-6));
-  tree(X(16), Z(2), 2.6);
-  tree(X(-16), Z(-4), 2.3);
-  tree(X(16), Z(-14), 2.2);
-  box(interior, carpetMat, X(8.4), floors[0].y+.01, Z(2.2), 8.4, .02, 9.2);
-  box(interior, carpetMat, X(-6.2), floors[0].y+.01, Z(10.5), 3.2, .02, 8.4);
+  function floorLamp(x, z, y) {
+    const g = new THREE.Group(); g.position.set(x, y, z); interior.add(g);
+    cyl(g, brass, 0, 0, 0, .14, .025, .14, 14);
+    cyl(g, brass, 0, .02, 0, .015, 1.38, .015, 8);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(.16, .2, .28, 18, 1, true), linen);
+    shade.position.y = 1.48; g.add(shade);
+    const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.07, .07, .07); bulb.position.y = 1.46; g.add(bulb);
+    const lamp = new THREE.PointLight(0xffd7a4, 26, 7, 2); lamp.position.y = 1.46; g.add(lamp); lights.push(lamp);
+  }
+  function books(x, z, y) {
+    const g = new THREE.Group(); g.position.set(x, y, z); interior.add(g);
+    box(g, rust, -.08, 0, 0, .16, .04, .22);
+    box(g, charcoal, .08, 0, .02, .14, .035, .2);
+    box(g, sand, 0, .04, -.02, .18, .028, .2);
+  }
+  function rug(x, y, z, w, d) {
+    const map = borderedRug();
+    map.repeat.set(1/Math.max(w, .2), 1/Math.max(d, .2));
+    const mat = new THREE.MeshStandardMaterial({map, roughness:.94, side:THREE.DoubleSide, fog:false});
+    box(interior, mat, x, y, z, w, .025, d);
+  }
+  // Main seating sits in the south view from the entrance aisle. The elevator
+  // aisle (local x -8.3, z 0..15) stays clear.
+  rug(X(5.2), floors[0].y+.01, Z(4.6), 7.4, 6.2);
+  sofa(X(5.2), Z(6.6), Math.PI, charcoal, 2.8);
+  sofa(X(5.2), Z(2.6), 0, sand, 2.6);
+  chair(X(2.2), Z(4.6), .9);
+  chair(X(8.2), Z(4.5), -1);
+  table(X(5.2), Z(4.6));
+  books(X(5.2), Z(4.6), floors[0].y+.4);
+  floorLamp(X(1.1), Z(6.8), floors[0].y);
+  floorLamp(X(9.2), Z(2.4), floors[0].y);
+  sofa(X(-16), Z(4), Math.PI/2, rust, 2.4);
+  chair(X(-13.2), Z(1.2), 1.2);
+  table(X(-14.6), Z(-2.4));
+  floorLamp(X(-16.8), Z(-2), floors[0].y);
+  tree(X(16), Z(4), 2.6);
+  tree(X(-16), Z(-8), 2.3);
+  tree(X(14), Z(-12), 2.1);
+  for (let i = 0; i < 3; i++) box(interior, walnut, X(5.2), 5.85, Z(3.1+i*1.7), 6.6, .1, .22);
 
   // Reception: stone top, walnut case, monitor, lamp. East of the elevator aisle.
   const deskX = X(7.2), deskZ = Z(13.2);
-  rounded(interior, walnut, deskX, floors[0].y, deskZ, 4.4, .92, .85, .04);
-  rounded(interior, stone, deskX, floors[0].y+.92, deskZ, 4.6, .07, 1.0, .02);
+  rounded(interior, darkStone, deskX, floors[0].y, deskZ, 4.15, .12, .72, .02);
+  rounded(interior, walnut, deskX, floors[0].y+.12, deskZ, 4.4, .8, .85, .04);
+  box(interior, brass, deskX, floors[0].y+.46, deskZ-.4, 4.15, .035, .02);
+  rounded(interior, stone, deskX, floors[0].y+.92, deskZ, 4.7, .08, 1.08, .02);
+  rounded(interior, walnut, deskX-1.7, floors[0].y, deskZ-1.15, .7, .92, 1.5, .03);
+  rounded(interior, stone, deskX-1.7, floors[0].y+.92, deskZ-1.15, .82, .07, 1.7, .02);
   box(interior, steel, deskX+.2, floors[0].y+1.02, deskZ-.15, .72, .42, .04);
   box(interior, dark, deskX+.2, floors[0].y+1.44, deskZ-.15, .62, .03, .04);
   cyl(interior, brass, deskX-1.5, floors[0].y+1.02, deskZ, .04, .42, .04);
@@ -381,7 +453,8 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   cyl(interior, darkStone, deskX+1.6, floors[0].y+1.05, deskZ+.05, .1, .28, .1, 16);
   const bloom = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({color:0xd9a598, roughness:.7, fog:false}));
   bloom.scale.set(.22, .16, .22); bloom.position.set(deskX+1.6, floors[0].y+1.42, deskZ+.05); interior.add(bloom);
-  blocker(deskX, deskZ, 4.6, 1.05, floorSets[0]);
+  blocker(deskX, deskZ, 4.7, 1.15, floorSets[0]);
+  blocker(deskX-1.7, deskZ-1.15, .9, 1.7, floorSets[0]);
   const deskSign = plaque('RECEPTION', 1.8, .32, {bg:'#141311', fg:'#f3eee6', font:'500 54px sans-serif', accent:'#b08d57'});
   deskSign.position.set(deskX, floors[0].y+1.7, deskZ-.5); interior.add(deskSign);
 
@@ -391,10 +464,12 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     cyl(interior, brass, X(lx), floors[0].y+6.5, Z(lz), .38, .08, .38, 20);
     blocker(X(lx), Z(lz), .75, .75, floorSets[0]);
   }
-  for (const lx of [-2, 4, 12]) {
-    const pendant = new THREE.Group(); pendant.position.set(X(lx), 0, Z(2)); interior.add(pendant);
-    cyl(pendant, brass, 0, 5.15, 0, .012, 1.5, .012, 8);
-    const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.22, .16, .22); bulb.position.y = 4.35; pendant.add(bulb);
+  for (const lx of [2.2, 8.2]) {
+    const pendant = new THREE.Group(); pendant.position.set(X(lx), 0, Z(4.6)); interior.add(pendant);
+    cyl(pendant, brass, 0, 5.05, 0, .012, 1.35, .012, 8);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(.18, .26, .32, 18, 1, true), linen);
+    shade.position.y = 4.28; pendant.add(shade);
+    const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.08, .08, .08); bulb.position.y = 4.28; pendant.add(bulb);
   }
 
   // Elevator bank against the south wall. Both cabs share one ride.
@@ -449,55 +524,129 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   blocker(X(-11.2), Z(17.2), .4, 2.6);
   blocker(X(-1.3), Z(17.2), .4, 2.6);
 
-  // Sky lounge furnishings. Collision is active only on that floor.
-  function loungeSeat(x, z, yaw) {
-    const g = new THREE.Group(); g.position.set(x, floors[1].y, z); g.rotation.y = yaw; interior.add(g);
-    rounded(g, charcoal, 0, .3, 0, 2.2, .26, .8, .05);
-    rounded(g, charcoal, 0, .52, -.32, 2.2, .42, .14, .03);
-    blocker(x, z, Math.abs(Math.cos(yaw))*2.2+Math.abs(Math.sin(yaw))*.85, Math.abs(Math.sin(yaw))*2.2+Math.abs(Math.cos(yaw))*.85, floorSets[1]);
+  // Sky lounge: seating groups, a bar, and lamps. The elevator landing (local x -10..-2, z 12..17) stays open.
+  const loungeY = floors[1].y;
+  function loungeSofa(x, z, yaw, material, length = 2.4) {
+    const g = new THREE.Group(); g.position.set(x, loungeY, z); g.rotation.y = yaw; interior.add(g);
+    rounded(g, material, 0, .32, 0, length, .32, .92, .08);
+    rounded(g, material, 0, .62, -.38, length, .58, .18, .05);
+    rounded(g, material, -length/2, .4, .05, .16, .48, .92, .04);
+    rounded(g, material, length/2, .4, .05, .16, .48, .92, .04);
+    rounded(g, walnut, 0, 0, 0, length-.1, .08, .8, .02);
+    blocker(x, z, Math.abs(Math.cos(yaw))*length+Math.abs(Math.sin(yaw))*1.05, Math.abs(Math.sin(yaw))*length+Math.abs(Math.cos(yaw))*1.05, floorSets[1]);
   }
-  loungeSeat(X(8), Z(6), .2);
-  loungeSeat(X(-15), Z(4), Math.PI/2);
-  const barX = X(14), barZ = Z(-6);
-  rounded(interior, walnut, barX, floors[1].y, barZ, 3.6, 1.05, .7, .03);
-  rounded(interior, stone, barX, floors[1].y+1.05, barZ, 3.8, .06, .85, .02);
-  blocker(barX, barZ, 3.8, .9, floorSets[1]);
-  for (let i = -1; i <= 1; i++) {
-    cyl(interior, brass, barX+i*.8, floors[1].y, barZ-1.05, .16, .08, .16, 16);
-    cyl(interior, steel, barX+i*.8, floors[1].y, barZ-1.05, .035, .7, .035, 10);
-    blocker(barX+i*.8, barZ-1.05, .4, .4, floorSets[1]);
+  function loungeChair(x, z, yaw, y = loungeY, bucket = floorSets[1]) {
+    const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = yaw; interior.add(g);
+    rounded(g, rust, 0, .34, 0, .78, .28, .78, .06);
+    rounded(g, rust, 0, .58, -.28, .78, .5, .14, .04);
+    cyl(g, brass, 0, 0, 0, .28, .08, .28, 16);
+    blocker(x, z, .9, .9, bucket);
   }
-  for (const lx of [-2, 6]) {
-    cyl(interior, brass, X(lx), floors[1].y+3.4, Z(2), .012, 1.1, .012, 8);
-    const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.18, .14, .18); bulb.position.set(X(lx), floors[1].y+2.8, Z(2)); interior.add(bulb);
+  rug(X(3.2), loungeY+.015, Z(5.6), 6.8, 5.4);
+  loungeSofa(X(3.2), Z(7.4), Math.PI, charcoal, 2.7);
+  loungeSofa(X(3.2), Z(3.6), 0, sand, 2.5);
+  loungeChair(X(0.4), Z(5.5), .7);
+  loungeChair(X(6.2), Z(5.6), -.7);
+  table(X(3.2), Z(5.5), loungeY, floorSets[1]);
+  books(X(3.2), Z(5.5), loungeY+.4);
+  floorLamp(X(-0.6), Z(7.6), loungeY);
+  floorLamp(X(6.8), Z(3.4), loungeY);
+  loungeSofa(X(-16), Z(2), Math.PI/2, charcoal, 2.6);
+  loungeChair(X(-12.4), Z(-1.2), 1.4);
+  table(X(-14.2), Z(2), loungeY, floorSets[1]);
+  const barX = X(10.4), barZ = Z(8.2);
+  const bar = new THREE.Group(); bar.position.set(barX, loungeY, barZ); interior.add(bar);
+  rounded(bar, walnut, 0, 0, 0, 3.6, 1.05, .68, .03);
+  rounded(bar, stone, 0, 1.05, 0, 3.8, .07, .86, .02);
+  box(bar, brass, 0, .55, -.3, 3.4, .03, .02);
+  blocker(barX, barZ, 3.9, 1.05, floorSets[1]);
+  for (let i = -2; i <= 2; i++) {
+    const stool = new THREE.Group(); stool.position.set(i*.68, 0, -1.05); bar.add(stool);
+    cyl(stool, brass, 0, 0, 0, .04, .62, .04, 10);
+    cyl(stool, rust, 0, .62, 0, .2, .06, .2, 16);
+    cyl(stool, brass, 0, .78, 0, .16, .02, .16, 12);
+    blocker(barX+i*.68, barZ-1.05, .46, .46, floorSets[1]);
   }
-  const loungeSign = plaque('SKY LOUNGE', 3.4, .48, {bg:'#141311', fg:'#f3eee6', font:'500 64px sans-serif', accent:'#b08d57'});
-  loungeSign.position.set(X(8), floors[1].y+2.4, zSouth-1.05); loungeSign.rotation.y = Math.PI; interior.add(loungeSign);
+  for (const lx of [-1.2, 0, 1.2]) {
+    cyl(bar, glass, lx, 1.16, .05, .055, .2, .055, 12);
+    cyl(bar, brass, lx, 1.12, .05, .065, .02, .065, 12);
+  }
+  box(interior, walnut, X(-18), loungeY, Z(-8), 3.2, 2.2, .12);
+  for (let i = 0; i < 8; i++) box(interior, brass, X(-18), loungeY+.2+i*.22, Z(-8.08), 2.8, .015, .02);
+  tree(X(12.5), Z(4), 2.1, loungeY, floorSets[1]);
+  const loungeSign = plaque('SKY LOUNGE', 4.6, .62, {bg:'#141311', fg:'#f6f1e8', font:'500 72px sans-serif', accent:'#c4a15a'});
+  loungeSign.position.set(X(4), loungeY+2.15, zSouth-1.02); loungeSign.rotation.y = Math.PI; interior.add(loungeSign);
+  for (const lx of [1.2, 5.2]) {
+    cyl(interior, brass, X(lx), loungeY+2.85, Z(5.5), .012, .85, .012, 8);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(.16, .22, .26, 16, 1, true), linen);
+    shade.position.set(X(lx), loungeY+2.35, Z(5.5)); interior.add(shade);
+    const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.07, .07, .07); bulb.position.set(X(lx), loungeY+2.35, Z(5.5)); interior.add(bulb);
+  }
+  for (let i = 0; i < 3; i++) box(interior, walnut, X(3.2), loungeY+2.55, Z(4+i*1.5), 5.8, .08, .18);
 
-  // Guest floor: a corridor out of the elevators and one open suite.
+  // Guest floor: a furnished corridor and one open suite you can walk into.
   const suiteWallZ = Z(8.6);
+  const suiteY = floors[2].y;
   blocker(X(-16), suiteWallZ, 12, .16, floorSets[2]);
   blocker(X(12), suiteWallZ, 16, .16, floorSets[2]);
-  // Door gap around local x = 2 (world X(2)), between the two wall segments.
-  const bedX = X(6), bedZ = Z(-8);
-  rounded(interior, walnut, bedX, floors[2].y, bedZ-.7, 1.7, .7, .08, .02);
-  rounded(interior, linen, bedX, floors[2].y+.15, bedZ+.15, 1.7, .28, 2.15, .05);
-  rounded(interior, sand, bedX-.25, floors[2].y+.45, bedZ-.55, .55, .16, .35, .04);
-  rounded(interior, sand, bedX+.25, floors[2].y+.45, bedZ-.55, .55, .16, .35, .04);
-  blocker(bedX, bedZ, 1.9, 2.4, floorSets[2]);
-  for (const side of [-1, 1]) {
-    rounded(interior, walnut, bedX+side*1.25, floors[2].y, bedZ-.4, .48, .52, .42, .02);
-    cyl(interior, brass, bedX+side*1.25, floors[2].y+.55, bedZ-.4, .03, .28, .03, 8);
-    const lamp = new THREE.Mesh(sphere, glowMat); lamp.scale.set(.1, .08, .1); lamp.position.set(bedX+side*1.25, floors[2].y+.9, bedZ-.4); interior.add(lamp);
-    blocker(bedX+side*1.25, bedZ-.4, .55, .5, floorSets[2]);
-  }
-  const suiteSign = plaque('SUITE  312', 2.2, .36, {bg:'#141311', fg:'#f6f1e8', font:'500 58px sans-serif'});
-  suiteSign.position.set(X(2), floors[2].y+2.15, suiteWallZ-.12); interior.add(suiteSign);
+  box(interior, walnut, X(-16), suiteY, suiteWallZ, 11.6, 2.7, .12);
+  box(interior, walnut, X(12), suiteY, suiteWallZ, 15.6, 2.7, .12);
+  box(interior, brass, X(-10.15), suiteY, suiteWallZ-.08, .08, 2.55, .08);
+  box(interior, brass, X(4.15), suiteY, suiteWallZ-.08, .08, 2.55, .08);
+  box(interior, brass, X(-3), suiteY+2.45, suiteWallZ-.08, 14.2, .08, .08);
+  const suiteDoor = new THREE.Group(); suiteDoor.position.set(X(-9.7), suiteY, suiteWallZ); suiteDoor.rotation.y = .7; interior.add(suiteDoor);
+  box(suiteDoor, walnut, .45, 0, 0, .9, 2.35, .05);
+  box(suiteDoor, brass, .88, 1.05, .04, .04, .12, .04);
+  rug(X(-6), suiteY+.01, Z(12.4), 2.1, 7.2);
   for (const lx of [-14, -8, 10, 16]) {
-    box(interior, walnut, X(lx), floors[2].y, Z(12.2), 1.05, 2.25, .08);
+    box(interior, walnut, X(lx), suiteY, Z(12.4), 1.15, 2.35, .08);
+    box(interior, brass, X(lx), suiteY+1.05, Z(12.28), .9, .04, .02);
     const num = plaque(String(300+Math.abs(lx)), .7, .28, {bg:'#1a1917', fg:'#f3eee6', font:'600 48px sans-serif'});
-    num.position.set(X(lx), floors[2].y+1.45, Z(12.05)); interior.add(num);
+    num.position.set(X(lx), suiteY+1.55, Z(12.22)); interior.add(num);
+    cyl(interior, brass, X(lx+.7), suiteY+1.35, Z(12.15), .04, .16, .04, 8);
+    const sconce = new THREE.Mesh(sphere, glowMat); sconce.scale.set(.05,.05,.05); sconce.position.set(X(lx+.7), suiteY+1.5, Z(12.12)); interior.add(sconce);
   }
+  const suiteSign = plaque('SUITE  312', 2.4, .42, {bg:'#141311', fg:'#f6f1e8', font:'500 60px sans-serif', accent:'#c4a15a'});
+  suiteSign.position.set(X(-3), suiteY+2.05, suiteWallZ-.16); interior.add(suiteSign);
+
+  const bedX = X(4), bedZ = Z(-3);
+  rug(bedX, suiteY+.012, bedZ+.2, 4.2, 5.2);
+  rounded(interior, walnut, bedX, suiteY, bedZ-1.15, 2.05, 1.15, .12, .03);
+  for (let i = -3; i <= 3; i++) box(interior, walnut, bedX+i*.22, suiteY+.15, bedZ-1.22, .08, .95, .04);
+  rounded(interior, walnut, bedX, suiteY, bedZ+.15, 1.9, .28, 2.15, .04);
+  rounded(interior, linen, bedX, suiteY+.28, bedZ+.2, 1.85, .22, 2.05, .05);
+  rounded(interior, sand, bedX, suiteY+.48, bedZ-.35, 1.7, .1, .7, .04);
+  rounded(interior, linen, bedX-.32, suiteY+.52, bedZ-.7, .55, .16, .38, .04);
+  rounded(interior, linen, bedX+.32, suiteY+.52, bedZ-.7, .55, .16, .38, .04);
+  rounded(interior, rust, bedX+.55, suiteY+.5, bedZ+.55, .7, .08, .55, .03);
+  blocker(bedX, bedZ, 2.1, 2.5, floorSets[2]);
+  rounded(interior, walnut, bedX, suiteY, bedZ+1.45, 1.5, .42, .42, .03);
+  blocker(bedX, bedZ+1.45, 1.55, .5, floorSets[2]);
+  for (const side of [-1, 1]) {
+    rounded(interior, walnut, bedX+side*1.35, suiteY, bedZ-.85, .52, .55, .42, .02);
+    cyl(interior, brass, bedX+side*1.35, suiteY+.55, bedZ-.85, .035, .32, .035, 8);
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(.1, .13, .16, 14, 1, true), linen);
+    shade.position.set(bedX+side*1.35, suiteY+.95, bedZ-.85); interior.add(shade);
+    const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.05,.05,.05); bulb.position.set(bedX+side*1.35, suiteY+.94, bedZ-.85); interior.add(bulb);
+    const lamp = new THREE.PointLight(0xffd7a4, 16, 4.5, 2); lamp.position.set(bedX+side*1.35, suiteY+1, bedZ-.85); scene.add(lamp); lights.push(lamp);
+    blocker(bedX+side*1.35, bedZ-.85, .58, .5, floorSets[2]);
+  }
+  loungeChair(X(12), Z(-6), -1.2, suiteY, floorSets[2]);
+  floorLamp(X(12.8), Z(-4.6), suiteY);
+  const deskSX = X(16), deskSZ = Z(2);
+  rounded(interior, walnut, deskSX, suiteY, deskSZ, 1.3, .75, .55, .03);
+  box(interior, steel, deskSX, suiteY+.78, deskSZ-.1, .7, .4, .03);
+  cyl(interior, brass, deskSX-.35, suiteY, deskSZ+.45, .16, .45, .16, 14);
+  blocker(deskSX, deskSZ, 1.4, .7, floorSets[2]);
+  box(interior, walnut, X(-14), suiteY, Z(-6), 1.3, 2.15, .55);
+  box(interior, brass, X(-14), suiteY+1.7, Z(-6.3), 1.15, .02, .02);
+  blocker(X(-14), Z(-6), 1.4, .7, floorSets[2]);
+  box(interior, stone, X(-14), suiteY, Z(2), 1.6, .85, .5);
+  box(interior, steel, X(-14), suiteY+.4, Z(2.28), 1.2, .7, .02);
+  cyl(interior, brass, X(-14), suiteY+.9, Z(2.2), .03, .18, .03, 8);
+  blocker(X(-14), Z(2), 1.7, .6, floorSets[2]);
+  const bedArt = plaque('312', 1.4, .9, {bg:'#1c1916', fg:'#e7d3c4', font:'500 84px sans-serif', accent:'#c4a15a'});
+  bedArt.position.set(bedX, suiteY+1.7, bedZ-1.28); interior.add(bedArt);
 
   // Sliding street doors in the deco opening.
   const doorL = box(entrance, glass, front-.15, .08, bz-doorHalf/2, .05, 2.85, doorHalf-.08);
@@ -506,26 +655,31 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   box(entrance, steel, front-.12, .08, bz+doorHalf, .1, 2.95, .08);
   const doorHomeL = doorL.position.z, doorHomeR = doorR.position.z;
 
-  const lights = [];
-  function spot(x, y, z, tx, tz, intensity, distance) {
-    const light = new THREE.SpotLight(0xfff0dc, intensity, distance, .75, .55, 1.3);
-    light.position.set(x, y, z); light.target.position.set(tx, .2, tz);
+  function spot(x, y, z, tx, ty, tz, intensity, distance) {
+    const light = new THREE.SpotLight(0xfff0dc, intensity, distance, .7, .5, 1.2);
+    light.position.set(x, y, z); light.target.position.set(tx, ty, tz);
     light.castShadow = false; scene.add(light, light.target); lights.push(light); return light;
   }
-  spot(X(0), 6.2, Z(4), X(2), Z(8), 900, 18);
-  spot(X(8), 5.8, Z(-2), X(9), Z(-6), 640, 16);
-  spot(X(-8), 5.8, Z(8), X(-6), Z(14), 720, 16);
-  spot(X(0), floors[1].y+3.2, Z(2), X(4), Z(4), 520, 12);
-  spot(X(4), floors[2].y+2.8, Z(-2), bedX, bedZ, 420, 11);
+  spot(X(5), 6.05, Z(4.6), X(5.2), floors[0].y, Z(4.6), 90, 12);
+  spot(X(7), 5.4, Z(12), X(7.2), floors[0].y, Z(13), 55, 10);
+  spot(X(-15), 5.5, Z(2), X(-16), floors[0].y, Z(4), 40, 9);
+  spot(X(3.2), loungeY+2.7, Z(5.5), X(3.2), loungeY, Z(5.5), 70, 9);
+  spot(barX, loungeY+2.3, barZ-.4, barX, loungeY, barZ, 36, 6);
+  spot(bedX, suiteY+2.45, bedZ, bedX, suiteY, bedZ, 64, 8);
+  spot(X(-2), suiteY+2.4, Z(12), X(-4), suiteY, Z(12), 42, 8);
   function warm(x, y, z, intensity, distance) {
     const light = new THREE.PointLight(0xffe3c4, intensity, distance, 2);
     light.position.set(x, y, z); light.castShadow = false; scene.add(light); lights.push(light);
   }
-  warm(X(2), 3.4, Z(2), 90, 18);
-  warm(X(8), 2.2, Z(6), 36, 8);
-  warm(deskX, 2.15, deskZ-1.2, 28, 7);
-  warm(X(-6), floors[1].y+2.2, Z(2), 46, 12);
-  warm(X(2), floors[2].y+2.1, Z(0), 40, 11);
+  warm(X(5), 3.2, Z(4.4), 18, 11);
+  warm(X(8), 2.6, Z(8), 10, 8);
+  warm(deskX, 2.4, deskZ-1.2, 12, 7);
+  warm(X(3), loungeY+2.15, Z(5.4), 16, 9);
+  warm(X(-15), loungeY+2.1, Z(2), 10, 6);
+  warm(barX, loungeY+1.6, barZ-.6, 9, 5);
+  warm(bedX, suiteY+1.9, bedZ, 18, 8);
+  warm(X(-4), suiteY+2.15, Z(11), 12, 8);
+  warm(X(12), suiteY+1.8, Z(-4), 8, 5);
   lights.push(...cabLights);
 
   let cutaway = false, entranceOpen = 0, doorOpen = 0, currentFloor = 0;
@@ -639,9 +793,9 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       hemiLight = scene.children.find(object => object.isHemisphereLight);
     }
     if (!cutaway || !sunLight) return;
-    sunLight.intensity *= .1;
-    if (hemiLight) hemiLight.intensity *= .28;
-    scene.environmentIntensity = .55;
+    sunLight.intensity *= .08;
+    if (hemiLight) hemiLight.intensity *= .22;
+    scene.environmentIntensity = .42;
   }
 
   return {
