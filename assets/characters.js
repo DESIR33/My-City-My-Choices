@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import {footContactLift} from './character-grounding.js';
 import { characterFacingYaw } from './character-controls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -240,6 +241,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
         const prepare=m=>{if(data.customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=.85;return mat};
         mesh.material=Array.isArray(mesh.material)?mesh.material.map(prepare):prepare(mesh.material);
       });
+      actor.updateMatrixWorld(true);data.contacts=[];data.jumpBones=[];source.traverse(bone=>{if(bone.isBone&&/[ _](L|R)[ _](Thigh|Calf|UpperArm)$/.test(bone.name))data.jumpBones.push(bone);if(bone.isBone&&/[ _](L|R)[ _]Foot$/.test(bone.name)){const pos=bone.getWorldPosition(new THREE.Vector3());data.contacts.push({bone,soleDepth:pos.y-actor.position.y});}});
       data.mixer=new THREE.AnimationMixer(source);data.actions={};
       for(const {name,gltf:motion} of clips){const clip=retargetMotion(motion.animations[0],motion.scene,source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}
       if(data.customizable){
@@ -301,18 +303,20 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const data=actor.userData.character,x=actor.position.x,z=actor.position.z;
       const dx=x-data.last.x,dz=z-data.last.y,displacement=Math.hypot(dx,dz);data.last.set(x,z);
       if(!actor.visible)continue;
-      actor.position.y=groundHeight(x,z);
+      actor.position.y=actor===player&&actor.userData.vertical?.managed?actor.userData.vertical.y:groundHeight(x,z);
       if(!data.ready)continue;
       // Face the direction of travel from world-space movement so turnarounds and crossing paths
       // cannot leave the body facing backward while a walk or run clip is playing.
       if(!data.riding&&!data.seated&&displacement>.025&&displacement<1){const heading=characterFacingYaw(dx,dz);if(heading!==null)actor.rotation.y=heading;}
       // Ignore teleports between businesses when selecting a movement animation.
       const speed=dt>0&&displacement<1?displacement/dt:0;data.speed=THREE.MathUtils.damp(data.speed,speed,12,dt);
-      const state=data.seated||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
+      const state=actor.userData.vertical?.grounded===false||data.seated||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
       data.actions[state].setEffectiveTimeScale(state==='idle'?1:THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9));
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
       data.phase+=dt;data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
       if(data.riding)ridingPose(actor,data);else activityPose(actor,data);
+      if(!data.riding&&!data.seated&&actor.userData.vertical?.grounded===false){for(const bone of data.jumpBones||[])bone.rotation.x+=/Calf$/.test(bone.name)?.45:/Thigh$/.test(bone.name)?-.25:-.18;actor.updateMatrixWorld(true);}
+      if(!data.riding&&!data.seated&&actor.userData.vertical?.grounded!==false&&data.contacts?.length){actor.updateMatrixWorld(true);const points=data.contacts.map(({bone,soleDepth})=>({...bone.getWorldPosition(new THREE.Vector3()),soleDepth}));data.visual.position.y+=footContactLift(points,groundHeight);actor.updateMatrixWorld(true);}
       if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
     }
   }
