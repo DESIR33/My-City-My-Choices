@@ -93,7 +93,7 @@ const m=fixture(true);assert.equal(m.kit.lampLights.length,2);assert.equal(m.kit
 // Execute the shipped menu handlers, including malformed storage and the real
 // pause gate. The visual clock is separate from story data and wallet state.
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-const controls=html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('let saveClock=0;const clock='));
+const controls=html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('sessionLifecycle=createSessionLifecycle('));
 for(const saved of [null,'{broken',JSON.stringify({hour:22,cycling:true})]) {
   const store=new Map(saved?[[CITY_LIGHT_STORAGE,saved]]:[]),els=new Map();let blocked=false,shown='',lastUpdate;
   const context={CITY_LIGHT_STORAGE,CITY_LIGHT_PRESETS,restoreCityTime,advanceCityTime,setCityLightPreset,formatCityTime,JSON,Math,

@@ -276,7 +276,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   const entranceDoor = blocker(front-.2, bz, .16, doorHalf*2- .15);
   const floorSeal = blocker(front-1.1, bz, .4, doorHalf*2);
 
-  const floorSurface = {minX:back+.7, maxX:front-.15, minZ:zNorth+.7, maxZ:zSouth-.7, top:floors[0].y};
+  const floorSurface = {minX:back+.7, maxX:front-.15, minZ:zNorth+.7, maxZ:zSouth-.7, top:floors[0].y,kind:'tile'};
   groundSurfaces?.push(floorSurface);
 
   const hole = {x0:X(-9.85), x1:X(-2.55), z0:Z(16.15), z1:Z(18.85)};

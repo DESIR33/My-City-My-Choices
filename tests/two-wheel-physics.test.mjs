@@ -14,3 +14,9 @@ for(const kind of ['bicycle','motorcycle']){
 }
 assert.ok(simulate('motorcycle',{forward:1},5).speed>simulate('bicycle',{forward:1},5).speed*2);
 console.log('Two-wheel physics passed: pedal/throttle, coasting, braking, walk back, collision recovery, lean, grip, slopes and frame rates.');
+// Transmission affects engine RPM and wheel torque, rather than just its label.
+const geared=create('motorcycle'),seen=new Set();let drops=0,priorRPM=1200,priorGear=0;
+for(let i=0;i<1800;i++){advance(geared,{forward:1},1/60);seen.add(geared.gear);if(geared.gearIndex>priorGear){const before=priorRPM;for(let j=0;j<12;j++)advance(geared,{forward:1},1/60);if(geared.rpm<before)drops++;}priorGear=geared.gearIndex;priorRPM=geared.rpm;}
+assert.deepEqual([...seen],['1','2','3','4','5','6']);assert(drops>=4,'Engine note drops through upshifts');const topSpeed=geared.speed;let downshifts=0,previous=geared.gearIndex;for(let i=0;i<600;i++){advance(geared,{forward:-1},1/60);if(geared.gearIndex<previous)downshifts++;previous=geared.gearIndex;}assert(downshifts>=4);assert.equal(geared.speed,0);assert.equal(geared.gear,'N');assert(geared.rpm<1300);assert(topSpeed>20);
+const shift=create('motorcycle');Object.assign(shift,{speed:12,gearIndex:1,rpm:6500});advance(shift,{forward:1},1/120);assert(shift.shiftTime>0);const during=shift.acceleration;shift.shiftTime=0;advance(shift,{forward:1},1/120);assert(shift.acceleration>during,'Torque delivery pauses during a shift');
+console.log('Six gears, RPM drops, downshifts, neutral and shift torque interruption pass');
