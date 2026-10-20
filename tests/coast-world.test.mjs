@@ -1,3 +1,4 @@
+import * as trafficRhythm from '../assets/traffic-rhythm.js';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
@@ -102,7 +103,7 @@ const trafficCode=html.slice(html.indexOf('function advanceTraffic(dt)'),html.in
 const cpu=new THREE.Group();cpu.position.set(-2.4,0,1208);
 const physics=await import('../assets/vehicle-physics.js');
 const safety=await import('../assets/traffic-safety.js');
-const trafficContext={...physics,...safety,pedestrianTracker:safety.createPedestrianTracker(),characters:{actors:[]},player:{position:{x:50,y:0,z:50}},traffic:[{mesh:cpu,speed:7,axis:'z',min:1050,max:2070}],vehicleRefs:[{group:cpu}],trafficControllers:[{ix:0,iz:1240,offset:0}],stopJunctions:[],signalClock:12,riding:null,twoWheelWorld:{vehicles:[]},driving:null,groundHeight,bridgePitch:()=>0,updateVehicleVisual(){}};
+const trafficContext={...trafficRhythm,...physics,...safety,pedestrianTracker:safety.createPedestrianTracker(),characters:{actors:[]},player:{position:{x:50,y:0,z:50}},traffic:[{mesh:cpu,speed:7,axis:'z',min:1050,max:2070}],vehicleRefs:[{group:cpu}],trafficControllers:[{ix:0,iz:1240,offset:0}],stopJunctions:[],signalClock:12,riding:null,twoWheelWorld:{vehicles:[]},driving:null,groundHeight,bridgePitch:()=>0,updateVehicleVisual(){}};
 vm.createContext(trafficContext);vm.runInContext(trafficCode,trafficContext);
 for(let i=0;i<450;i++)trafficContext.advanceTraffic(.1);
 assert.ok(cpu.position.z<1230.5,'Coastal traffic waits before the red light, not in the middle of the intersection');
