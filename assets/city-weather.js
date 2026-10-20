@@ -1,0 +1,9 @@
+export const WEATHER_STORAGE='mapleStreetWeatherV1';
+export const WEATHER_MODES=Object.freeze({manual:0,clear:0,rain:.5,heavy:1});
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+export function restoreWeather(value,wetness=0){const v=value&&typeof value==='object'?value:{},mode=Object.hasOwn(WEATHER_MODES,v.mode)?v.mode:'manual';return {mode,streaks:v.streaks!==false,intensity:mode==='manual'?0:clamp(Number.isFinite(v.intensity)?v.intensity:0,0,1),wetness:clamp(mode!=='manual'&&Number.isFinite(v.wetness)?v.wetness:Number(wetness)||0,0,1)};}
+export function selectWeather(s,mode){if(!Object.hasOwn(WEATHER_MODES,mode))return false;s.mode=mode;return true;}
+export function advanceWeather(s,elapsed,paused=false){const dt=paused?0:clamp(Number.isFinite(elapsed)?elapsed:0,0,.1);if(!dt)return s;s.intensity+=(WEATHER_MODES[s.mode]-s.intensity)*(1-Math.exp(-dt*.8));if(s.mode==='rain'||s.mode==='heavy')s.wetness=clamp(s.wetness+dt*.02*s.intensity,0,1);else if(s.mode==='clear')s.wetness=clamp(s.wetness-dt*.003,0,1);return s;}
+// Spatially index static roof/building footprints once. Individual mesh bounds
+// preserve doors/courtyards; no scene traversal or raycasts during rain updates.
+export function createRainShelter(boxes=[],ground=()=>0){const cells=new Map(),size=16;for(const b of boxes){if(![b.minX,b.maxX,b.minZ,b.maxZ,b.maxY].every(Number.isFinite)||b.maxX-b.minX<.5||b.maxZ-b.minZ<.5)continue;const ax=Math.floor(b.minX/size),bx=Math.floor(b.maxX/size),az=Math.floor(b.minZ/size),bz=Math.floor(b.maxZ/size);if((bx-ax+1)*(bz-az+1)>1600)continue;for(let x=ax;x<=bx;x++)for(let z=az;z<=bz;z++){const key=x+':'+z;if(!cells.has(key))cells.set(key,[]);cells.get(key).push(b);}}return (x,z)=>{let y=ground(x,z);for(const b of cells.get(Math.floor(x/size)+':'+Math.floor(z/size))||[])if(x>=b.minX&&x<=b.maxX&&z>=b.minZ&&z<=b.maxZ)y=Math.max(y,b.maxY);return y;};}

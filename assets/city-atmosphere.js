@@ -6,6 +6,7 @@ import {cityLightingAt} from './city-time.js';
 export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lightDirection, mobile=false}) {
   const streetLamps=[], glows=new Map(), vehicleCache=new WeakMap();
   const lampLights=[], headLights=[], vector=new THREE.Vector3(), target=new THREE.Vector3();
+  const overcastColor=new THREE.Color(0x78868d);
   const nightSky={value:0};
   sky.material.uniforms.cityNight=nightSky;
   sky.material.fragmentShader='uniform float cityNight;\n'+sky.material.fragmentShader.replace(
@@ -67,19 +68,20 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
   const moon=new THREE.Mesh(new THREE.SphereGeometry(11,16,10),new THREE.MeshBasicMaterial({color:0xd8e4f2,fog:false,toneMapped:false,transparent:true,opacity:0}));
   moon.name='Moon';moon.visible=false;scene.add(moon);
 
-  let sample=cityLightingAt(15), lastHour=NaN, selectClock=Infinity, lastNight=NaN;
+  let sample=cityLightingAt(15), lastHour=NaN,lastRain=NaN, selectClock=Infinity, lastNight=NaN;
   let selectedLamps=[];
-  function applyPalette(hour) {
+  function applyPalette(hour,rain=0) {
+    rain=THREE.MathUtils.clamp(Number(rain)||0,0,1);lastRain=rain;
     sample=cityLightingAt(hour);lastHour=hour;
-    renderer.toneMappingExposure=sample.exposure;scene.environmentIntensity=sample.env;
-    scene.background.setHex(sample.fog);scene.fog.color.setHex(sample.fog);scene.fog.density=sample.fogDensity;
-    sun.color.setHex(sample.sunColor);sun.intensity=sample.sun;
+    renderer.toneMappingExposure=sample.exposure*(1-rain*.12);scene.environmentIntensity=sample.env;
+    scene.background.setHex(sample.fog);scene.fog.color.setHex(sample.fog);scene.fog.density=sample.fogDensity*(1+rain*.6);overcastColor.setHex(0x78868d).multiplyScalar(1-sample.night*.9);scene.background.lerp(overcastColor,rain*.4);scene.fog.color.copy(scene.background);
+    sun.color.setHex(sample.sunColor);sun.intensity=sample.sun*(1-rain*.65);
     hemisphere.color.setHex(sample.top);hemisphere.groundColor.setHex(sample.ground);hemisphere.intensity=sample.hemi;
     lightDirection.set(sample.lightDirection.x,sample.lightDirection.y,sample.lightDirection.z).normalize();
     sky.material.uniforms.sunPosition.value.set(sample.sunDirection.x,sample.sunDirection.y,sample.sunDirection.z);
-    sky.material.uniforms.turbidity.value=2.2+sample.night*1.3;nightSky.value=sample.skyNight;
-    stars.material.opacity=sample.skyNight*.78;stars.visible=sample.skyNight>.02;
-    moon.material.opacity=sample.skyNight;moon.visible=sample.skyNight>.02;
+    sky.material.uniforms.turbidity.value=2.2+sample.night*1.3+rain*7;nightSky.value=sample.skyNight;
+    stars.material.opacity=sample.skyNight*.78*(1-rain*.8);stars.visible=sample.skyNight>.02;
+    moon.material.opacity=sample.skyNight*(1-rain*.65);moon.visible=sample.skyNight>.02;
     for(const [material,values] of glows)material.emissiveIntensity=values.day+(values.night-values.day)*sample.night;
     poolMaterial.opacity=sample.night*.26;if(poolMesh)poolMesh.visible=sample.night>.02;
   }
@@ -109,8 +111,8 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
       for(const material of shared)if(material.envMap&&Math.abs(material.envMapIntensity-(1-sample.night*.94))>.005)material.envMapIntensity=1-sample.night*.94;
     }
   }
-  function update({hour,position,vehicles=[],focusVehicle=null,dt=0}) {
-    if(!Number.isFinite(lastHour)||Math.abs(hour-lastHour)>.001)applyPalette(hour);
+  function update({hour,position,vehicles=[],focusVehicle=null,dt=0,rain=0}) {
+    if(!Number.isFinite(lastHour)||Math.abs(hour-lastHour)>.001||Math.abs(rain-lastRain)>.001)applyPalette(hour,rain);
     sky.position.set(position.x,0,position.z);stars.position.set(position.x,0,position.z);moon.position.set(position.x-820,900,position.z-1480);
     selectClock+=Math.max(0,dt);
     if(selectClock>=.2) {
