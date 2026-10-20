@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {createPalmGrove} from './palm-trees.js';
 import {COAST_CITY,COAST_BUILDINGS,COAST_MOTORS,COAST_INFO,coastGroundHeight} from './world-rules.js';
 import {createFlamingoHotel} from './flamingo-hotel.js';
 
@@ -128,41 +128,16 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
     const entranceWalk=b.x+60-9.3;
     cube(scene,(front+entranceWalk)/2,.07,b.z,entranceWalk-front,.14,3.2,paving,false);
   }
-  // Shared sculpted palm meshes: curved ringed trunk, arching frond spines,
-  // and paired tapered leaflets, rather than cone-shaped evergreen trees.
-  const trunkParts=[],trunkCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(),new THREE.Vector3(.25,4,0),new THREE.Vector3(.65,8.5,.16)]);
-  trunkParts.push(new THREE.TubeGeometry(trunkCurve,14,.19,8,false));
-  for(let y=.3;y<8.3;y+=.36)trunkParts.push(new THREE.TorusGeometry(.2,.018,4,10).rotateX(Math.PI/2).translate(.65*Math.pow(y/8.5,1.5),y,.16*y/8.5));
-  const trunkGeo=mergeGeometries(trunkParts);trunkParts.forEach(g=>g.dispose());
-  const leaves=[],colors=[],indices=[];
-  function leafQuad(a,b,c,d,tone){const base=leaves.length/3;for(const p of [a,b,c,d]){leaves.push(p.x,p.y,p.z);const color=new THREE.Color().setHSL(.27,.43,tone);colors.push(color.r,color.g,color.b);}indices.push(base,base+1,base+2,base,base+2,base+3);}
-  for(let n=0;n<11;n++) {
-    const angle=n*Math.PI*2/11,forward=new THREE.Vector3(Math.cos(angle),0,Math.sin(angle)),side=new THREE.Vector3(-Math.sin(angle),0,Math.cos(angle));
-    const spine=t=>new THREE.Vector3(.65,8.5,.16).addScaledVector(forward,4.4*t).add(new THREE.Vector3(0,2.4*Math.sin(t*Math.PI*.85)-3*t*t,0));
-    for(let k=0;k<14;k++){const a=spine(k/14),b=spine((k+1)/14);leafQuad(a.clone().addScaledVector(side,-.055),a.clone().addScaledVector(side,.055),b.clone().addScaledVector(side,.035),b.clone().addScaledVector(side,-.035),.28);}
-    for(let k=1;k<19;k++)for(const sign of [-1,1]){
-      const t=k/20,a=spine(t),b=spine(t+.035),tip=spine(Math.min(1,t+.13)).addScaledVector(side,sign*.95*Math.sin(t*Math.PI)).add(new THREE.Vector3(0,-.26,0));
-      leafQuad(a,b,tip.clone().addScaledVector(forward,.05),tip,.27+(k%4)*.035);
-    }
-  }
-  const leafGeo=new THREE.BufferGeometry();leafGeo.setAttribute('position',new THREE.Float32BufferAttribute(leaves,3));leafGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));leafGeo.setIndex(indices);leafGeo.computeVertexNormals();
-  const leafMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.92,side:THREE.DoubleSide}),bark=mat(0x92744f),palms=[];
-  function palm(x,z,scale=1){if(COAST_BUILDINGS.some(b=>x>b.x+b.w/2&&x<b.x+60-9.3&&Math.abs(b.z-z)<5))return;palms.push({x,z,scale});solid(x,z,.42,.42,'palm');}
+  // Layered coconut/royal palms share textured materials and near/far geometry.
+  const palms=[];
+  function palm(x,z,scale=1){if(COAST_BUILDINGS.some(b=>x>b.x+b.w/2&&x<b.x+60-9.3&&Math.abs(b.z-z)<5))return;palms.push({x,z,scale});solid(x,z,.8*scale,.8*scale,'palm');}
   for(let z=1088;z<2070;z+=28) {
     if(COAST_CITY.streets.some(n=>Math.abs(z-n)<16))continue;
     for(const x of [19,31,-105,-135,-225])palm(x,z,.84+((Math.round(z)+Math.abs(x))%7)*.055);
     if(!COAST_BUILDINGS.some(b=>b.x===-60&&Math.abs(b.z-z)<5))palm(-16,z,1.08);
   }
   for(let z=300;z<990;z+=70)for(const side of [-1,1])palm(side*17,z,.82);
-  for(const [geometry,material,name] of [[trunkGeo,bark,'Curved palm trunks'],[leafGeo,leafMat,'Feathered palm crowns']]) {
-    // Split into geographic tiles so distant palms can be frustum culled.
-    for(let tile=0;tile<5;tile++) {
-      const items=palms.filter(p=>Math.floor(p.z/450)===tile);if(!items.length)continue;
-      const mesh=new THREE.InstancedMesh(geometry,material,items.length);
-      items.forEach((p,i)=>{dummy.position.set(p.x,groundHeight(p.x,p.z),p.z);dummy.rotation.set(0,p.z*.017+p.x,0);dummy.scale.setScalar(p.scale);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
-      mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name=name;scene.add(mesh);
-    }
-  }
+  const palmGrove=createPalmGrove({scene,placements:palms,groundHeight,mobile});
   function lamp(x,z){box(dark,x,.21,z,.14,6.2,.14);box(dark,x+.8,6.4,z,1.7,.12,.14);box(lampGlow,x+1.5,6.28,z,.65,.12,.36);visualKit.atmosphere.addStreetLight({x:x+1.5,y:6.32,z,groundY:.23});}
   for(let z=1110;z<2080;z+=48)if(!COAST_CITY.streets.some(n=>Math.abs(n-z)<15))lamp(15,z);
   for(let z=330;z<1040;z+=85)lamp(-12,z);
@@ -205,14 +180,6 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
     items.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
     mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Sunshore architecture and street furniture';scene.add(mesh);
   }
-  return {buildings:COAST_BUILDINGS,palms,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
-    flamingo,floors:flamingo?.floors||[],
-    inside:p=>!!flamingo?.inside(p),
-    nearestElevator:p=>flamingo?.nearestElevator(p)||null,
-    isRiding:()=>!!flamingo?.isRiding(),
-    rideTo:(index,actor)=>!!flamingo?.rideTo(index,actor),
-    floorY:()=>flamingo?.floorY?.()??0,
-    presentInterior:()=>flamingo?.presentInterior?.(),
-    entrance:flamingo?.entrance||null,
-    update(dt,playerPosition){waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}flamingo?.update(dt,playerPosition);}};
+  return {buildings:COAST_BUILDINGS,palms,palmGrove,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
+    update(dt,eye){palmGrove.update(dt,eye);waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}}};
 }

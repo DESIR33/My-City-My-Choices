@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {CAFE,BAKERY,FIRE_STATION} from './city-rules.js';
 const unit=new THREE.BoxGeometry(1,1,1);
 export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurfaces,characters}){
-  const seats=[],cutaway=[],wood=new THREE.MeshStandardMaterial({color:0x865d3d,roughness:.82}),metal=new THREE.MeshStandardMaterial({color:0x243a3a,metalness:.55,roughness:.44}),cream=new THREE.MeshStandardMaterial({color:0xd5c9ad,roughness:.85}),red=new THREE.MeshStandardMaterial({color:0xa72e24,roughness:.5,metalness:.18}),navy=new THREE.MeshStandardMaterial({color:0x253846,roughness:.76});
+  const seats=[],wood=new THREE.MeshStandardMaterial({color:0x865d3d,roughness:.82}),metal=new THREE.MeshStandardMaterial({color:0x243a3a,metalness:.55,roughness:.44}),cream=new THREE.MeshStandardMaterial({color:0xd5c9ad,roughness:.85}),red=new THREE.MeshStandardMaterial({color:0xa72e24,roughness:.5,metalness:.18}),navy=new THREE.MeshStandardMaterial({color:0x253846,roughness:.76});
   function box(parent,mat,x,y,z,w,h,d){const m=new THREE.Mesh(unit,mat);m.position.set(x,y+h/2,z);m.scale.set(w,h,d);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
   const obstacle=(x,z,w,d)=>obstacles.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});
   function label(parent,text,x,y,z,w=5,h=.7){const c=document.createElement('canvas');c.width=1024;c.height=160;const q=c.getContext('2d');q.fillStyle='#173837';q.fillRect(0,0,1024,160);q.fillStyle='#f1dfb3';q.textAlign='center';q.textBaseline='middle';q.font='bold 66px Arial';q.fillText(text,512,82);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:t,roughness:.8,side:THREE.DoubleSide}));p.position.set(x,y,z);parent.add(p);return p;}
@@ -23,12 +23,16 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
   // The café is a real shell: the doorway and the room remain open for walking.
   const floor=box(scene,visualKit.concrete,-30,.08,-34,22,.13,14);groundSurfaces.push({minX:-41,maxX:-19,minZ:-41,maxZ:-27,top:.21});
   box(scene,visualKit.concrete,-30,.08,-18,28,.13,14);groundSurfaces.push({minX:-44,maxX:-16,minZ:-25,maxZ:-11,top:.21});
-  const walls=new THREE.Group();scene.add(walls);const brick=visualKit.brick(0x784635),glass=new THREE.MeshPhysicalMaterial({color:0x9aafa7,transparent:true,opacity:.24,roughness:.15,metalness:.08,side:THREE.DoubleSide});
+  const walls=new THREE.Group();scene.add(walls);const brick=visualKit.brick(0x784635),glass=new THREE.MeshPhysicalMaterial({color:0xd5ebe4,transparent:true,opacity:.16,roughness:.05,metalness:.02,depthWrite:false,side:THREE.DoubleSide});
+  const sconce=new THREE.MeshStandardMaterial({color:0xffefc4,emissive:0xffb35a,emissiveIntensity:.06,roughness:.28});
+  visualKit.atmosphere?.registerGlow(sconce,{day:.04,night:6.5,color:0xffc56a});
   for(const side of [-1,1]){box(walls,brick,-30+side*10.85,.21,-34,.3,4,14);obstacle(-30+side*10.85,-34,.3,14);box(walls,glass,-30+side*6.1,.21,-27,9.4,3.7,.12);obstacle(-30+side*6.1,-27,9.4,.12);}
   box(walls,brick,-30,.21,-40.9,22,4,.25);obstacle(-30,-40.9,22,.25);
-  const roof=box(scene,metal,-30,4.2,-34,22.6,.25,14.6);cutaway.push(walls,roof);
+  brick.side=THREE.DoubleSide;metal.side=THREE.DoubleSide;
+  const roof=box(scene,metal,-30,4.2,-34,22.6,.25,14.6);
   box(scene,metal,-30,3.8,-26.9,22,.4,.28);label(scene,'MAPLE CAFE',-30,3.99,-26.71,9,1.05);
-  for(const x of [-40,-20])box(scene,wood,x,.21,-25,.14,3.5,.14);
+  for(const x of [-40,-20]){box(scene,wood,x,.21,-25,.14,3.5,.14);box(scene,metal,x,2.55,-24.62,.5,.78,.14);box(scene,sconce,x,2.55,-24.48,.36,.52,.1);}
+  for(const x of [-32.4,-27.6]){box(scene,metal,x,2.72,-26.72,.18,.62,.16);box(scene,sconce,x,2.7,-26.55,.4,.46,.1);}
   box(scene,metal,-30,3.62,-25.7,22,.16,2.5);
   // A central walkway between the terrace tables leads straight to the door.
   for(const x of [-39,-21])for(const z of [-21,-14]){table(x,z,true);chair(x-1.45,z,Math.PI/2);chair(x+1.45,z,-Math.PI/2);}
@@ -46,9 +50,11 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
   box(bakeryWalls,bakeryBrick,-42,.21,-99.85,14,8.4,.3);obstacle(-42,-99.85,14,.3);
   box(bakeryWalls,bakeryBrick,-42,3.8,-80,14,4.8,.3);box(bakeryWalls,cream,-42,4,-90,14,.2,20);
   for(const x of [-46.5,-42,-37.5]){box(bakeryWalls,cream,x,5.2,-79.8,2.2,2,.12);box(bakeryWalls,glass,x,5.35,-79.7,1.9,1.7,.08);}
+  bakeryBrick.side=THREE.DoubleSide;
   const bakeryRoof=box(scene,metal,-42,8.61,-90,14.6,.3,20.6);
   box(scene,metal,-42,3.65,-79.2,14,.2,2);label(scene,'MAPLE BAKERY',-42,3.85,-78.15,10,.8);
-  for(const x of [-48,-36])box(scene,wood,x,.21,-78,.13,3.4,.13);
+  for(const x of [-48,-36]){box(scene,wood,x,.21,-78,.13,3.4,.13);box(scene,metal,x,2.45,-77.62,.5,.78,.14);box(scene,sconce,x,2.45,-77.48,.36,.52,.1);}
+  for(const x of [-44.2,-39.8]){box(scene,metal,x,2.62,-79.55,.18,.62,.16);box(scene,sconce,x,2.6,-79.4,.4,.46,.1);}
   // Umbrella tables flank the unbroken central route to the open doorway.
   for(const x of [-50,-34]){table(x,-74.5,true);chair(x-1.45,-74.5,Math.PI/2);chair(x+1.45,-74.5,-Math.PI/2);}
   table(-45,-88);chair(-46.45,-88,Math.PI/2);chair(-43.55,-88,-Math.PI/2);chair(-45,-95,0,'bench');
@@ -141,5 +147,7 @@ export function createCivicWorld({scene,visualKit,obstacles,buildings,groundSurf
     else if(id==='fruit'){const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.2,.12,.12,16),cream);bowl.position.y=.085;servedOrder.add(bowl);for(let i=0;i<5;i++){const fruit=new THREE.Mesh(new THREE.SphereGeometry(.06,12,8),new THREE.MeshStandardMaterial({color:[0x9b3832,0x6a8f40,0xd29a36][i%3]}));fruit.position.set(Math.cos(i*1.3)*.1,.17,Math.sin(i*1.3)*.1);servedOrder.add(fruit);}}
     else{const cup=new THREE.Mesh(new THREE.CylinderGeometry(.11,.085,.23,16),cream);cup.position.y=.14;servedOrder.add(cup);const drink=new THREE.Mesh(new THREE.CircleGeometry(.098,16),new THREE.MeshStandardMaterial({color:id==='juice'?0xe2a13a:0x5f3624}));drink.rotation.x=-Math.PI/2;drink.position.y=.258;servedOrder.add(drink);}}
   return {seats,chair,firefighters,fireEngine:engine,serveOrder,serveBakeryOrder,bakeryInside,cafeInside:p=>p.x>-40.5&&p.x<-19.5&&p.z>-40.5&&p.z<-27,
-    update(p){const inside=this.cafeInside(p);for(const o of cutaway)o.visible=!inside;const inBakery=bakeryInside(p);bakeryWalls.visible=bakeryRoof.visible=!inBakery;return inside||inBakery;}};
+    shells:[walls,roof,bakeryWalls,bakeryRoof],
+    interior(p){if(this.cafeInside(p))return {minX:-40.35,maxX:-19.65,minZ:-40.45,maxZ:-27.25,ceiling:4.2};if(bakeryInside(p))return {minX:-48.35,maxX:-35.65,minZ:-99.4,maxZ:-80.25,ceiling:4};return null;},
+    update(p){return this.cafeInside(p)||bakeryInside(p);}};
 }
