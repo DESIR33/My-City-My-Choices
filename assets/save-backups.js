@@ -1,0 +1,28 @@
+export const SAVE_FORMAT='my-city-my-choices';
+export const SAVE_LIMIT=1024*1024;
+export const CHECKPOINT_KEY='mapleStreetCheckpointV1';
+export const RECOVERY_KEY='mapleStreetRecoveryV1';
+export const SAVE_META='mapleStreetSaveMetaV1';
+const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
+function validateTree(value,depth=0,state={nodes:0}){if(++state.nodes>30000||depth>20)throw Error('This save is too complex.');if(typeof value==='number'&&!Number.isFinite(value))throw Error('This save contains an invalid number.');if(typeof value==='string'&&(value.length>5000||/[<>]/.test(value)))throw Error('This save contains unsupported text.');if(Array.isArray(value)&&value.length>1200)throw Error('This save has too many entries.');if(value&&typeof value==='object')for(const [key,child] of Object.entries(value)){if(['__proto__','constructor','prototype'].includes(key))throw Error('This save contains an unsupported field.');validateTree(child,depth+1,state);}}
+export function validateSave(value){if(!object(value))throw Error('Choose a My City save file.');validateTree({...value,avatarName:''});const s=JSON.parse(JSON.stringify(value));
+ if(!['parent','maya','customers','choice','done'].includes(s.stage))throw Error('This file does not contain a started story.');
+ const integer=(key,min,max,required=false)=>{if(s[key]===undefined&&!required)return;if(!Number.isInteger(s[key])||s[key]<min||s[key]>max)throw Error('Invalid '+key+' in this save.');};integer('goal',0,2,true);integer('business',-1,3,true);integer('businessType',0,3);integer('marketDay',1,100000);integer('customers',0,100000);integer('salesTarget',0,100000);if(['customers','choice'].includes(s.stage)&&s.business<0)throw Error('This business story is incomplete.');
+ for(const key of ['cash','saved','earned','spent','investment','openingCash','shoppingSpent','housingSpent','housingLoanBalance','sideJobEarned','sellPrice']){if(s[key]===undefined&&!['cash','saved','earned','spent','investment'].includes(key))continue;if(!Number.isFinite(s[key])||s[key]<0||s[key]>1e9)throw Error('Invalid '+key+' in this save.');}
+ for(const key of ['x','z'])if(!Number.isFinite(s[key])||Math.abs(s[key])>10000)throw Error('Invalid character position.');
+ for(const key of ['shoeColor','avatarSkin','avatarShirt','avatarHair'])integer(key,0,0xffffff);
+ if(s.avatarName!==undefined&&(typeof s.avatarName!=='string'||s.avatarName.length>16))throw Error('Invalid character name.');
+ if(s.avatarStyle!==undefined&&!['curls','short','ponytail','bun'].includes(s.avatarStyle))throw Error('Invalid hair style.');
+ for(const key of ['courier','navigation','rides','wardrobe','cityLife','moneyPlan','businessStory','carLife','errand','wardrobeOwned','gardenInvestment','dayOpening'])if(s[key]!=null&&!object(s[key]))throw Error('Invalid '+key+' details.');
+ for(const key of ['changePieces','shoppingBasket','decisionLog'])if(s[key]!=null&&!Array.isArray(s[key]))throw Error('Invalid '+key+' list.');
+ for(const key of ['completedOrder','businessUpgraded','wasDrivingOwned'])if(s[key]!==undefined&&typeof s[key]!=='boolean')throw Error('Invalid '+key+' flag.');
+ return s;
+}
+export function parseSaveFile(text){if(typeof text!=='string')throw Error('Choose a My City save file.');if(new TextEncoder().encode(text).length>SAVE_LIMIT)throw Error('Choose a save file smaller than 1 MB.');let value;try{value=JSON.parse(text)}catch{throw Error('This file is not valid JSON.');}let exportedAt=null;if(object(value)&&value.format!==undefined){if(value.format!==SAVE_FORMAT||value.version!==1)throw Error('This save format or version is not supported.');exportedAt=typeof value.exportedAt==='string'&&Number.isFinite(Date.parse(value.exportedAt))?value.exportedAt:null;value=value.save;}const save=validateSave(value);return {save,raw:JSON.stringify(save),exportedAt};}
+export function exportSave(raw,now=new Date()){const {save}=parseSaveFile(raw);const envelope={format:SAVE_FORMAT,version:1,exportedAt:now.toISOString(),save};let text=JSON.stringify(envelope,null,2);if(new TextEncoder().encode(text).length>SAVE_LIMIT)text=JSON.stringify(envelope);if(new TextEncoder().encode(text).length>SAVE_LIMIT)throw Error('This story is larger than the 1 MB backup limit.');return text;}
+export function saveSummary(save){return {name:save.avatarName||'Player',day:save.marketDay||1,stage:save.stage,cash:save.cash,saved:save.saved,clothes:Array.isArray(save.wardrobe?.owned)?save.wardrobe.owned.length:0,delivery:save.courier?.active?.jobId||null};}
+function validRaw(raw){try{return parseSaveFile(raw).raw}catch{return null}}
+// A failed recovery write must never replace a valid primary save.
+export function installSave(storage,key,incoming,current=null){const next=parseSaveFile(incoming).raw,previous=current!==null?parseSaveFile(current).raw:validRaw(storage.getItem(key));if(previous)storage.setItem(RECOVERY_KEY,previous);storage.setItem(key,next);return next;}
+export function persistSave(storage,key,raw,now=Date.now()){let meta={};try{meta=JSON.parse(storage.getItem(SAVE_META)||'{}')||{}}catch{}const previous=storage.getItem(key);storage.setItem(key,raw);if(now-(meta.checkpointAt||0)>60000){const valid=validRaw(previous);if(valid)try{storage.setItem(CHECKPOINT_KEY,valid);meta.checkpointAt=now}catch{}}try{storage.setItem(SAVE_META,JSON.stringify({...meta,savedAt:now}))}catch{}return true;}
+export function resetSave(storage,key,current=null){const previous=current!==null?parseSaveFile(current).raw:validRaw(storage.getItem(key));if(previous)storage.setItem(RECOVERY_KEY,previous);storage.removeItem(key);try{storage.removeItem(SAVE_META)}catch{}}
