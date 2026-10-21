@@ -1,0 +1,27 @@
+import {MODEL_HOME} from './house-rules.js';
+
+export const HOME_PROJECTS=Object.freeze([
+  {id:'textiles',name:'Ocean blue textiles',cost:100,detail:'A blue living-room rug and coordinated sofa and bedding.'},
+  {id:'planters',name:'Backyard container garden',cost:150,detail:'Three planted terracotta pots beside the rear patio.'},
+  {id:'study',name:'A study to grow into',cost:125,detail:'Books and a small plant on the upstairs desk.'}
+]);
+const integer=(n,min=0,max=100000)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
+export function freshHomeLife(){return {version:1,propertyId:null,tenure:'none',rentThroughDay:0,reviewedDay:0,improvements:[],improvementSpent:0};}
+// Existing housing payments remain authoritative. Old purchases map to the
+// furnished property without charging again or changing the remaining debt.
+export function restoreHomeLife(value,legacy={}){
+  const s=freshHomeLife(),day=integer(legacy.day,1)?legacy.day:1;
+  s.tenure=['rent','owner'].includes(legacy.choice)?legacy.choice:'none';
+  s.propertyId=s.tenure==='none'?null:MODEL_HOME.id;
+  if(!value||value.version!==1||value.propertyId!==MODEL_HOME.id){if(s.tenure==='rent')s.rentThroughDay=day+6;return s;}
+  s.rentThroughDay=integer(value.rentThroughDay)?value.rentThroughDay:0;
+  if(s.tenure==='rent'&&!s.rentThroughDay)s.rentThroughDay=day+6;
+  s.reviewedDay=integer(value.reviewedDay)?Math.min(day,value.reviewedDay):0;
+  if(s.tenure!=='none')s.improvements=HOME_PROJECTS.filter(p=>Array.isArray(value.improvements)&&value.improvements.includes(p.id)).map(p=>p.id);
+  s.improvementSpent=s.improvements.reduce((sum,id)=>sum+HOME_PROJECTS.find(p=>p.id===id).cost,0);
+  return s;
+}
+export function homeAccess(s,day){return s?.propertyId===MODEL_HOME.id&&(s.tenure==='owner'||s.tenure==='rent'&&integer(day,1)&&day<=s.rentThroughDay);}
+export function homeProjectQuote(s,id,wallet,day){const project=HOME_PROJECTS.find(p=>p.id===id);if(!homeAccess(s,day))return {ok:false,reason:'Rent or buy this home before making improvements. Renew an expired rental first.'};if(!project||s.improvements.includes(id))return {ok:false,reason:'That improvement is unavailable or already installed.'};if(!integer(wallet,0,1e11)||wallet<project.cost)return {ok:false,reason:'Keep saving: your wallet cannot cover this improvement.'};return {ok:true,project,walletAfter:wallet-project.cost};}
+export function installHomeProject(s,id,wallet,day){const q=homeProjectQuote(s,id,wallet,day);if(!q.ok)return q;return {...q,state:{...s,improvements:[...s.improvements,id],improvementSpent:s.improvementSpent+q.project.cost}};}
+export function homeUpcoming(s,day,loanBalance=0){if(s.tenure==='owner')return loanBalance>0?{label:'Next optional home installment',cost:100}:null;if(s.tenure==='rent')return {label:day>s.rentThroughDay?'Rental renewal available':'Rent paid through business day '+s.rentThroughDay,cost:day>s.rentThroughDay?200:0};return null;}

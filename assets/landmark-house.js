@@ -125,7 +125,20 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  const curtains=[];for(const [x,z] of [[-4.75,5.7],[-2.25,5.7],[-4.5,-5.7],[-2.1,-5.7]]){const c=box(root,x,4.05,z,.45,1.95,.06,linen);c.userData.dynamicHouse=true;curtains.push(c);}action('curtains','Open / close the bedroom curtains',-1.65,4.1,1);
  for(const [x,z,y] of [[-5.8,-.5,.3],[2.8,4.8,.3],[-5.7,2,H.upper]]){shape(root,cylinder,x,y+.2,z,.18,.4,.18,ceramic);for(const a of [-.2,.1,.3])shape(root,sphere,x+a,y+.65,z,.2,.45,.2,mat(0x66836a));}
  const lights=[];for(const [i,y] of [[0,.3],[1,H.upper]]){for(const [x,z] of [[-3.1,-2.8],[1.5,1.7]]){box(root,x,y+2.7,z,.65,.06,.65,metal);box(root,x,y+2.65,z,.55,.05,.55,lightMats[i]);}const light=new THREE.PointLight(0xffe4bd,12,13,2);light.position.set(H.x-.4,y+2.4,H.z-.7);light.castShadow=false;scene.add(light);lights.push(light);action('lights'+i,'Switch '+(i?'upstairs':'downstairs')+' lights',i?2.9:3.35,i?-1.4:4.25,i);}
- plate('WELCOME HOME',2.65,1.5,5.78,1.1,.28);plate('101',.95,2.0,6.08,.45,.25);
+ const welcome=plate('WELCOME HOME',2.65,1.5,5.78,1.1,.28);welcome.userData.dynamicHouse=true;plate('101',.95,2.0,6.08,.45,.25);
+ action('home-plans','Home keys, improvements & daily review',2.65,3.6,0,'home');
+ // Optional projects reuse existing geometry/materials and add no colliders.
+ const projectGroups={};for(const id of ['planters','study']){const g=new THREE.Group();g.userData.dynamicHouse=true;g.visible=false;root.add(g);projectGroups[id]=g;}
+ for(const x of [-3.5,-2.6,-1.7]){shape(projectGroups.planters,cylinder,x,.48,-7.2,.29,.5,.29,mat(0xad7152));shape(projectGroups.planters,sphere,x,.94,-7.2,.34,.55,.34,mat(0x66836a));}
+ for(let i=0;i<4;i++)box(projectGroups.study,.35+i*.14,H.upper+.81,4.95,.1,.32+i*.02,.24,mat([0x577c8a,0x8d6954,0x9f9b71,0x697c66][i]));
+ shape(projectGroups.study,cylinder,1.95,H.upper+.95,4.9,.12,.2,.12,ceramic);shape(projectGroups.study,sphere,1.95,H.upper+1.17,4.9,.18,.24,.18,mat(0x66836a));
+ let livingKey='';
+ function applyLiving(living,{name='Player'}={}){
+  const ids=Array.isArray(living?.improvements)?living.improvements:[],tenure=living?.tenure||'none',key=JSON.stringify([tenure,name,ids]);if(key===livingKey)return;livingKey=key;
+  rug.color.setHex(ids.includes('textiles')?0x557d98:0x9a8671);fabric.color.setHex(ids.includes('textiles')?0x647f97:0x819385);
+  for(const id of ['planters','study'])projectGroups[id].visible=ids.includes(id);
+  const canvas=welcome.material.map.image,q=canvas.getContext('2d');q.fillStyle='#34483e';q.fillRect(0,0,512,128);q.fillStyle='#f5e7c8';q.font='600 36px Georgia';q.textAlign='center';q.textBaseline='middle';q.fillText(tenure==='none'?'WELCOME · TOUR HOME':String(name).slice(0,16)+' · HOME',256,66,490);welcome.material.map.needsUpdate=true;
+ }
  function slideMirror(){return new THREE.MeshPhysicalMaterial({color:0xb6c5bd,metalness:.9,roughness:.13,envMapIntensity:.8});}
  function syncDoor(d){d.g.rotation.y=d.angle;root.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(d.leaf,true);Object.assign(d.collider,{minX:bounds.min.x,maxX:bounds.max.x,minZ:bounds.min.z,maxZ:bounds.max.z});}
  function inSwing(d,p){if(Math.abs((p.y||0)-d.y)>1.7)return false;const q=houseLocal(p),dx=d.axis==='x'?d.w:0,dz=d.axis==='z'?d.direction*d.w:0,angle=d.sign*Math.PI/2,ox=dx*Math.cos(angle)+dz*Math.sin(angle),oz=-dx*Math.sin(angle)+dz*Math.cos(angle);return q.x>d.x+Math.min(0,dx,ox)-.5&&q.x<d.x+Math.max(0,dx,ox)+.5&&q.z>d.z+Math.min(0,dz,oz)-.5&&q.z<d.z+Math.max(0,dz,oz)+.5;}
@@ -140,7 +153,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  function nearest(p){const level=(p.y||0)>H.upper-.65?1:0;const near=actions.filter(a=>a.floor===level&&Math.hypot(a.x-p.x,a.z-p.z)<(a.radius||1.65)&&Math.abs(a.y-(p.y||0))<1.35&&clear(p,a,a.kind==='door'?a.id:null));return near.sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0]||null;}
  function clear(a,b,ignore=null){const distance=Math.hypot(b.x-a.x,b.z-a.z),n=Math.max(1,Math.ceil(distance/.2));for(let i=0;i<=n;i++)if(blocked(a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n,a.y||.3,ignore))return false;return true;}
  function act(id,p){const a=actions.find(a=>a.id===id);if(!a||!p||Math.hypot(a.x-p.x,a.z-p.z)>(a.radius||1.65)||Math.abs(a.y-(p.y||0))>1.35||!clear(p,a,a.kind==='door'?id:null))return {ok:false,message:'Move closer to this object.'};
-  if(a.kind==='seat'||a.kind==='bed')return {ok:true,seat:a.seat,bed:a.kind==='bed',action:a};if(a.kind==='wardrobe')return {ok:true,wardrobe:true};if(a.kind==='read')return {ok:true,message:a.message};
+  if(a.kind==='home')return {ok:true,action:a};if(a.kind==='seat'||a.kind==='bed')return {ok:true,seat:a.seat,bed:a.kind==='bed',action:a};if(a.kind==='wardrobe')return {ok:true,wardrobe:true};if(a.kind==='read')return {ok:true,message:a.message};
   if(a.kind==='door'&&state[id]&&inSwing(a.door,p))return {ok:false,message:'Step clear of the doorway before closing it.'};
   if(id==='tv'){if(!state.tv){state.tv=true;state.channel=0;}else if(state.channel<2)state.channel++;else state.tv=false;}else state[id]=!state[id];
   update(0,p);return {ok:true,message:id==='tv'?(state.tv?['Nature on TV','City stories on TV','Garden time on TV'][state.channel]:'TV switched off'):a.kind==='door'?(state[id]?'Door opened. Walk inside.':'Door closed.'):a.title+' · '+(state[id]?'on / open':'off / closed')};
@@ -153,5 +166,5 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  // are retained before instancing so doors and the stairwell stay real gaps.
  root.updateMatrixWorld(true);const groups=new Map();root.traverse(m=>{if(!m.isMesh)return;for(let p=m;p&&p!==root;p=p.parent)if(p.userData.dynamicHouse)return;const k=m.geometry.uuid+':'+m.material.uuid+':'+m.castShadow;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(m);});
  for(const sources of groups.values()){const first=sources[0],batch=new THREE.InstancedMesh(first.geometry,first.material,sources.length),boxes=[];batch.name='Maple House static details';batch.castShadow=first.castShadow;batch.receiveShadow=true;sources.forEach((m,i)=>{batch.setMatrixAt(i,m.matrixWorld);const b=new THREE.Box3().setFromObject(m,true);if(b.max.y-b.min.y>.03)boxes.push({minX:b.min.x,maxX:b.max.x,minY:b.min.y,maxY:b.max.y,minZ:b.min.z,maxZ:b.max.z});m.removeFromParent();});batch.userData.architectureBoxes=boxes;batch.computeBoundingSphere();scene.add(batch);batches.push(batch);}
- update(0);return {property:H,root,actions,seats,beds,doors,colliders,batches,nearest,act,makeBed,serialize,restore,update,blocked,interior,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
+ update(0);return {property:H,root,actions,seats,beds,doors,colliders,batches,nearest,act,makeBed,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
 }
