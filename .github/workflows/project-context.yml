@@ -1,0 +1,31 @@
+name: Project context
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  context-current:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test context policy
+        run: node --test tests/context-policy.test.mjs
+      - name: Require a context update in each change commit
+        env:
+          CONTEXT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CONTEXT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/check-context.mjs
