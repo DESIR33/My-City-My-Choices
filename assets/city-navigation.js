@@ -1,4 +1,4 @@
-import {MAPLE_STREETS,NORTH_CITY,COAST_CITY,worldDrivable,worldWalkable} from './world-rules.js';
+import {COMMUNITY_ROADS,MAPLE_STREETS,NORTH_CITY,COAST_CITY,worldDrivable,worldWalkable} from './world-rules.js';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z),lerp=(a,b,t)=>({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t});
 const key=p=>p.x.toFixed(2)+','+p.z.toFixed(2);
 class Heap{constructor(){this.a=[]}push(v){const a=this.a;a.push(v);let i=a.length-1;while(i){let p=(i-1)>>1;if(a[p].score<=v.score)break;a[i]=a[p];i=p;}a[i]=v;}pop(){const a=this.a,r=a[0],v=a.pop();if(a.length){let i=0;while(i*2+1<a.length){let c=i*2+1;if(c+1<a.length&&a[c+1].score<a[c].score)c++;if(a[c].score>=v.score)break;a[i]=a[c];i=c;}a[i]=v;}return r;}get length(){return this.a.length}}
@@ -11,6 +11,16 @@ export function createCityNetwork(mode='drive'){
   for(const z of zs)for(let i=1;i<xs.length;i++)for(const s of [-1,1])link({x:xs[i-1]+9.3,z:z+s*9.3},{x:xs[i]-9.3,z:z+s*9.3});
  }
  grid(MAPLE_STREETS,MAPLE_STREETS);grid(NORTH_CITY.avenues,NORTH_CITY.streets);grid(COAST_CITY.avenues,COAST_CITY.streets);
+ // Split each actual subdivision street at its junctions, including the three
+ // connections to the original grid. Do not invent roads across private lots.
+ for(const r of COMMUNITY_ROADS){const horizontal=r.z1===r.z2,fixed=horizontal?r.z1:r.x1,from=horizontal?Math.min(r.x1,r.x2):Math.min(r.z1,r.z2),to=horizontal?Math.max(r.x1,r.x2):Math.max(r.z1,r.z2);
+  const cuts=new Set([from,to]);for(const q of COMMUNITY_ROADS){if((q.z1===q.z2)===horizontal)continue;const cross=horizontal?q.x1:q.z1,low=horizontal?Math.min(q.z1,q.z2):Math.min(q.x1,q.x2),high=horizontal?Math.max(q.z1,q.z2):Math.max(q.x1,q.x2);if(cross>=from&&cross<=to&&fixed>=low&&fixed<=high)cuts.add(cross);}
+  if(Math.abs(fixed)<=165)for(const cross of MAPLE_STREETS)if(cross>=from&&cross<=to)cuts.add(cross);
+  const points=[...cuts].sort((a,b)=>a-b),point=(along,offset=0)=>horizontal?{x:along,z:fixed+offset}:{x:fixed+offset,z:along};
+  if(mode==='drive'){for(let i=1;i<points.length;i++)link(point(points[i-1]),point(points[i]));}
+  else {for(const v of points){const c=point(v);for(const side of [-1,1]){link({x:c.x+side*9.3,z:c.z-9.3},{x:c.x+side*9.3,z:c.z+9.3});link({x:c.x-9.3,z:c.z+side*9.3},{x:c.x+9.3,z:c.z+side*9.3});}}for(let i=1;i<points.length;i++)for(const side of [-1,1])link(point(points[i-1]+9.3,side*9.3),point(points[i]-9.3,side*9.3));}
+ }
+
  if(mode==='drive'){link({x:0,z:-120},{x:0,z:-1150});link({x:0,z:-1150},{x:-60,z:-1150});link({x:0,z:-1150},{x:60,z:-1150});link({x:0,z:120},{x:0,z:1080});}
  else for(const s of [-1,1]){link({x:s*9.3,z:-129.3},{x:s*9.3,z:-1140.7});link({x:s*9.3,z:-1140.7},{x:s*50.7,z:-1140.7});link({x:s*9.3,z:129.3},{x:s*9.3,z:1070.7});}
  return {nodes,edges,adj,mode};
@@ -61,4 +71,13 @@ export function formatRouteDistance(metres){return metres>=1000?(metres/1000).to
 export function createCityNavigator({obstacles=[]}={}){
  const networks={walk:createCityNetwork('walk'),drive:createCityNetwork('drive')};let valid=createWalkValidator(obstacles),route=null,target=null,mode='walk',retry=0,replans=0;
  return {setTarget(value){target=value;route=null;retry=0;},refreshObstacles(value){valid=createWalkValidator(value);route=null;retry=0;},get route(){return route;},get target(){return target;},get replans(){return replans;},update(position,{mode:nextMode='walk',heading=0,speed=0,dt=.1}={}){if(!target)return null;retry=Math.max(0,retry-dt);if(mode!==nextMode){mode=nextMode;route=null;retry=0;}let progress=routeProgress(route,position,{heading,speed});if((!route||progress.offRoute>(mode==='walk'?8:18))&&retry===0){route=planCityRoute(position,target,{mode,network:networks[mode==='walk'?'walk':'drive'],walkValid:valid});replans++;retry=2;progress=routeProgress(route,position,{heading,speed});}return progress||{unavailable:true,message:'Walk outside to begin route guidance',remainingPoints:[]};}};
+}
+
+// Station forecourt first, then the same connected drivable graph as the GPS.
+// Stop eight metres before the incident so a parked crash does not block arrival.
+export function communityResponseRoute(start,target){
+ const access={x:120,z:-30},route=planCityRoute(access,target,{mode:'drive'});
+ const tail=route?route.points.map(p=>({...p})):[access];let remaining=8;
+ while(tail.length>1&&remaining>0){const b=tail.at(-1),a=tail.at(-2),d=distance(a,b);if(d<=remaining){remaining-=d;tail.pop();}else{tail[tail.length-1]=lerp(b,a,remaining/d);remaining=0;}}
+ return [{x:start.x,z:start.z},{x:130,z:start.z},{x:130,z:-30},...tail].filter((p,i,a)=>!i||distance(a[i-1],p)>.03);
 }

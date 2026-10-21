@@ -1,5 +1,46 @@
 // Shared, metre-scale world layout. North is negative Z.
 export const MAPLE_STREETS=Object.freeze([-120,-60,0,60,120]);
+// A connected, builder-style subdivision west of the original Maple Street grid.
+export const MAPLE_GROVE=Object.freeze({name:'Maple Grove',minX:-320,maxX:-137,minZ:-242,maxZ:64});
+export const COMMUNITY_ROADS=Object.freeze([
+  {id:'grove-north',name:'Maple Grove Lane',x1:-302,z1:-180,x2:-150,z2:-180},
+  {id:'grove-middle',name:'Cedar Run',x1:-302,z1:-90,x2:-150,z2:-90},
+  {id:'grove-south',name:'Willow Way',x1:-302,z1:0,x2:-120,z2:0},
+  {id:'grove-west',name:'Grove Park Drive',x1:-302,z1:-180,x2:-302,z2:0},
+  {id:'grove-east',name:'Grove Park Drive',x1:-150,z1:-180,x2:-150,z2:0},
+  {id:'grove-entry',name:'Maple Grove entrance',x1:-150,z1:-120,x2:-120,z2:-120},
+  {id:'grove-market-entry',name:'Maple Grove entrance',x1:-150,z1:-60,x2:-120,z2:-60},
+].map(r=>Object.freeze({...r,halfWidth:7.5})));
+const communityRows=[
+  {z:-204,heading:0,roadZ:-180,rearZ:-234},
+  {z:-156,heading:Math.PI,roadZ:-180,rearZ:-135.08},
+  {z:-114,heading:0,roadZ:-90,rearZ:-134.92},
+  {z:-66,heading:Math.PI,roadZ:-90,rearZ:-45.08},
+  {z:-24,heading:0,roadZ:0,rearZ:-44.92},
+  {z:24,heading:Math.PI,roadZ:0,rearZ:54},
+];
+export const COMMUNITY_HOMES=Object.freeze([
+  ...communityRows.flatMap((row,r)=>[-272,-240,-208,-176].map((x,c)=>({
+    id:'maple-grove-'+(r*4+c+1),address:101+r*8+c*2+(r%2),street:COMMUNITY_ROADS[Math.floor(r/2)].name,
+    x,...row,w:[13.4,14.2,13.8,14.6][(r+c)%4],d:[11.8,12.4,12,12.8][(r+c)%4],lotWidth:28,
+    plan:(r+c)%4,palette:(r*2+c)%6,fenced:(r+c)%3!==0,stories:2,
+  }))),
+  {id:'maple-entry-1',address:201,street:'Maple Street',x:-100,z:-90,w:13.4,d:12,lotWidth:18,heading:0,roadZ:-60,rearZ:-109,plan:1,palette:2,fenced:true,stories:2,existing:true},
+  {id:'maple-entry-2',address:203,street:'Maple Street',x:-80,z:-90,w:13.4,d:12,lotWidth:18,heading:0,roadZ:-60,rearZ:-109,plan:3,palette:4,fenced:false,stories:2,existing:true},
+  {id:'maple-family-home',address:205,street:'Maple Street',x:-87,z:-35,w:15.5,d:12,lotWidth:28,heading:0,roadZ:0,rearZ:-49,plan:0,palette:0,fenced:true,stories:2,existing:true},
+].map(h=>Object.freeze(h)));
+export function communityPoint(home,x,z){const sign=home.heading===0?1:-1;return {x:home.x+x*sign,z:home.z+z*sign};}
+export function communityDriveway(home){
+  const start=home.d/2+.02,end=Math.abs(home.roadZ-home.z)-7.18;
+  const a=communityPoint(home,-home.w*.23,start),b=communityPoint(home,-home.w*.23,end);
+  return {minX:a.x-3.3,maxX:a.x+3.3,minZ:Math.min(a.z,b.z),maxZ:Math.max(a.z,b.z),top:.08,kind:'concrete',homeId:home.id};
+}
+export function communityRoadRect(road,extra=0){const half=road.halfWidth+extra;return {minX:Math.min(road.x1,road.x2)-half,maxX:Math.max(road.x1,road.x2)+half,minZ:Math.min(road.z1,road.z2)-half,maxZ:Math.max(road.z1,road.z2)+half};}
+export function withinRect(x,z,r,margin=0){return x>=r.minX-margin&&x<=r.maxX+margin&&z>=r.minZ-margin&&z<=r.maxZ+margin;}
+export function communityReserved(x,z,margin=0){return withinRect(x,z,MAPLE_GROVE,margin);}
+export function communityOnRoad(x,z){return COMMUNITY_ROADS.some(r=>withinRect(x,z,communityRoadRect(r,-.02)));}
+export function communityDrivable(x,z){return communityOnRoad(x,z)||COMMUNITY_HOMES.some(h=>withinRect(x,z,communityDriveway(h)));}
+
 export const NORTH_CITY=Object.freeze({name:'Northstar City',minX:-252,maxX:252,minZ:-1810,maxZ:-1120,avenues:[-180,-60,60,180],streets:[-1750,-1630,-1510,-1390,-1270,-1150]});
 export const NORTH_MOTORS=Object.freeze({x:194,z:-1177});
 export const RIVER=Object.freeze({south:-550,north:-770,waterLevel:-1.6});
@@ -17,9 +58,9 @@ export function bridgeHeight(z){
 }
 export function onBridge(x,z){return Math.abs(x)<=BRIDGE.walkHalfWidth&&z<=BRIDGE.south&&z>=BRIDGE.north;}
 export function bridgePitch(x,z,heading){return onBridge(x,z)?Math.atan2(bridgeHeight(z-1)-bridgeHeight(z+1),2)*Math.cos(heading):0;}
-export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
-export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(Math.abs(x)<=164&&Math.abs(z)<=164&&MAPLE_STREETS.some(n=>Math.abs(x-n)<7.48||Math.abs(z-n)<7.48))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
-export function districtName(z){return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
+export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityReserved(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
+export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityDrivable(x,z))return true;if(Math.abs(x)<=164&&Math.abs(z)<=164&&MAPLE_STREETS.some(n=>Math.abs(x-n)<7.48||Math.abs(z-n)<7.48))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
+export function districtName(z,x=0){if(communityReserved(x,z))return MAPLE_GROVE.name;return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
 export function northResponseRoute(start,target){
   const points=[{x:start.x,z:start.z},{x:130,z:start.z},{x:130,z:-30},{x:120,z:-30},{x:120,z:-120},{x:0,z:-120}];
   if(target.z>-1120){points.push({x:0,z:target.z+(target.z<-120?8:-8)});return points;}
