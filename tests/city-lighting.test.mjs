@@ -96,7 +96,7 @@ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 const controls=html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('sessionLifecycle=createSessionLifecycle('));
 for(const saved of [null,'{broken',JSON.stringify({hour:22,cycling:true})]) {
   const store=new Map(saved?[[CITY_LIGHT_STORAGE,saved]]:[]),els=new Map();let blocked=false,shown='',lastUpdate;
-  const context={CITY_LIGHT_STORAGE,CITY_LIGHT_PRESETS,restoreCityTime,advanceCityTime,setCityLightPreset,formatCityTime,JSON,Math,
+  const context={weather:{intensity:0},CITY_LIGHT_STORAGE,CITY_LIGHT_PRESETS,restoreCityTime,advanceCityTime,setCityLightPreset,formatCityTime,JSON,Math,
     document:{hidden:false,addEventListener(){},querySelector:id=>{if(!els.has(id))els.set(id,{textContent:'',setAttribute(){}});return els.get(id)}},
     localStorage:{getItem:key=>store.get(key),setItem:(key,value)=>store.set(key,value)},addEventListener(){},show:s=>shown=s,
     gameplayBlocked:()=>blocked,visualKit:{atmosphere:{update:arg=>lastUpdate=arg,finalizeStreetLights(){}}},player:{position:new THREE.Vector3()},vehicleRefs:[],driving:null};
@@ -112,3 +112,5 @@ for(const saved of [null,'{broken',JSON.stringify({hour:22,cycling:true})]) {
   assert.equal(store.size,1,'Visual preferences never write to the story save or wallet');
 }
 console.log('City lighting passed: timeline, midnight, persistence, menus/background pause, real light budgets, bridge-aligned low beams, brake/reverse states, reflection levels, hot model replacement, and actual menu handlers.');
+// Overcast applies and clears at a fixed hour, without drifting the time palette.
+const weatherLight=fixture(),weatherArgs={hour:15,position:new THREE.Vector3(),dt:.04,rain:0};weatherLight.kit.update(weatherArgs);const clearSun=weatherLight.sun.intensity,clearExposure=weatherLight.renderer.toneMappingExposure;weatherLight.kit.update({...weatherArgs,rain:1});assert(weatherLight.sun.intensity<clearSun*.5);assert(weatherLight.renderer.toneMappingExposure<clearExposure);weatherLight.kit.update(weatherArgs);assert.equal(weatherLight.sun.intensity,clearSun);assert.equal(weatherLight.renderer.toneMappingExposure,clearExposure);weatherLight.kit.update({...weatherArgs,hour:23,rain:1});const nightFog=weatherLight.scene.fog.color.clone();weatherLight.kit.update({...weatherArgs,rain:1});assert(nightFog.r<weatherLight.scene.fog.color.r*.5,'Night rain preserves darkness');
