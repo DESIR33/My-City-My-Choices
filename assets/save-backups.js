@@ -13,7 +13,7 @@ export function validateSave(value){if(!object(value))throw Error('Choose a My C
  for(const key of ['shoeColor','avatarSkin','avatarShirt','avatarHair'])integer(key,0,0xffffff);
  if(s.avatarName!==undefined&&(typeof s.avatarName!=='string'||s.avatarName.length>16))throw Error('Invalid character name.');
  if(s.avatarStyle!==undefined&&!['curls','short','ponytail','bun'].includes(s.avatarStyle))throw Error('Invalid hair style.');
- for(const key of ['house','courier','navigation','rides','wardrobe','cityLife','moneyPlan','businessStory','carLife','errand','wardrobeOwned','gardenInvestment','dayOpening'])if(s[key]!=null&&!object(s[key]))throw Error('Invalid '+key+' details.');
+ for(const key of ['homeLife','house','courier','navigation','rides','wardrobe','cityLife','moneyPlan','businessStory','carLife','errand','wardrobeOwned','gardenInvestment','dayOpening'])if(s[key]!=null&&!object(s[key]))throw Error('Invalid '+key+' details.');
  for(const key of ['changePieces','shoppingBasket','decisionLog'])if(s[key]!=null&&!Array.isArray(s[key]))throw Error('Invalid '+key+' list.');
  for(const key of ['completedOrder','businessUpgraded','wasDrivingOwned'])if(s[key]!==undefined&&typeof s[key]!=='boolean')throw Error('Invalid '+key+' flag.');
  return s;
