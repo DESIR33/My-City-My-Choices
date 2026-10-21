@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {MAPLE_GROVE,COMMUNITY_HOMES,communityDriveway,communityReserved,withinRect} from './world-rules.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {createCityMaterials} from './city-materials.js';
@@ -206,7 +207,8 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   function forestHeight(x, z) {
     const radius = Math.max(Math.abs(x), Math.abs(z)), t = THREE.MathUtils.smoothstep(radius, 167, 228);
     const corridor=Math.abs(z)>150?THREE.MathUtils.smoothstep(Math.abs(x),18,42):1;
-    return -.07 + corridor * t * (5 + 3.5 * Math.sin(x * .024) + 2.8 * Math.cos(z * .031));
+    const clearance=Math.max(0,MAPLE_GROVE.minX-x,x-MAPLE_GROVE.maxX,MAPLE_GROVE.minZ-z,z-MAPLE_GROVE.maxZ);
+    return -.07 + THREE.MathUtils.smoothstep(clearance,8,36) * corridor * t * (5 + 3.5 * Math.sin(x * .024) + 2.8 * Math.cos(z * .031));
   }
   function addForest() {
     // A continuous terrain skirt, with layered clusters and irregular gaps rather than a fence of repeated trees.
@@ -227,7 +229,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
       const angle = i * 2.39996 + rng() * .16, radius = 181 + rng() * 39;
       const edge = Math.max(Math.abs(Math.sin(angle)), Math.abs(Math.cos(angle)));
       const x = Math.sin(angle) * radius / edge, z = Math.cos(angle) * radius / edge, species = i % 3;
-      if(Math.abs(z)>150&&Math.abs(x)<34)continue;
+      if(Math.abs(z)>150&&Math.abs(x)<34||communityReserved(x,z,18))continue;
       const dummy = new THREE.Object3D(); dummy.position.set(x, forestHeight(x, z), z);
       dummy.rotation.y = rng() * Math.PI * 2; dummy.scale.setScalar(.85 + rng() * .95); dummy.updateMatrix(); transforms[species].push(dummy.matrix.clone());
     }
@@ -331,8 +333,8 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     for (const road of streets) for (const side of [-1, 1]) {
       for (let p = -164; p < 164; p += 1.5) {
         if (streets.some(cross => Math.abs(p - cross) < 10.2)) continue;
-        box(curb, road + side * 7.57, .055, p, .16, .17, 1.47);
-        box(curb, p, .055, road + side * 7.57, 1.47, .17, .16);
+        if(!COMMUNITY_HOMES.some(h=>withinRect(road+side*7.57,p,communityDriveway(h),.7)))box(curb, road + side * 7.57, .055, p, .16, .17, 1.47);
+        if(!COMMUNITY_HOMES.some(h=>withinRect(p,road+side*7.57,communityDriveway(h),.7)))box(curb, p, .055, road + side * 7.57, 1.47, .17, .16);
       }
     }
     const [tactileImage, tq] = canvas(128);

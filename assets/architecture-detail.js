@@ -9,6 +9,7 @@ export function createArchitectureDetail({scene,buildings,materials,groundHeight
  function box(mat,x,y,z,w,h,d,heading=0,pitch=0){if(![x,y,z,w,h,d].every(Number.isFinite)||w<=0||h<=0||d<=0)return;const tile=Math.floor(x/180)+','+Math.floor(z/180),key=tile+':'+mat.uuid;if(!chunks.has(key))chunks.set(key,{mat,points:[],x:Math.floor(x/180)*180+90,z:Math.floor(z/180)*180+90});chunks.get(key).points.push({x,y:y+h/2,z,w,h,d,heading,pitch});}
  let roofUnits=0,facadePanels=0;
  buildings.forEach((b,index)=>{
+  if(b.residential)return; // Pitched homes already have complete roofs and facade detail.
   const {x,z,w,d}=b,h=b.height;if(![x,z,w,d,h].every(Number.isFinite)||h<9)return;
   const rooftop=h+(b.coastal?2.1:b.skyscraper?.46:.36),parapetY=h+.42;
   if(!b.skyscraper&&!b.coastal)for(const side of [-1,1]){box(stone,x,parapetY,z+side*(d/2-.12),w,.42,.22);box(stone,x+side*(w/2-.12),parapetY,z,.22,.42,d);}
