@@ -186,3 +186,21 @@ run('stage="parent";hide();driving=null;riding=null;seatedAt=null;player.positio
 const savedAudio=c.cityAudio;let signals=[];c.cityAudio={unlock:async()=>true,vehicleSignal:kind=>{signals.push(kind);return true}};
 run('hide();driving=null;riding=null');assert.equal(await run('soundVehicleSignal()'),false);run('driving=garageCar');assert.equal(await run('soundVehicleSignal()'),true);assert.deepEqual(signals,['car']);c.openCityMenu();assert.equal(await run('soundVehicleSignal()'),false);c.closeGamePanel();run('driving=null;riding=twoWheelWorld.vehicles.find(b=>b.userData.twoWheeler.kind==="bicycle")');assert.equal(await run('soundVehicleSignal()'),true);assert.equal(signals.at(-1),'bicycle');run('riding=twoWheelWorld.vehicles.find(b=>b.userData.twoWheeler.kind==="motorcycle")');assert.equal(await run('soundVehicleSignal()'),true);assert.equal(signals.at(-1),'motorcycle');
 let completeUnlock;c.cityAudio.unlock=()=>new Promise(resolve=>completeUnlock=resolve);const pendingSignal=run('soundVehicleSignal()');run('riding=null');completeUnlock(true);assert.equal(await pendingSignal,false,'Unmounting during audio unlock cancels the stale sound');assert.equal(signals.length,3);c.cityAudio=savedAudio;
+// Actual homecoming hooks connect the optional guide to physical interactions.
+run('progressWritesSuppressed=false;stage="done";marketDay=9;business=0;cash=12;saved=3;housingChoice="owner";housingLoanBalance=2;homeLife=restoreHomeLife(null,{choice:"owner",day:9});carLife=freshCarOwnership();driving=null;riding=null;seatedAt=null;player.position.set(0,0,0)');
+const homeWallet=run('cash'),homeSavings=run('saved');
+c.startSettling();assert.equal(run('homeLife.settling'),'arrive');assert.equal(run('navigationTarget===destinations.modelHome'),true);
+run("updateSettling('wardrobe')");assert.equal(run('homeLife.settling'),'arrive','A remote interaction cannot skip arrival');
+run('player.position.set(MODEL_HOME.x+2.68,MODEL_HOME.ground,MODEL_HOME.z+3.7);updateSettling()');assert.equal(run('homeLife.settling'),'wardrobe');assert.equal(run('navigationTarget'),null,'Arrival clears only the home route');
+c.pauseSettling();assert.equal(run('homeLife.settling'),'wardrobe');assert.equal(run('homeLife.settlingPaused'),true);run("updateSettling('wardrobe')");assert.equal(run('homeLife.settling'),'wardrobe','Paused guidance cannot advance');
+run('saveGame();homeLife=freshHomeLife();restoreGame()');assert.equal(run('homeLife.settling'),'wardrobe');assert.equal(run('homeLife.settlingPaused'),true);c.startSettling();assert.equal(run('homeLife.settlingPaused'),false);
+const bedroom={x:houseRules.MODEL_HOME.x-1.65,z:houseRules.MODEL_HOME.z+4.1,y:houseRules.MODEL_HOME.upper};
+const bedSeat={id:'bed1',type:'bed',x:bedroom.x-.8,z:bedroom.z,floor:bedroom.y,height:.64,heading:0,rest:true,stand:{x:bedroom.x,z:bedroom.z}};
+c.landmarkHome={serialize:()=>null,restore:()=>null,act:(id,p)=>Math.hypot(p.x-bedroom.x,p.z-bedroom.z)<2&&p.y>3?{ok:true,...(id==='wardrobe'?{wardrobe:true}:{bed:true,seat:bedSeat})}:{ok:false}};
+c.useHouseObject('wardrobe');assert.equal(run('homeLife.settling'),'wardrobe','The ground-floor player cannot use the upstairs wardrobe remotely');
+run('player.position.set('+bedroom.x+','+bedroom.y+','+bedroom.z+')');c.useHouseObject('wardrobe');assert.equal(run('homeLife.settling'),'rest');c.closeGamePanel();
+c.restInHouse('bed1');assert.equal(run('seatedAt===null'),false);assert.equal(run('homeLife.settling'),'review');run('standFromSeat()');assert.equal(run('seatedAt'),null);
+// Already reviewing earlier today must not make the last guidance step impossible.
+run('homeLife.reviewedDay=marketDay');const countBefore=run('decisionLog.length');c.finishHomeReview();assert.equal(run('homeLife.settling'),'done');assert.equal(run('decisionLog.length'),countBefore);c.finishHomeReview();assert.equal(run('cash'),homeWallet);assert.equal(run('saved'),homeSavings);
+run('saveGame();homeLife=freshHomeLife();restoreGame()');assert.equal(run('homeLife.settling'),'done');delete c.landmarkHome;
+console.log('Homecoming passed: actual route/arrival/wardrobe/bed/review hooks, paused saves, same-day review completion, no remote or out-of-order progress and unchanged money.');
