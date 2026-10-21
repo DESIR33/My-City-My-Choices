@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {MAPLE_GROVE,COMMUNITY_HOMES,communityDriveway,communityReserved,withinRect} from './world-rules.js';
+import {MAPLE_GROVE,COMMUNITY_HOMES,COMMUNITY_ROADS,communityRoadRect,mapleOnRoad,communityDriveway,communityReserved,withinRect} from './world-rules.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {createCityMaterials} from './city-materials.js';
@@ -332,9 +332,9 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     // Individual curb blocks follow each sidewalk segment; intersections remain clear.
     for (const road of streets) for (const side of [-1, 1]) {
       for (let p = -164; p < 164; p += 1.5) {
-        if (streets.some(cross => Math.abs(p - cross) < 10.2)) continue;
-        if(!COMMUNITY_HOMES.some(h=>withinRect(road+side*7.57,p,communityDriveway(h),.7)))box(curb, road + side * 7.57, .055, p, .16, .17, 1.47);
-        if(!COMMUNITY_HOMES.some(h=>withinRect(p,road+side*7.57,communityDriveway(h),.7)))box(curb, p, .055, road + side * 7.57, 1.47, .17, .16);
+        const crossing=streets.some(cross=>Math.abs(p-cross)<10.2),westThrough=road===-120&&side===-1&&p>49.8;
+        if((!crossing||westThrough)&&mapleOnRoad(road+side*7.4,p)&&!COMMUNITY_ROADS.some(r=>withinRect(road+side*7.57,p,communityRoadRect(r),.15))&&!COMMUNITY_HOMES.some(h=>withinRect(road+side*7.57,p,communityDriveway(h),.7)))box(curb, road + side * 7.57, .055, p, .16, .17, 1.47);
+        if(!crossing&&mapleOnRoad(p,road+side*7.4)&&!COMMUNITY_ROADS.some(r=>withinRect(p,road+side*7.57,communityRoadRect(r),.15))&&!COMMUNITY_HOMES.some(h=>withinRect(p,road+side*7.57,communityDriveway(h),.7)))box(curb, p, .055, road + side * 7.57, 1.47, .17, .16);
       }
     }
     const [tactileImage, tq] = canvas(128);

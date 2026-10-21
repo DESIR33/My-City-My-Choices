@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {MAPLE_STREETS,MAPLE_GROVE,COMMUNITY_ROADS,COMMUNITY_HOMES,communityPoint,communityDriveway,communityRoadRect,communityOnRoad,worldDrivable,withinRect} from './world-rules.js';
+import {MAPLE_STREETS,MAPLE_GROVE,mapleOnRoad,COMMUNITY_ROADS,COMMUNITY_HOMES,communityPoint,communityDriveway,communityRoadRect,communityOnRoad,worldDrivable,withinRect} from './world-rules.js';
 
 // Metre-scale homes, private lots and streets share the same layout as navigation
 // and vehicle collision. Static detail is merged by the existing city batcher.
@@ -23,13 +23,13 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(x,y+h/2,z);mesh.scale.set(w,h,d);mesh.castShadow=shadow;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   function solid(home,x,z,w,d,kind){const p=home?communityPoint(home,x,z):{x,z};const obstacle={minX:p.x-w/2,maxX:p.x+w/2,minZ:p.z-d/2,maxZ:p.z+d/2,kind,homeId:home?.id};obstacles.push(obstacle);return obstacle;}
-  function surface(home,x,z,w,d,top,mat,kind,bottom=top-.08){const p=home?communityPoint(home,x,z):{x,z};box(streetRoot,p.x,bottom,p.z,w,top-bottom,d,mat,false);const s={minX:p.x-w/2,maxX:p.x+w/2,minZ:p.z-d/2,maxZ:p.z+d/2,top,kind,homeId:home?.id};groundSurfaces.push(s);return s;}
+  function surface(home,x,z,w,d,top,mat,kind,bottom=top-.08){const p=home?communityPoint(home,x,z):{x,z};if(mat!==grass||!home)box(streetRoot,p.x,bottom,p.z,w,top-bottom,d,mat,false);const s={minX:p.x-w/2,maxX:p.x+w/2,minZ:p.z-d/2,maxZ:p.z+d/2,top,kind,homeId:home?.id};groundSurfaces.push(s);return s;}
   function textPlate(parent,text,x,y,z,w,h,background='#24483e',yaw=0){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const q=canvas.getContext('2d');q.fillStyle=background;q.fillRect(0,0,512,128);q.strokeStyle='#c9c6aa';q.lineWidth=5;q.strokeRect(5,5,502,118);q.fillStyle='#fff4d8';q.font='600 48px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,66,480);const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map,roughness:.8,side:THREE.DoubleSide}));mesh.position.set(x,y,z);mesh.rotation.y=yaw;parent.add(mesh);return mesh;}
   // A flat developed site replaces the forest skirt underneath the subdivision.
   surface(null,(MAPLE_GROVE.minX+MAPLE_GROVE.maxX)/2,(MAPLE_GROVE.minZ+MAPLE_GROVE.maxZ)/2,MAPLE_GROVE.maxX-MAPLE_GROVE.minX,MAPLE_GROVE.maxZ-MAPLE_GROVE.minZ,.02,grass,'grass',-.07);
   const roadRects=COMMUNITY_ROADS.map(r=>communityRoadRect(r)),walkRects=COMMUNITY_ROADS.map(r=>communityRoadRect(r,3.3)),drives=COMMUNITY_HOMES.map(communityDriveway);
-  const oldRoad=(x,z)=>Math.abs(x)<=165&&Math.abs(z)<=165&&MAPLE_STREETS.some(n=>Math.abs(x-n)<=7.5||Math.abs(z-n)<=7.5);
-  const oldWalk=[];for(const n of MAPLE_STREETS)for(const side of [-1,1]){let cursor=-165;for(const crossing of [...MAPLE_STREETS,173.5]){const end=Math.min(165,crossing-8.5);if(end>cursor){oldWalk.push({minX:n+side*9-1.5,maxX:n+side*9+1.5,minZ:cursor,maxZ:end},{minX:cursor,maxX:end,minZ:n+side*9-1.5,maxZ:n+side*9+1.5});}cursor=crossing+8.5;}}
+  const oldRoad=mapleOnRoad;
+  const oldWalk=[];for(const n of MAPLE_STREETS)for(const side of [-1,1]){let cursor=-165;for(const crossing of [...MAPLE_STREETS,173.5]){const end=Math.min(165,crossing-8.5);if(end>cursor){oldWalk.push({minX:n+side*9-1.5,maxX:n+side*9+1.5,minZ:cursor,maxZ:end},{minX:Math.max(cursor,-130.8),maxX:end,minZ:n+side*9-1.5,maxZ:n+side*9+1.5});}cursor=crossing+8.5;}}
   // Partition the union once, so asphalt/sidewalks never overlap at junctions.
   // Driveway cuts are lowered continuously through the sidewalk to the road.
   const bounds={minX:-313,maxX:-109,minZ:-191,maxZ:11},relevant=[...roadRects,...walkRects,...drives,...oldWalk.filter(r=>r.maxX>=bounds.minX&&r.minX<=bounds.maxX&&r.maxZ>=bounds.minZ&&r.minZ<=bounds.maxZ)];
@@ -38,6 +38,15 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   function tileKind(x,z){if(roadRects.some(r=>withinRect(x,z,r)))return oldRoad(x,z)?null:'asphalt';if(!walkRects.some(r=>withinRect(x,z,r))||oldRoad(x,z)||oldWalk.some(r=>withinRect(x,z,r))||drives.some(r=>withinRect(x,z,r)))return null;return 'concrete';}
   for(let j=1;j<zs.length;j++){let start=0,last=null;const flush=i=>{if(last)surface(null,(xs[start]+xs[i])/2,(zs[j-1]+zs[j])/2,xs[i]-xs[start],zs[j]-zs[j-1],last==='asphalt'?.06:.21,last==='asphalt'?asphalt:concrete,last);};for(let i=0;i<xs.length-1;i++){const kind=tileKind((xs[i]+xs[i+1])/2,(zs[j-1]+zs[j])/2);if(kind!==last){flush(i);start=i;last=kind;}}flush(xs.length-1);}
   for(const road of COMMUNITY_ROADS){const horizontal=road.z1===road.z2,a=horizontal?Math.min(road.x1,road.x2):Math.min(road.z1,road.z2),b=horizontal?Math.max(road.x1,road.x2):Math.max(road.z1,road.z2);for(const side of [-1,1])for(let t=a;t<b;t+=1.5){const len=Math.min(1.48,b-t),fixed=(horizontal?road.z1:road.x1)+side*7.62,x=horizontal?t+len/2:fixed,z=horizontal?fixed:t+len/2;if(worldDrivable(x,z)||oldWalk.some(r=>withinRect(x,z,r))||drives.some(r=>withinRect(x,z,r,.35)))continue;box(streetRoot,x,.06,z,horizontal?len:.16,.16,horizontal?.16:len,foundation,false);}}
+
+  // Narrow seams between lots read as planted garden pockets, never lanes.
+  const landscapePockets=[];
+  for(const x of [-256,-224,-192])for(const z of [-219,-144,-54,39]){
+    surface(null,x,z,2.7,5.8,.055,mulch,'grass',.02);
+    const shrubMat=material(0x607553);
+    for(const dz of [-1.8,0,1.8]){const shrub=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,0),shrubMat);shrub.position.set(x,.42,z+dz);shrub.scale.set(1,.7,1);streetRoot.add(shrub);}
+    landscapePockets.push({x,z});
+  }
 
   function gable(parent,cx,cz,w,d,base,rise,roof,siding,turn=0){
     const g=new THREE.Group();g.position.set(cx,base,cz);g.rotation.y=turn;parent.add(g);const run=w/2,slope=Math.hypot(run,rise),angle=Math.atan2(rise,run);
@@ -53,6 +62,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   for(const home of COMMUNITY_HOMES){
     const {w,d}=home,p=palette[home.palette],root=new THREE.Group();root.position.set(home.x,0,home.z);root.rotation.y=home.heading;root.userData.staticArchitecture=true;root.name='Two-story home '+home.address+' '+home.street;scene.add(root);architectureRoots.push(root);
     const front=d/2,rear=(home.rearZ-home.z)*(home.heading===0?1:-1),frontLot=Math.abs(home.roadZ-home.z)-10.8,doorX=w*.20,garageX=-w*.23,porchX=w*.28;
+    // The developed-site lawn already covers every lot; avoid coplanar grass.
     surface(home,0,(rear+frontLot)/2,home.lotWidth-.12,frontLot-rear,.025,grass,'grass',-.055);
     box(root,0,-.055,0,w+.34,.355,d+.34,foundation);box(root,0,.3,0,w,6.1,d,p.siding);
     box(root,0,.3,front+.035,w,2.77,.09,p.brick);for(const side of [-1,1])box(root,side*(w/2+.035),.3,0,.09,2.77,d,p.brick);
@@ -119,5 +129,5 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     });
     mesh.userData.architectureBoxes=boxes;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();scene.add(mesh);architectureBatches.push(mesh);
   }
-  return {homes,roads:COMMUNITY_ROADS,gateways,architectureBatches,fenced:homes.filter(h=>h.fenced).length};
+  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,fenced:homes.filter(h=>h.fenced).length};
 }
