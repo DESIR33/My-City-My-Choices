@@ -339,3 +339,12 @@ Eight existing-fleet cars are parked in selected new-home driveways. Each whole 
 Validation: all 43 Node test files pass. The new native Three.js fixture checks plaza geometry, walking/city routes, seat exits, stair/slide heights and clearances, retained service access, actual legacy tree placement, full car footprints, free second bays, road-stub removal, through sidewalks and traffic wrap positions. Plaza geometry adds 209 meshes / 5,090 triangles before the existing static batch pass. Syntax and whitespace checks pass. A CPU projection of the actual meshes was inspected for layout; it does not verify game shaders or GPU rendering. Full WebGL/device playtesting remains unverified because the available preview browser has WebGL disabled.
 
 Design reference: [Magnolia's Silos lawn and gathering spaces](https://magnolia.com/blogs/article/how-to-spend-a-summer-day-at-magnolia). The game plaza is an original layout.
+
+
+## The Maple House: interactive first home
+
+Choose **World map → The Maple House · 101 Maple Grove** and follow guidance to the porch. Open the front door with E or the touch interaction button. Walk through the furnished living room, kitchen, dining space and utility room; climb the timber stairs to two bedrooms, a bathroom and landing study. Thirty interaction points include six animated doors, seats, beds, TV channels, fridge and oven doors, drawers, taps, shower, laundry, lights, curtains and wardrobe access. Move or interact to stand up or leave a bed.
+
+`assets/house-rules.js` defines the stable `maple-grove-1` property identity, versioned household state and floor-aware movement rules. `assets/landmark-house.js` builds the rooms, furnishings, interaction approaches and physical door leaves. House settings and the visited floor persist in local saves and portable save backups. This establishes a foundation for future player assignment and improvements; rent, purchase and multiplayer ownership are not connected to this property yet.
+
+Run `node --test tests/landmark-house.test.mjs` for actual room routes, vertical movement up and down all stairs, door clearance, furniture collisions on both floors, interaction responses, seat/bed exits and save recovery. Static details use shared instance batches: the native test scene has 87 mesh draws, 11,130 triangles and roughly 47 KB of geometry/instance buffers, excluding textures and renderer allocations. Full WebGL rendering, mobile frame rate and touch playtesting remain unverified in the current WebGL-disabled QA browser.
