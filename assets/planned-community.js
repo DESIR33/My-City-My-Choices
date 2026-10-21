@@ -5,7 +5,7 @@ import {MAPLE_STREETS,MAPLE_GROVE,COMMUNITY_ROADS,COMMUNITY_HOMES,communityPoint
 // and vehicle collision. Static detail is merged by the existing city batcher.
 export function createPlannedCommunity({scene,visualKit,obstacles,buildings,groundSurfaces}){
   const streetRoot=new THREE.Group();streetRoot.userData.staticArchitecture=true;streetRoot.name='Maple Grove streets and landscaping';scene.add(streetRoot);
-  const unit=new THREE.BoxGeometry(1,1,1),geometryCache=new Map(),materialCache=new Map(),homes=[],gateways=[];
+  const unit=new THREE.BoxGeometry(1,1,1),materialCache=new Map(),grassGeometries=new Map(),homes=[],gateways=[],architectureRoots=[streetRoot];
   const material=(color,roughness=.84,metalness=0)=>{const key=color+':'+roughness+':'+metalness;if(!materialCache.has(key))materialCache.set(key,new THREE.MeshStandardMaterial({color,roughness,metalness}));return materialCache.get(key);};
   const concrete=visualKit.concrete,grass=visualKit.grass,asphalt=visualKit.asphalt,trim=material(0xe5e0d3),dark=material(0x29383b,.6,.25),foundation=material(0xaca79a),wood=visualKit.wood(0x988160),whiteFence=material(0xdad8ca),mulch=material(0x4b3f32),metal=material(0x38433e,.55,.5);
   const palette=[
@@ -16,8 +16,10 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   const porchLight=new THREE.MeshStandardMaterial({color:0xffe7bb,emissive:0xffc575,emissiveIntensity:.08,roughness:.35});
   visualKit.atmosphere.registerGlow(porchLight,{day:.04,night:2.3});
   function box(parent,x,y,z,w,h,d,mat,shadow=true){
+    // PBR materials derive UVs from world/instance transforms. The legacy
+    // grass material still needs metre-scaled UVs, shared by lawn dimensions.
     let geometry=unit;
-    if(mat.userData?.tileSize){const tile=mat.userData.tileSize,key=[w,h,d,tile].join(':');if(!geometryCache.has(key)){const g=unit.clone(),p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv;for(let i=0;i<p.count;i++){const ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i));uv.setXY(i,((ay>.5||ax<.5?p.getX(i)*w:p.getZ(i)*d)+(ay>.5||ax<.5?w:d)/2)/tile,((ay>.5?p.getZ(i)*d:p.getY(i)*h)+(ay>.5?d:h)/2)/tile);}geometryCache.set(key,g);}geometry=geometryCache.get(key);}
+    if(mat===grass&&mat.userData?.tileSize){const tile=mat.userData.tileSize,key=[w,h,d].join(':');if(!grassGeometries.has(key)){const g=unit.clone(),p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv;for(let i=0;i<p.count;i++){const ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i));uv.setXY(i,((ay>.5||ax<.5?p.getX(i)*w:p.getZ(i)*d)+(ay>.5||ax<.5?w:d)/2)/tile,((ay>.5?p.getZ(i)*d:p.getY(i)*h)+(ay>.5?d:h)/2)/tile);}grassGeometries.set(key,g);}geometry=grassGeometries.get(key);}
     const mesh=new THREE.Mesh(geometry,mat);mesh.position.set(x,y+h/2,z);mesh.scale.set(w,h,d);mesh.castShadow=shadow;mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
   function solid(home,x,z,w,d,kind){const p=home?communityPoint(home,x,z):{x,z};const obstacle={minX:p.x-w/2,maxX:p.x+w/2,minZ:p.z-d/2,maxZ:p.z+d/2,kind,homeId:home?.id};obstacles.push(obstacle);return obstacle;}
@@ -49,7 +51,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     for(let i=0;i<=count;i++){const t=i/count,x=x1+(x2-x1)*t,z=z1+(z2-z1)*t;box(root,x,.02,z,.19,1.96,.19,mat);box(root,x,1.98,z,.23,.06,.23,mat,false);}solid(home,(x1+x2)/2,(z1+z2)/2,Math.abs(x2-x1)+.2,Math.abs(z2-z1)+.2,'backyard-fence');}
 
   for(const home of COMMUNITY_HOMES){
-    const {w,d}=home,p=palette[home.palette],root=new THREE.Group();root.position.set(home.x,0,home.z);root.rotation.y=home.heading;root.userData.staticArchitecture=true;root.name='Two-story home '+home.address+' '+home.street;scene.add(root);
+    const {w,d}=home,p=palette[home.palette],root=new THREE.Group();root.position.set(home.x,0,home.z);root.rotation.y=home.heading;root.userData.staticArchitecture=true;root.name='Two-story home '+home.address+' '+home.street;scene.add(root);architectureRoots.push(root);
     const front=d/2,rear=(home.rearZ-home.z)*(home.heading===0?1:-1),frontLot=Math.abs(home.roadZ-home.z)-10.8,doorX=w*.20,garageX=-w*.23,porchX=w*.28;
     surface(home,0,(rear+frontLot)/2,home.lotWidth-.12,frontLot-rear,.025,grass,'grass',-.055);
     box(root,0,-.055,0,w+.34,.355,d+.34,foundation);box(root,0,.3,0,w,6.1,d,p.siding);
@@ -91,7 +93,31 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     solid(home,0,0,w+.4,d+.4,'community-house');buildings.push({...home,shop:false,height:9.05,residential:true});homes.push({...home,driveway:drive,patio,backyard:{minX:home.x-home.lotWidth/2+.4,maxX:home.x+home.lotWidth/2-.4,minZ:Math.min(home.rearZ,home.z-(home.heading===0?1:-1)*(front+.8)),maxZ:Math.max(home.rearZ,home.z-(home.heading===0?1:-1)*(front+.8))}});
   }
   for(const z of [-165,-120,-45])for(const x of [-311.5,-140.5]){box(streetRoot,x,.02,z,.23,.28,.23,foundation);box(streetRoot,x,.3,z,.09,5.7,.09,metal);box(streetRoot,x,5.96,z,1.35,.12,.4,metal);box(streetRoot,x,5.91,z,1.12,.05,.32,porchLight,false);visualKit.atmosphere.addStreetLight({x,y:5.91,z,groundY:.06});solid(null,x,z,.25,.25,'streetlight');}
-  for(const z of [-140,-18]){const monument=new THREE.Group();monument.position.set(-135.8,0,z);monument.rotation.y=Math.PI/2;monument.userData.staticArchitecture=true;scene.add(monument);box(monument,0,.02,0,8.4,.38,1.3,foundation);box(monument,0,.4,0,7.8,1.48,.85,visualKit.brick(0x8c705c));box(monument,0,1.88,0,8.2,.14,1.05,trim);textPlate(monument,'MAPLE GROVE',0,1.2,.44,6.9,.8,'#2e473e');solid(null,-135.8,z,1.3,8.4,'community-monument');}
+  for(const z of [-140,-18]){const monument=new THREE.Group();monument.position.set(-135.8,0,z);monument.rotation.y=Math.PI/2;monument.userData.staticArchitecture=true;scene.add(monument);architectureRoots.push(monument);box(monument,0,.02,0,8.4,.38,1.3,foundation);box(monument,0,.4,0,7.8,1.48,.85,visualKit.brick(0x8c705c));box(monument,0,1.88,0,8.2,.14,1.05,trim);textPlate(monument,'MAPLE GROVE',0,1.2,.44,6.9,.8,'#2e473e');solid(null,-135.8,z,1.3,8.4,'community-monument');}
   for(const [z,name] of [[-180,'MAPLE GROVE LN'],[-90,'CEDAR RUN'],[0,'WILLOW WAY']]){const x=-139.3,zz=z-11.8;box(streetRoot,x,.02,zz,.07,2.95,.07,metal);textPlate(streetRoot,name,x,2.77,zz+.04,3.4,.47);}
-  return {homes,roads:COMMUNITY_ROADS,gateways,fenced:homes.filter(h=>h.fenced).length};
+  // Preserve exact camera/shelter bounds before replacing the box meshes.
+  // Instancing retains transforms, materials and shadows without expanding every
+  // cube into a separate flat vertex buffer during the city-wide merge.
+  scene.updateMatrixWorld(true);
+  const batches=new Map(),size=new THREE.Vector3();
+  unit.computeBoundingBox();
+  for(const root of architectureRoots)root.traverse(mesh=>{
+    if(!mesh.isMesh||mesh.geometry!==unit)return;
+    const key=mesh.material.uuid+':'+mesh.castShadow;
+    if(!batches.has(key))batches.set(key,{material:mesh.material,shadow:mesh.castShadow,sources:[]});
+    batches.get(key).sources.push(mesh);
+  });
+  const architectureBatches=[];
+  for(const batch of batches.values()){
+    const mesh=new THREE.InstancedMesh(unit,batch.material,batch.sources.length),boxes=[];
+    mesh.name='Maple Grove instanced architecture';mesh.castShadow=batch.shadow;mesh.receiveShadow=true;
+    batch.sources.forEach((source,i)=>{
+      mesh.setMatrixAt(i,source.matrixWorld);
+      const bounds=unit.boundingBox.clone().applyMatrix4(source.matrixWorld);bounds.getSize(size);
+      if(size.y>.03&&size.x>0&&size.z>0&&Math.max(size.x,size.z)<=300)boxes.push({minX:bounds.min.x,maxX:bounds.max.x,minY:bounds.min.y,maxY:bounds.max.y,minZ:bounds.min.z,maxZ:bounds.max.z});
+      source.removeFromParent();
+    });
+    mesh.userData.architectureBoxes=boxes;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();scene.add(mesh);architectureBatches.push(mesh);
+  }
+  return {homes,roads:COMMUNITY_ROADS,gateways,architectureBatches,fenced:homes.filter(h=>h.fenced).length};
 }
