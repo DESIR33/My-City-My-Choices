@@ -10,6 +10,12 @@ export function trafficDemand(hour,weekday=2,region='maple',mode='auto'){
  const density=mode==='quiet'?.22:mode==='busy'?1:clamp((night?.22:.48)+pressure*.52,.2,1);
  return {density,pressure,speedFactor:1-pressure*.34,headway:.75+pressure*.2,reaction:.3+pressure*.45,label:mode==='busy'?'Rush-hour preview':mode==='quiet'?'Quiet-road preview':commute>.5?'Commuter rush':coastal>.3?'Coastal evening':weekend&&leisure>.2?'Weekend activity':night?'Overnight roads':'Normal city traffic'};
 }
+// Fictional driver comfort settings. Wetness persists after a shower; reduced
+// visibility depends on active rain. Density and road/signal priorities stay intact.
+export function trafficWeatherProfile(base=trafficDemand(12),wetness=0,rain=0){
+ const wet=clamp(Number.isFinite(wetness)?wetness:0,0,1),visibility=clamp(Number.isFinite(rain)?rain:0,0,1);
+ return {...base,speedFactor:base.speedFactor*(1-wet*.22-visibility*.18),headway:base.headway+wet*.9+visibility*.5,reaction:base.reaction+wet*.25+visibility*.2,standstillGap:5.4+wet*.8+visibility*.4,stopDeceleration:5*(1-wet*.4),followDeceleration:3.5*(1-wet*.35),brakeDeceleration:6.5*(1-wet*.35),acceleration:2.4*(1-wet*.35-visibility*.15),stopBuffer:1+wet*.7+visibility*.4,exitBuffer:2.5+wet*3+visibility*2};
+}
 export function createRushTrafficPool(traffic,car,{mobile=false}={}){
  const base=traffic.filter(t=>!t.mesh.userData.policeVehicle),groups={maple:[],north:[],coast:[],connector:[]};for(const t of base)groups[trafficRegion(t.mesh.position.z)].push(t);
  const counts=mobile?{maple:4,north:3,coast:3,connector:2}:{maple:8,north:6,coast:6,connector:4};let made=0;
@@ -22,9 +28,9 @@ export function hornLocation(source,listener,yaw=0){const dx=source.x-listener.x
 export function createTrafficDirector({traffic,vehicleRefs,canSpawn=()=>true,onHorn=()=>false}){
  let first=true,time=0,lastHorn=-20;const routes=new WeakMap();
  function route(t,i){if(!routes.has(t)){const p=t.mesh.position,axis=t.axis||'z',dir=Math.sign(t.speed)||1;routes.set(t,{axis,dir,fixed:p[axis==='z'?'x':'z'],min:t.min??-165,max:t.max??165,region:trafficRegion(p.z),seedAlong:t.seedAlong??p[axis],rank:((i*37+19)%101)/101});}return routes.get(t);}
- function tick(dt,{hour=12,weekday=2,listener={x:0,z:0},yaw=0,paused=false,settings=restoreTraffic()}={}){
+ function tick(dt,{hour=12,weekday=2,listener={x:0,z:0},yaw=0,paused=false,wetness=0,rain=0,settings=restoreTraffic()}={}){
   if(paused&&!first)return;if(!paused)time+=Math.max(0,Math.min(.1,dt));
-  for(const [i,t] of traffic.entries()){const car=t.mesh;if(car.userData.policeVehicle)continue;const r=route(t,i);if(first&&t.rushReserve){car.userData.trafficInactive=true;car.visible=false;car.position.x=10000+i*12;car.position.z=10000;t.currentSpeed=0;}t.flow=trafficDemand(hour,weekday,r.region,settings.mode);const protectedCar=car.userData.disabled||car.userData.responding,needed=r.rank<t.flow.density||protectedCar;
+  for(const [i,t] of traffic.entries()){const car=t.mesh;if(car.userData.policeVehicle){t.flow=trafficWeatherProfile(trafficDemand(hour,weekday,trafficRegion(car.position.z),'quiet'),wetness,rain);continue;}const r=route(t,i);if(first&&t.rushReserve){car.userData.trafficInactive=true;car.visible=false;car.position.x=10000+i*12;car.position.z=10000;t.currentSpeed=0;}t.flow=trafficWeatherProfile(trafficDemand(hour,weekday,r.region,settings.mode),wetness,rain);const protectedCar=car.userData.disabled||car.userData.responding,needed=r.rank<t.flow.density||protectedCar;
    if(!needed&&!car.userData.trafficInactive&&!protectedCar&&(first||Math.hypot(car.position.x-listener.x,car.position.z-listener.z)>160)){
     if(Math.hypot(car.position.x-listener.x,car.position.z-listener.z)<12)continue;car.userData.trafficInactive=true;car.visible=false;car.position.x=10000+i*12;car.position.z=10000;t.currentSpeed=0;t.queueWait=0;
    }
