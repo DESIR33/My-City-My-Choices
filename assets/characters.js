@@ -265,6 +265,8 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     if(previous)previous.fadeOut(.2);
     next.reset().fadeIn(.2).play();data.active=name;
   }
+  function setResting(actor,rest=null){const d=actor.userData.character;d.resting=rest;d.seated=null;if(d.visual){d.visual.rotation.x=0;d.visual.position.y=0;}}
+  function restingPose(actor,data){if(!data.visual)return;data.visual.rotation.x=-Math.PI/2;data.visual.position.y=0;actor.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(data.visual,true);data.visual.position.y+=actor.position.y+data.resting.height-bounds.min.y;actor.updateMatrixWorld(true);}
   function setSeated(actor,seat=null){const d=actor.userData.character;d.seated=seat;if(!seat&&d.visual)d.visual.position.y=0;}
   function seatedPose(actor,data){
     const find=(side,part)=>{let result;data.source.traverse(b=>{if(b.isBone&&b.name.replaceAll('_',' ').endsWith((side?side+' ':'')+part))result=b;});return result;};
@@ -307,18 +309,18 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       if(!data.ready)continue;
       // Face the direction of travel from world-space movement so turnarounds and crossing paths
       // cannot leave the body facing backward while a walk or run clip is playing.
-      if(!data.riding&&!data.seated&&displacement>.025&&displacement<1){const heading=characterFacingYaw(dx,dz);if(heading!==null)actor.rotation.y=heading;}
+      if(!data.riding&&!data.seated&&!data.resting&&displacement>.025&&displacement<1){const heading=characterFacingYaw(dx,dz);if(heading!==null)actor.rotation.y=heading;}
       // Ignore teleports between businesses when selecting a movement animation.
       const speed=dt>0&&displacement<1?displacement/dt:0;data.speed=THREE.MathUtils.damp(data.speed,speed,12,dt);
-      const state=actor.userData.vertical?.grounded===false||data.seated||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
+      const state=actor.userData.vertical?.grounded===false||data.seated||data.resting||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
       data.actions[state].setEffectiveTimeScale(state==='idle'?1:THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9));
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
-      data.phase+=dt;data.mixer.update(dt);if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
-      if(data.riding)ridingPose(actor,data);else activityPose(actor,data);
-      if(!data.riding&&!data.seated&&actor.userData.vertical?.grounded===false){for(const bone of data.jumpBones||[])bone.rotation.x+=/Calf$/.test(bone.name)?.45:/Thigh$/.test(bone.name)?-.25:-.18;actor.updateMatrixWorld(true);}
-      if(!data.riding&&!data.seated&&actor.userData.vertical?.grounded!==false&&data.contacts?.length){actor.updateMatrixWorld(true);const points=data.contacts.map(({bone,soleDepth})=>({...bone.getWorldPosition(new THREE.Vector3()),soleDepth}));data.visual.position.y+=footContactLift(points,groundHeight);actor.updateMatrixWorld(true);}
+      data.phase+=dt;data.mixer.update(dt);if(data.resting)restingPose(actor,data);else if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
+      if(data.riding)ridingPose(actor,data);else if(!data.resting)activityPose(actor,data);
+      if(!data.riding&&!data.seated&&!data.resting&&actor.userData.vertical?.grounded===false){for(const bone of data.jumpBones||[])bone.rotation.x+=/Calf$/.test(bone.name)?.45:/Thigh$/.test(bone.name)?-.25:-.18;actor.updateMatrixWorld(true);}
+      if(!data.riding&&!data.seated&&!data.resting&&actor.userData.vertical?.grounded!==false&&data.contacts?.length){actor.updateMatrixWorld(true);const points=data.contacts.map(({bone,soleDepth})=>({...bone.getWorldPosition(new THREE.Vector3()),soleDepth}));data.visual.position.y+=footContactLift(points,groundHeight);actor.updateMatrixWorld(true);}
       if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
     }
   }
-  return { create,setAppearance,setSeated,setRiding,setActivity,update,actors,ready:()=>Promise.all([...pending]) };
+  return { create,setAppearance,setSeated,setResting,setRiding,setActivity,update,actors,ready:()=>Promise.all([...pending]) };
 }
