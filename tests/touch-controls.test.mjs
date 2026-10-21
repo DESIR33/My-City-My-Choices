@@ -14,9 +14,9 @@ function setup(touch = true) {
   const elements = new Map(), body = new Element(), doc = new Element(), win = new Element(), media = new Element();
   doc.body = body; doc.querySelector = id => {if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id);};
   media.matches = touch; win.matchMedia = () => media; globalThis.document = doc; globalThis.window = win;
-  const canvas = new Element(), looks = []; let blocked = false, interactions = 0, vehicles = 0, jumps = 0;
-  const controls = createTouchControls({canvas, isBlocked: () => blocked, onLook: (...d) => looks.push(d), onInteract: () => interactions++, onVehicle: () => vehicles++, onJump: () => jumps++});
-  return {controls, canvas, looks, body, doc, win, media, el: id => doc.querySelector(id), block: b => blocked = b, jumpCount:()=>jumps, counts: () => ({interactions, vehicles})};
+  const canvas = new Element(), looks = []; let blocked = false, interactions = 0, vehicles = 0, jumps = 0, signals = 0;
+  const controls = createTouchControls({canvas, isBlocked: () => blocked, onLook: (...d) => looks.push(d), onInteract: () => interactions++, onVehicle: () => vehicles++, onJump: () => jumps++, onSignal:()=>signals++});
+  return {controls, canvas, looks, body, doc, win, media, el: id => doc.querySelector(id), block: b => blocked = b, jumpCount:()=>jumps,signalCount:()=>signals, counts: () => ({interactions, vehicles})};
 }
 {
   const t = setup(); const {controls: c} = t;
@@ -62,4 +62,4 @@ console.log('Touch input passed: simultaneous movement/camera, pointer ownership
  t.controls.update({driving:true,near:null});assert.equal(t.el('#touchInteract').hidden,true);assert.equal(t.el('#touchVehicle').hidden,false);assert.equal(t.el('#touchRun').hidden,true);assert.equal(t.el('#touchBrake').hidden,false);
  t.controls.update({driving:true,rideKind:'bicycle',near:null});assert.equal(t.el('#touchRun').hidden,false);assert.equal(t.el('#touchVehicle').textContent,'Dismount');
 }
-const jumpUI=setup(true);jumpUI.controls.update({driving:false,near:null});assert.equal(jumpUI.el('#touchJump').hidden,false);jumpUI.el('#touchJump').emit('click');assert.equal(jumpUI.jumpCount(),1);jumpUI.block(true);jumpUI.el('#touchJump').emit('click');assert.equal(jumpUI.jumpCount(),1);jumpUI.block(false);jumpUI.controls.update({driving:true,rideKind:'motorcycle',near:null});assert.equal(jumpUI.el('#touchJump').hidden,true);jumpUI.controls.update({driving:false,canJump:false,near:null});assert.equal(jumpUI.el('#touchJump').hidden,true);
+const jumpUI=setup(true);jumpUI.controls.update({driving:false,near:null});assert.equal(jumpUI.el('#touchJump').hidden,false);jumpUI.el('#touchJump').emit('click');assert.equal(jumpUI.jumpCount(),1);jumpUI.block(true);jumpUI.el('#touchJump').emit('click');assert.equal(jumpUI.jumpCount(),1);jumpUI.block(false);jumpUI.controls.update({driving:true,rideKind:'motorcycle',near:null});assert.equal(jumpUI.el('#touchJump').hidden,false);assert.equal(jumpUI.el('#touchJump').textContent,'Horn');jumpUI.el('#touchJump').emit('click');assert.equal(jumpUI.signalCount(),1);assert.equal(jumpUI.jumpCount(),1);jumpUI.controls.update({driving:true,rideKind:'bicycle',near:null});assert.equal(jumpUI.el('#touchJump').textContent,'Bell');jumpUI.el('#touchJump').emit('click');assert.equal(jumpUI.signalCount(),2);jumpUI.controls.update({driving:true,near:null});assert.equal(jumpUI.el('#touchJump').textContent,'Horn');jumpUI.controls.update({driving:false,canJump:false,near:null});assert.equal(jumpUI.el('#touchJump').hidden,true);

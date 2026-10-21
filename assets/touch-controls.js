@@ -1,5 +1,5 @@
 // Pointer IDs keep the movement thumb, camera finger, and action buttons independent.
-export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVehicle, onJump=()=>{}}) {
+export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVehicle, onJump=()=>{}, onSignal=()=>{}}) {
   const root = document.querySelector('#mobileControls'), stick = document.querySelector('#moveStick');
   const knob = document.querySelector('#stickKnob'), action = document.querySelector('#touchInteract');
   const vehicle = document.querySelector('#touchVehicle'), run = document.querySelector('#touchRun');
@@ -43,7 +43,7 @@ export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVe
   });
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(type, e => {if (look === e.pointerId) look = null;});
   action.addEventListener('click', () => {if (enabled && !isBlocked()) onInteract();});
-  jump.addEventListener('click',()=>{if(enabled&&!isBlocked())onJump();});
+  jump.addEventListener('click',()=>{if(!enabled||isBlocked()||jump.hidden)return;if(signalKind)onSignal();else onJump();});
   vehicle.addEventListener('click', () => {if (enabled && !isBlocked()) onVehicle();});
   function hold(button, key) {
     button.addEventListener('pointerdown', e => {
@@ -55,7 +55,7 @@ export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVe
   }
   hold(run, 'run'); hold(brake, 'brake');
   window.addEventListener('blur', clear); document.addEventListener('visibilitychange', () => {if (document.hidden) clear();});
-  let lastMode = '', wasBlocked = false;
+  let lastMode = '', wasBlocked = false, signalKind=null;
   function update({driving, rideKind=null, canJump=true, near}) {
     const blocked = isBlocked(); root.hidden = !enabled || blocked;
     if (blocked && !wasBlocked) clear(); wasBlocked = blocked;
@@ -67,7 +67,7 @@ export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVe
     action.textContent = near?.kind==='courier'?(near.phase==='pickup'?'Collect parcel':'Deliver parcel'):near?.kind === 'stand' ? 'Stand up' : near?.kind === 'seat' ? 'Sit' : near?.kind === 'ride' ? 'Ride' : near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact';
     const mode = driving ? 'drive' : 'walk';
     if (mode !== lastMode) {clear(); lastMode = mode;}
-    jump.hidden=driving||!canJump;
+    signalKind=driving?(rideKind||'car'):null;jump.hidden=!driving&&!canJump;jump.textContent=signalKind==='bicycle'?'Bell':signalKind?'Horn':'Jump';jump.setAttribute('aria-label',signalKind==='bicycle'?'Ring bicycle bell':signalKind?'Sound vehicle horn':'Jump');
     run.hidden = driving&&!rideKind;run.textContent=rideKind?'Walk back':'Run';brake.hidden=!driving;brake.textContent=rideKind?'Rear brake':'Handbrake';
     stick.setAttribute('aria-label', rideKind ? 'Drag up to pedal or accelerate, down to brake; hold Walk back with down to move backward' : driving ? 'Drag up to accelerate, down to brake or reverse; left and right to steer' : 'Drag to walk');
     document.querySelector('#stickLabel').textContent = driving ? 'STEER / DRIVE' : 'MOVE';
