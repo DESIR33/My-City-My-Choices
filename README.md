@@ -401,6 +401,12 @@ Choose **World map → The Maple House · 101 Maple Grove** and follow guidance 
 
 Run `node --test tests/landmark-house.test.mjs` for actual room routes, vertical movement up and down all stairs, door clearance, furniture collisions on both floors, interaction responses, seat/bed exits and save recovery. Static details use shared instance batches: the native test scene has 87 mesh draws, 11,130 triangles and roughly 47 KB of geometry/instance buffers, excluding textures and renderer allocations. Full WebGL rendering, mobile frame rate and touch playtesting remain unverified in the current WebGL-disabled QA browser.
 
+### Realistic materials, light and furniture
+
+The Maple House is the first realism pilot. Floors, walls, brick, roof, paving, wood and fabric use scanned CC0 textures from Poly Haven. A baked light map darkens rooms away from windows and under furniture, and the player and Mom dim to match when indoors. Chairs, coffee table, media console, nightstands and plants load as real CC0 models. Everything loads after the game starts; if a download fails the house keeps its plain look and plays the same.
+
+Attribution lives in `assets/house/textures/ATTRIBUTION.md` and `assets/house/furniture/ATTRIBUTION.md`. To rebuild assets, install the tool packages listed at the top of each script in `tools/` with `npm install --no-save`, then run `node tools/prepare-house-textures.mjs`, `node tools/prepare-house-furniture.mjs` or `node tools/bake-house-light.mjs`. Rebake after any change to house geometry; `node --test tests/house-realism.test.mjs` fails when the bake is stale. Phones download 512 px textures (about 4 MB extra in total), desktops 1024 px (about 7 MB).
+
 ### A home on Maple Grove
 
 **Menu → Home & daily life** connects the housing ledger to the furnished home at **101 Maple Grove Lane**. The house remains available for free tours. After completing business day two, rent for $2 for seven business days (including the signing day), or buy for $5 down and five optional $1 installments. All amounts are fictional learning prices. Renting never renews automatically, and an expired rental has no late fees or automatic eviction. Renewal is an explicit $2 choice. Buying retains installed improvements; rent is separate from the purchase price. An owner cannot accidentally switch back to renting.
