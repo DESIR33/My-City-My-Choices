@@ -411,6 +411,12 @@ Attribution lives in `assets/house/textures/ATTRIBUTION.md` and `assets/house/fu
 
 Every community home, road, sidewalk and downtown facade now uses scanned CC0 surfaces (asphalt, concrete, brick, concrete wall panels, plaster, roof tiles, lap siding and wood) once they load. Each building keeps its own paint color because the scans ship as grayscale tone maps. Credits are in `assets/city/textures/ATTRIBUTION.md`; rebuild with `node tools/prepare-city-textures.mjs` after installing the packages listed in its header. Extra download is about 2.5 MB on desktop and 0.75 MB on phones.
 
+### Townspeople, kids and pets
+
+Background townspeople now come from a pool of 12 adults and 2 kids (Microsoft Rocketbox, MIT) instead of six repeated models, so streets, the beach, downtown and the Maple Commons playground show different faces, ages, skin tones and clothes. Story characters and anyone wearing a uniform or a chosen outfit keep the original six. Every model now has a roughness map from its original specular scan. Rebuild with `node tools/prepare-characters.mjs --rocketbox /path/to/microsoft-rocketbox` (see the script header).
+
+Maple Grove has pets: dogs in several fenced backyards, cats on front lawns, a dog on the Commons lawn and one dog out for a walk with a pedestrian at the main crossing. They are low-poly CC0 models (Quaternius, `assets/pets/ATTRIBUTION.md`) and pure scenery: no collision and nothing saved. Rebuild with `node tools/prepare-pets.mjs`.
+
 ### A home on Maple Grove
 
 **Menu → Home & daily life** connects the housing ledger to the furnished home at **101 Maple Grove Lane**. The house remains available for free tours. After completing business day two, rent for $2 for seven business days (including the signing day), or buy for $5 down and five optional $1 installments. All amounts are fictional learning prices. Renting never renews automatically, and an expired rental has no late fees or automatic eviction. Renewal is an explicit $2 choice. Buying retains installed improvements; rent is separate from the purchase price. An owner cannot accidentally switch back to renting.

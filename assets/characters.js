@@ -5,15 +5,10 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {footContactLift} from './character-grounding.js';
 import { characterFacingYaw } from './character-controls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { MODELS, crowdModel } from './character-roster.js';
+export { MODELS, CROWD_ADULTS, CROWD_CHILDREN, crowdModel } from './character-roster.js';
 
-const MODELS = {
-  child: { file: 'female-child-01.glb', set: 'f', height: 1.4 },
-  boy: { file: 'male-child-01.glb', set: 'm', height: 1.38 },
-  mom: { file: 'female-adult-01.glb', set: 'f', height: 1.72 },
-  maya: { file: 'female-adult-05.glb', set: 'f', height: 1.7 },
-  neighbor: { file: 'male-adult-02.glb', set: 'm', height: 1.8 },
-  casual: { file: 'male-adult-09.glb', set: 'm', height: 1.76 },
-};
+
 const MOTIONS = { idle: 'idle_neutral_01', walk: 'walk_neutral_01', run: 'run_neutral_01' };
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -133,6 +128,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
   const templates = new Map(), animations = new Map(), actors = [];
   const masks = { head: maskTexture(true), body: maskTexture(false) };
   const pending = new Set();
+  let crowdCount=0;
   function load(file) { return loader.loadAsync(new URL(file,baseURL).href); }
   function template(key) {
     if (!templates.has(key)) templates.set(key,load(MODELS[key].file));
@@ -153,7 +149,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     return group;
   }
   function makeAvatarMaterial(original, head, uniforms) {
-    const material = original.clone(); material.roughness = head ? .7 : .9; material.metalness = 0;
+    const material = original.clone(); material.roughness = original.roughnessMap ? 1 : head ? .7 : .9; material.metalness = 0;
     material.onBeforeCompile = shader => {
       Object.assign(shader.uniforms,uniforms,{ avatarMask: { value: head?masks.head:masks.body } });
       shader.fragmentShader = 'uniform sampler2D avatarMask;\nuniform vec3 avatarSkinRatio;\nuniform vec3 avatarShirt;\nuniform vec3 avatarPants;\nuniform float avatarPantsEnabled;\nuniform float avatarTopPattern;\nuniform vec3 avatarHair;\nuniform vec3 avatarShoes;\nuniform float avatarHairStyle;\n'+shader.fragmentShader;
@@ -208,7 +204,10 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     if(data.accessories.rideHelmet){data.accessories.rideHelmet.visible=!!data.riding;data.accessories.cycleHelmet.visible=data.riding?.kind==='bicycle';data.accessories.motorHelmet.visible=data.riding?.kind==='motorcycle';if(data.riding){data.accessories.hair.curls.visible=false;data.accessories.hair.bun.visible=false;}}
     data.accessories.hat.visible=!!a.wardrobe?.hat&&!data.riding;data.accessories.backpack.visible=!!a.wardrobe?.backpack;
   }
-  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false,police=false,firefighter=false }) {
+  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false,police=false,firefighter=false,seed }) {
+    // Background townspeople ask for 'crowd' (or 'crowd-child'); outfit masks only fit the original six.
+    if(model==='crowd'||model==='crowd-child')model=customizable||police||firefighter?(model==='crowd'?'neighbor':'boy'):crowdModel(seed??crowdCount++,{child:model==='crowd-child'});
+    if(!MODELS[model])throw new Error('Unknown character model '+model);
     const actor=new THREE.Group();actor.position.set(x,groundHeight(x,z),z);scene.add(actor);
     const fallback=placeholder(shirt);actor.add(fallback);
     const data={ model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61 };
@@ -221,8 +220,8 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const ratio=MODELS[model].height*(.9+.1*scale)/size.y;
       source.position.set(-center.x,-bounds.min.y,-center.z);visual.scale.setScalar(ratio);visual.add(source);actor.add(visual);
       data.source=source;data.visual=visual;data.height=MODELS[model].height*(.9+.1*scale);
-      const head=source.getObjectByName(model==='child'||model==='boy'?'Bip02_Head':'Bip01_Head');
-      const leftEye=source.getObjectByName(model==='child'||model==='boy'?'Bip02_LEye':'Bip01_LEye');
+      const bones=MODELS[model].bones||'Bip01',head=source.getObjectByName(bones+'_Head');
+      const leftEye=source.getObjectByName(bones+'_LEye');
       actor.updateMatrixWorld(true);
       // Eyes sit in front of the head on these Rocketbox meshes (+Z in the actor's rest pose).
       // Measure that in actor space. World Z also includes the yaw already applied by a patrol
@@ -238,7 +237,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
         data.accessories=makeAccessories();actor.add(data.accessories.head,data.accessories.torso);
       }
       source.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=mesh.receiveShadow=true;mesh.frustumCulled=false;
-        const prepare=m=>{if(data.customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=.85;return mat};
+        const prepare=m=>{if(data.customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=m.roughnessMap?1:.85;return mat};
         mesh.material=Array.isArray(mesh.material)?mesh.material.map(prepare):prepare(mesh.material);
       });
       actor.updateMatrixWorld(true);data.contacts=[];data.jumpBones=[];source.traverse(bone=>{if(bone.isBone&&/[ _](L|R)[ _](Thigh|Calf|UpperArm)$/.test(bone.name))data.jumpBones.push(bone);if(bone.isBone&&/[ _](L|R)[ _]Foot$/.test(bone.name)){const pos=bone.getWorldPosition(new THREE.Vector3());data.contacts.push({bone,soleDepth:pos.y-actor.position.y});}});
