@@ -4,9 +4,9 @@ Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the current implementation, ro
 
 - Repository: https://github.com/DESIR33/My-City-My-Choices
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site
-- Audited repository baseline: `72ed6aa377f6b54a38714e302d0504868abb17c6`, through merged PR #44 (runtime reconciliation).
+- Audited repository baseline: `f6cfe96b77fdc1ab139e338413087bebba0fd5a2`, through merged PR #45 (household object choices), published in private Site version 64 from `4cfc3712b3bd3c46702600b5c28cd7d2cc525b6f`.
 - GitHub serves root `index.html` / `assets/`; the separate hosted source uses `dist/index.html` / `dist/assets/`.
-- PR #44 merged the weather, wet traffic, sirens and mobile memory/recovery work from hosted source `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`, with all 80 shipped files matching. The current furnished-object chooser change is applied to both source layouts; publication/PR outcomes belong in the handoff. Native tests and isolated panel browser QA do not establish full GPU/device acceptance.
+- PR #44 merged the weather, wet traffic, sirens and mobile memory/recovery work. The current two-floor house map/location guide adds one module and aligns all 81 shipped files across candidate layouts. Publication/PR outcomes belong in the handoff. Native tests and isolated panel browser QA do not establish full GPU/device acceptance.
 - Run `npm run check:parity -- /absolute/path/to/site-checkout` to compare the complete runtime inventory and hashes, including binary assets. It is read-only and does not copy, authenticate or deploy. Non-runtime docs/tests differ intentionally. Full game CI runs native regressions and checker unit cases, not a private-Site comparison.
 - Documentation-only changes do not imply a new deployed game version. Use exact commit/archive/deployment evidence for future publication claims.
 
