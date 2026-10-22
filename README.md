@@ -1,5 +1,7 @@
 # My City, My Choices
 
+**Keyboard:** press **P** for the city menu. **Escape** releases the mouse or closes a panel without recapturing it; click the game view to resume mouse look. The Menu button remains available for touch. House **139 Willow Way** now has a furnished ground floor with plaster room walls, living room, kitchen/dining area, guest bedroom and a separate garage. Neighboring house foundations sit below their finished floors to remove overlapping faces and flicker. Its upper floor remains closed; 101 Maple Grove is still the fully interactive two-floor home.
+
 **Home & daily life → Make it your own** now offers Ocean blue, Garden sage and Warm clay textile styles. The existing $1 textile improvement unlocks all three; later restyles are free and saved with your home. Swatches match the actual rug, sofa and bedding materials. Existing purchases keep their original look. Renew an expired rental before editing; installed decor stays visible. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for compatibility and testing limits.
 
 Select an object under **Menu → House rooms & objects** to show a small mint marker at its approach point when nearby. It respects floors, doors, walls, furniture, camera visibility and Focus view, and disappears when guidance is canceled or the object is used. It adds two small meshes with no lights or shadows. GPU appearance and phone performance still need device acceptance; see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
