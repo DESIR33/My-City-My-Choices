@@ -1,15 +1,22 @@
 import * as THREE from 'three';
 import {textileStyle} from './home-life.js';
+import {createHouseSurfaces,addHouseBake,houseBakeUniforms} from './house-surfaces.js';
+import {mergeHouseStatic} from './house-bake.js';
+import {fitFurniture} from './house-furniture.js';
 import {MODEL_HOME as H,freshHouse,restoreHouse,houseLocal,houseInside,onHouseStairs,houseFloorAt,houseObstacleBlocks} from './house-rules.js';
 
 // One persistent property, built at world scale. Moving leaves stay outside the
 // static batches; all collision volumes carry their real vertical interval.
-export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
+export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,surfaces=createHouseSurfaces()}){
  const root=new THREE.Group();root.name='101 Maple Grove Lane · walk-in landmark';root.position.set(H.x,0,H.z);scene.add(root);
  const unit=new THREE.BoxGeometry(1,1,1),cylinder=new THREE.CylinderGeometry(1,1,1,12),sphere=new THREE.SphereGeometry(1,10,7),torus=new THREE.TorusGeometry(1,.12,6,18);
- const cache=new Map(),mat=(color,r=.85,m=0)=>{const k=[color,r,m].join(':');if(!cache.has(k))cache.set(k,new THREE.MeshStandardMaterial({color,roughness:r,metalness:m}));return cache.get(k);};
- const oak=visualKit.wood(0x997954),walnut=visualKit.wood(0x65533f),brick=visualKit.brick(0x9b7059),siding=visualKit.siding(0xd3cbbc),roofMat=visualKit.roofing(0x3c4142),stone=visualKit.masonry(0xcac5b7);
- const plaster=mat(0xe1dbcb),trim=mat(0xf0e9d9),metal=mat(0x303c39,.45,.55),brass=mat(0xa58b55,.32,.65),fabric=mat(0x819385,.96),linen=mat(0xd9d0b9,.98),rug=mat(0x9a8671,1),dark=mat(0x202c2d,.6),ceramic=mat(0xdddcd0,.28),water=mat(0x6ba2ac,.18,.15);
+ // House-owned scanned materials (house-surfaces.js); city materials stay untouched.
+ const S=surfaces.materials,mat=(color,r=.85,m=0)=>surfaces.tinted(color,r,m);
+ const oak=S.oak,walnut=S.walnut,brick=S.brick,siding=S.stucco,roofMat=S.roof,stone=S.paving,quartz=S.quartz,floorWood=S.floor,stucco=S.stucco;
+ const plaster=S.plaster,trim=S.trim,metal=S.metal,brass=S.brass,fabric=S.fabric,linen=S.linen,rug=S.rug,dark=S.dark,ceramic=S.ceramic,water=S.water;
+ // BoxGeometry face order: +x, -x, +y, -y, +z, -z. Exterior walls show stucco or
+ // brick outside and painted plaster inside; slabs show floor above, ceiling below.
+ const faces=(base,over)=>['px','nx','py','ny','pz','nz'].map(k=>over[k]||base);
  const glass=new THREE.MeshPhysicalMaterial({color:0xb9d1c9,transparent:true,opacity:.22,roughness:.12,metalness:.04,depthWrite:false,side:THREE.DoubleSide});
  const lightMats=[new THREE.MeshBasicMaterial({color:0xffe4a9}),new THREE.MeshBasicMaterial({color:0xffe4a9})];
  let state=freshHouse(),referenceY=.3,tvClock=0,tvTime=0;
@@ -17,14 +24,18 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  const world=(x,z)=>({x:H.x+x,z:H.z+z});
  function box(parent,x,y,z,w,h,d,material=oak){const m=new THREE.Mesh(unit,material);m.position.set(x,y+h/2,z);m.scale.set(w,h,d);m.castShadow=h>.08;m.receiveShadow=true;parent.add(m);return m;}
  function solid(x,z,w,d,minY,maxY,id='fixture'){const o={...world(x-w/2,z-d/2),minX:H.x+x-w/2,maxX:H.x+x+w/2,minZ:H.z+z-d/2,maxZ:H.z+z+d/2,minY,maxY,houseId:H.id,fixtureId:id};delete o.x;delete o.z;obstacles.push(o);colliders.push(o);return o;}
- function furnishing(x,y,z,w,h,d,material=oak,id='furniture'){box(root,x,y,z,w,h,d,material);solid(x,z,w,d,y,y+h,id);}
+ function furnishing(x,y,z,w,h,d,material=oak,id='furniture'){const m=box(root,x,y,z,w,h,d,material);solid(x,z,w,d,y,y+h,id);return m;}
+ // Stand-ins that scanned furniture models replace after loading (house-furniture.js).
+ // Colliders and seat points stay; the stand-in boxes still shape the light bake.
+ const proxies=[];function standIn(id,model,group){group.userData.dynamicHouse=true;group.userData.furnitureProxy=id;proxies.push({id,model,group});return group;}
+ function adopt(id,model,meshes,heading=0){root.updateMatrixWorld(true);const b=new THREE.Box3();for(const m of meshes)b.expandByObject(m,true);const g=new THREE.Group();g.position.set((b.min.x+b.max.x)/2-H.x,b.min.y,(b.min.z+b.max.z)/2-H.z);g.rotation.y=heading;root.add(g);g.updateMatrixWorld(true);for(const m of meshes)g.attach(m);return standIn(id,model,g);}
  function shape(parent,geometry,x,y,z,sx,sy,sz,material){const m=new THREE.Mesh(geometry,material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
  function rod(a,b,r=.025,material=metal){const delta=new THREE.Vector3(...b).sub(new THREE.Vector3(...a)),m=shape(root,cylinder,(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,r,delta.length(),r,material);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());return m;}
  function action(id,title,x,z,floor=0,kind='toggle',extra={}){const a={id,title,...world(x,z),y:floor?H.upper:H.ground,floor,kind,...extra};actions.push(a);return a;}
- function plate(text,x,y,z,w=1.4,h=.35,background='#34483e'){const c=document.createElement('canvas');c.width=512;c.height=128;const q=c.getContext('2d');q.fillStyle=background;q.fillRect(0,0,512,128);q.fillStyle='#f5e7c8';q.font='600 42px Georgia';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,66,490);const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map,roughness:.75,side:THREE.DoubleSide}));m.position.set(x,y,z);root.add(m);return m;}
- function floor(x,z,w,d,top,material=oak){box(root,x,top-.12,z,w,.12,d,material);}
+ function plate(text,x,y,z,w=1.4,h=.35,background='#34483e'){const c=document.createElement('canvas');c.width=512;c.height=128;const q=c.getContext('2d');q.fillStyle=background;q.fillRect(0,0,512,128);q.fillStyle='#f5e7c8';q.font='600 42px Georgia';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,66,490);const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;const material=new THREE.MeshStandardMaterial({map,roughness:.75,side:THREE.DoubleSide});material.onBeforeCompile=addHouseBake;material.customProgramCacheKey=()=>'maple-house-plate';const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);m.position.set(x,y,z);root.add(m);return m;}
+ function floor(x,z,w,d,top,material=floorWood){box(root,x,top-.12,z,w,.12,d,faces(plaster,{py:material}));}
  function wall(axis,fixed,a,b,y0,y1,openings=[]){const xs=[...new Set([a,b,...openings.flatMap(o=>[o.a,o.b])])].sort((x,y)=>x-y),ys=[...new Set([y0,y1,...openings.flatMap(o=>[o.bottom,o.top])])].sort((x,y)=>x-y);
-  for(let i=1;i<xs.length;i++)for(let j=1;j<ys.length;j++){const lo=xs[i-1],hi=xs[i],bottom=ys[j-1],top=ys[j],mid=(lo+hi)/2,cy=(bottom+top)/2;if(lo<a||hi>b||bottom<y0||top>y1||openings.some(o=>mid>o.a&&mid<o.b&&cy>o.bottom&&cy<o.top))continue;const x=axis==='x'?mid:fixed,z=axis==='x'?fixed:mid,w=axis==='x'?hi-lo:.22,d=axis==='x'?.22:hi-lo;box(root,x,bottom,z,w,top-bottom,d,axis==='x'&&fixed===5.9?brick:plaster);solid(x,z,w,d,bottom,top,'wall');}
+  for(let i=1;i<xs.length;i++)for(let j=1;j<ys.length;j++){const lo=xs[i-1],hi=xs[i],bottom=ys[j-1],top=ys[j],mid=(lo+hi)/2,cy=(bottom+top)/2;if(lo<a||hi>b||bottom<y0||top>y1||openings.some(o=>mid>o.a&&mid<o.b&&cy>o.bottom&&cy<o.top))continue;const x=axis==='x'?mid:fixed,z=axis==='x'?fixed:mid,w=axis==='x'?hi-lo:.22,d=axis==='x'?.22:hi-lo;const outer=axis==='x'&&Math.abs(fixed)>5.8?(fixed>0?'pz':'nz'):axis==='z'&&Math.abs(fixed)>6.6?(fixed>0?'px':'nx'):null;box(root,x,bottom,z,w,top-bottom,d,outer?faces(plaster,{[outer]:axis==='x'&&fixed===5.9?brick:stucco}):plaster);solid(x,z,w,d,bottom,top,'wall');}
  }
  function window(axis,fixed,center,y,width=1.6,height=1.5){const g=new THREE.Group();g.position.set(axis==='x'?center:fixed,y,axis==='x'?fixed:center);if(axis==='z')g.rotation.y=Math.PI/2;root.add(g);
   box(g,0,0,0,width,height,.06,glass);for(const x of [-width/2,width/2])box(g,x,-.08,0,.07,height+.16,.16,trim);for(const h of [-.08,height])box(g,0,h,0,width+.14,.07,.16,trim);box(g,0,0,.035,.04,height,.04,trim);box(g,0,height*.5,.035,width,.04,.04,trim);
@@ -38,7 +49,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  for(const o of windows.rear)window('x',-5.9,(o.a+o.b)/2,o.bottom,o.b-o.a,o.top-o.bottom);
  for(const x of [-6.7,6.7])for(const o of windows.side)window('z',x,(o.a+o.b)/2,o.bottom,o.b-o.a,o.top-o.bottom);
  // Exterior trim, a two-car garage facade and a pitched standing-seam roof.
- box(root,0,.06,0,13.65,.24,12.05,stone);floor(0,0,13.15,11.55,.3);
+ box(root,0,.06,0,13.65,.22,12.05,stone);floor(0,0,13.15,11.55,.3);
  for(const y of [3.22,6.36])box(root,0,y,5.99,13.55,.12,.16,trim);
  for(const x of [-6.72,6.72])box(root,x,.3,5.94,.16,6.12,.18,trim);
  for(const x of [-6.16,0])box(root,x,.3,6.04,.16,2.55,.18,trim);box(root,-3.08,2.85,6.04,6.32,.15,.18,trim);
@@ -73,7 +84,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  }
  door('front','Open / close the front door','x',1.83,5.9,0,1);door('rear','Open / close the patio door','x',-6.15,-5.9,0,-1);door('garage','Open / close the utility-room door','z',-.8,1.95,0,-1);
  door('bedroom1','Open / close the main bedroom','z',-.6,1.85,1,1);door('bedroom2','Open / close the second bedroom','z',-.6,-.25,1,1,-1);door('bathroom','Open / close the bathroom','x',-.25,-2.4,1,1);
- function chair(id,title,x,z,floor=0,heading=0,width=.64,stand=null){const y=floor?H.upper:.3,g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=heading;root.add(g);
+ const chairGroups={};function chair(id,title,x,z,floor=0,heading=0,width=.64,stand=null){const y=floor?H.upper:.3,g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=heading;root.add(g);chairGroups[id]=g;
   for(const a of [-1,1])for(const b of [-1,1])box(g,a*(width/2-.07),0,b*.2,.055,.43,.055,walnut);
   box(g,0,.43,0,width,.1,.6,fabric);box(g,0,.53,-.25,width,.65,.09,oak);
   const w=Math.abs(Math.cos(heading))*width+Math.abs(Math.sin(heading))*.6,d=Math.abs(Math.sin(heading))*width+Math.abs(Math.cos(heading))*.6;solid(x,z,w,d,y,y+1.1,id);
@@ -83,26 +94,27 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  floor(-3.1,-2.7,4.9,4.6,.307,rug);furnishing(-3.1,.42,-1.1,3.4,.32,.95,fabric,'sofa');box(root,-3.1,.74,-.7,3.4,.67,.17,fabric);
  for(const x of [-4.8,-1.4])box(root,x,.6,-1.1,.18,.46,1,fabric);for(const x of [-4.15,-3.1,-2.05])box(root,x,.75,-1.15,.9,.13,.8,linen);
  const sofa={id:'sofa',type:'sofa',...world(-3.1,-1.1),floor:.3,height:.58,heading:Math.PI,stand:world(-3.1,-2.4)};seats.push(sofa);action('sofa','Relax on the sofa',-3.1,-2.4,0,'seat',{seat:sofa});
- furnishing(-3.1,.3,-3.4,1.35,.42,.7,walnut,'coffee-table');box(root,-3.1,.73,-3.4,1.4,.05,.75,stone);plate('MAPLE LIVING',-3.1,.8,-3.37,.55,.12);
- furnishing(-2.9,.3,-5.15,3,.48,.48,walnut,'media-console');box(root,-2.9,.92,-5.45,2.85,1.6,.1,dark);
+ adopt('coffee-table','modern_coffee_table_01',[furnishing(-3.1,.3,-3.4,1.35,.42,.7,walnut,'coffee-table'),box(root,-3.1,.73,-3.4,1.4,.05,.75,quartz),plate('MAPLE LIVING',-3.1,.8,-3.37,.55,.12)]);
+ adopt('media-console','modern_wooden_cabinet',[furnishing(-2.9,.3,-5.15,3,.48,.48,walnut,'media-console')]);box(root,-2.9,.92,-5.45,2.85,1.6,.1,dark);
  const tvCanvas=document.createElement('canvas');tvCanvas.width=512;tvCanvas.height=288;const tq=tvCanvas.getContext('2d'),tvMap=new THREE.CanvasTexture(tvCanvas);tvMap.colorSpace=THREE.SRGBColorSpace;
  const screen=new THREE.Mesh(new THREE.PlaneGeometry(2.65,1.42),new THREE.MeshBasicMaterial({map:tvMap}));screen.position.set(-2.9,1.74,-5.385);screen.userData.dynamicHouse=true;root.add(screen);action('tv','TV · power and channels',-1.6,-4.2);
  function tvPicture(){tq.fillStyle=state.tv?['#497779','#425b78','#476e54'][state.channel]:'#172426';tq.fillRect(0,0,512,288);if(state.tv){tq.fillStyle='#d6bf8f';tq.fillRect(0,194,512,94);tq.fillStyle='#f4dfb0';tq.beginPath();tq.arc(370,65,28,0,Math.PI*2);tq.fill();tq.fillStyle='#345b48';for(let i=0;i<8;i++){tq.beginPath();tq.moveTo(i*85-90,200);tq.lineTo(i*85-15,75+Math.sin(i+tvTime)*9);tq.lineTo(i*85+60,200);tq.fill();}tq.fillStyle='#fff1d2';tq.font='22px sans-serif';tq.fillText(['MAPLE NATURE','CITY STORIES','GARDEN TIME'][state.channel],25,263);}tvMap.needsUpdate=true;}
  // Kitchen: quartz worktops, inset sink, an island, storage and full appliances.
- furnishing(.15,.3,-5.22,2.65,.86,.82,trim,'kitchen-counter');box(root,.15,1.16,-5.22,2.75,.07,.88,stone);
+ furnishing(.15,.3,-5.22,2.65,.86,.82,trim,'kitchen-counter');box(root,.15,1.16,-5.22,2.75,.07,.88,quartz);
  furnishing(1.95,.3,-5.22,.85,.86,.82,metal,'range');box(root,1.95,1.16,-5.22,.88,.06,.9,dark);for(const x of [1.7,2.2])for(const z of [-5.45,-5]){const ring=shape(root,torus,x,1.23,z,.15,.15,.15,metal);ring.rotation.x=Math.PI/2;}
  const oven=box(root,1.95,.42,-4.78,.73,.57,.055,dark);oven.userData.dynamicHouse=true;moving.push({key:'oven',mesh:oven,axis:'z',base:-4.78,delta:.4});action('oven','Open / close the oven',1.95,-4.0);
  const basin=shape(root,cylinder,.1,1.237,-5.22,.36,.025,.26,metal);rod([.35,1.22,-5.5],[.35,1.62,-5.5],.025,metal);rod([.35,1.62,-5.5],[.35,1.62,-5.22],.025,metal);
  const stream=shape(root,cylinder,.35,1.42,-5.22,.014,.37,.014,water);stream.userData.dynamicHouse=true;action('tap','Turn the kitchen tap on / off',.1,-4.0);
  const cabinet=new THREE.Group();cabinet.position.set(-.7,.4,-4.77);cabinet.userData.dynamicHouse=true;root.add(cabinet);for(let i=0;i<3;i++){box(cabinet,0,i*.23,0,.8,.2,.055,oak);box(cabinet,0,i*.23+.1,.05,.3,.025,.04,brass);}moving.push({key:'cabinet',mesh:cabinet,axis:'z',base:-4.77,delta:.38});action('cabinet','Open / close the kitchen drawers',-.7,-4.0);
- furnishing(.75,.3,-2.8,2.1,.9,.8,mat(0x657a6b),'island');box(root,.75,1.2,-2.8,2.25,.06,.95,stone);shape(root,cylinder,.75,1.35,-2.8,.2,.2,.2,ceramic);
+ furnishing(.75,.3,-2.8,2.1,.9,.8,mat(0x657a6b),'island');box(root,.75,1.2,-2.8,2.25,.06,.95,quartz);shape(root,cylinder,.75,1.35,-2.8,.2,.2,.2,ceramic);
  furnishing(3.05,.3,-5.1,.95,1.95,1.05,metal,'fridge');box(root,3.05,.55,-4.55,.78,1.6,.03,dark);for(const y of [.65,1.05,1.45,1.85])box(root,3.05,y,-4.48,.72,.025,.18,trim);
  for(const [x,y] of [[2.8,.75],[3.1,1.15],[3.3,1.6]])shape(root,sphere,x,y,-4.43,.1,.15,.1,mat(0xa3ac65));
  const fridgeDoor=new THREE.Group();fridgeDoor.position.set(2.57,.3,-4.5);fridgeDoor.userData.dynamicHouse=true;root.add(fridgeDoor);box(fridgeDoor,.48,0,0,.95,1.95,.065,ceramic);box(fridgeDoor,.78,.8,.07,.04,.6,.04,brass);moving.push({key:'fridge',mesh:fridgeDoor,rotation:true,base:0,delta:-Math.PI*.6});action('fridge','Open / close the refrigerator',3.05,-3.7);
  box(root,.7,1.9,-5.7,3.2,.7,.38,oak);for(const x of [-.4,.6,1.6])box(root,x,1.92,-5.48,.94,.65,.04,trim);
  // Dining furniture has distinct usable chair positions and clear exits.
- furnishing(1.3,.3,.4,1.9,.8,1.1,oak,'dining-table');box(root,1.3,1.1,.4,2,.06,1.2,stone);shape(root,cylinder,1.3,1.3,.4,.12,.3,.12,ceramic);
+ furnishing(1.3,.3,.4,1.9,.8,1.1,oak,'dining-table');box(root,1.3,1.1,.4,2,.06,1.2,quartz);shape(root,cylinder,1.3,1.3,.4,.12,.3,.12,ceramic);
  chair('dining-front','dining chair',1.3,1.8,0,Math.PI,.65,[1.3,2.9]);chair('dining-back','dining chair',1.3,-1.05,0,0,.65,[2.9,-1.1]);chair('dining-side','dining chair',3.05,.4,0,-Math.PI/2,.65,[3.05,1.55]);
+ for(const id of ['dining-front','dining-back','dining-side'])standIn(id,'dining_chair_02',chairGroups[id]);
  // Utility garage: laundry drum, shelving, a workbench and household supplies.
  furnishing(-5.65,.3,4.6,1.05,.95,.9,ceramic,'washer');const drum=shape(root,torus,-5.65,.85,5.08,.3,.3,.3,metal);drum.userData.dynamicHouse=true;action('washer','Start / stop the washing machine',-5.65,3.55);
  furnishing(-3.9,.3,4.1,1.7,.95,.7,oak,'workbench');box(root,-3.9,1.25,4.1,1.85,.08,.8,stone);action('workbench','Inspect the household tool kit',-3.9,3.05,0,'read',{message:'A tool kit, spare bulbs and a tape measure. This home is ready for future improvements.'});
@@ -111,7 +123,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
   const stand=world(x+1.85,z),seat={id,type:'bed',...world(x-Math.sin(heading)*.0,z+Math.cos(heading)*.9),floor:H.upper,height:.64,heading,rest:true,stand};beds.push({id,duvet,seat});action(id,'Rest / make the '+(id==='bed1'?'main bed':'second bed'),x+1.85,z,1,'bed',{seat});
  }
  bed('bed1',-3.5,4.1,Math.PI);bed('bed2',-3.5,-4.2);
- for(const [x,z] of [[-5.2,4.5],[-5.2,-4.7]]){furnishing(x,H.upper,z,.65,.62,.6,walnut,'nightstand');shape(root,cylinder,x,H.upper+1.05,z,.19,.4,.19,linen);}
+ for(const [i,[x,z]] of [[-5.2,4.5],[-5.2,-4.7]].entries()){adopt('nightstand-'+i,'side_table_01',[furnishing(x,H.upper,z,.65,.62,.6,walnut,'nightstand')]);shape(root,cylinder,x,H.upper+1.05,z,.19,.4,.19,linen);}
  furnishing(-4.3,H.upper,1,3,.95,.6,oak,'dresser');plate('CLOTHES & KEEPSAKES',-4.3,4.65,1.32,1.8,.22);action('wardrobe','Use your wardrobe',-4.3,1.95,1,'wardrobe');
  furnishing(-5.25,H.upper,-1.1,1.6,.85,.7,oak,'bedroom-desk');plate('Room to dream',-5.25,5,-.1,1.6,.4);action('books','Read the bedside books',-5.25,-2.1,1,'read',{message:'A shelf of adventure stories, a sketchbook and a neighborhood history. A quiet corner to make your own.'});
  // Upstairs landing study, with a usable chair and a working desk lamp.
@@ -123,7 +135,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  furnishing(1.45,H.upper,-3.25,.55,.45,.7,ceramic,'toilet');shape(root,torus,1.45,H.upper+.48,-3.25,.23,.23,.28,ceramic).rotation.x=Math.PI/2;box(root,1.45,H.upper+.4,-3.57,.55,.5,.22,ceramic);action('toilet','Flush the toilet',.6,-3.25,1,'read',{message:'The toilet flushes. The bathroom is ready for the next person.'});
  // Art, curtain panels, plants, switches and warm ceiling fixtures finish rooms.
  const curtains=[];for(const [x,z] of [[-4.75,5.7],[-2.25,5.7],[-4.5,-5.7],[-2.1,-5.7]]){const c=box(root,x,4.05,z,.45,1.95,.06,linen);c.userData.dynamicHouse=true;curtains.push(c);}action('curtains','Open / close the bedroom curtains',-1.65,4.1,1);
- for(const [x,z,y] of [[-5.8,-.5,.3],[2.8,4.8,.3],[-5.7,2,H.upper]]){shape(root,cylinder,x,y+.2,z,.18,.4,.18,ceramic);for(const a of [-.2,.1,.3])shape(root,sphere,x+a,y+.65,z,.2,.45,.2,mat(0x66836a));}
+ for(const [i,[x,z,y]] of [[-5.8,-.5,.3],[2.8,4.8,.3],[-5.7,2,H.upper]].entries()){const parts=[shape(root,cylinder,x,y+.2,z,.18,.4,.18,ceramic)];for(const a of [-.2,.1,.3])parts.push(shape(root,sphere,x+a,y+.65,z,.2,.45,.2,mat(0x66836a)));adopt('plant-'+i,i===2?'potted_plant_04':'potted_plant_02',parts);}
  const lights=[];for(const [i,y] of [[0,.3],[1,H.upper]]){for(const [x,z] of [[-3.1,-2.8],[1.5,1.7]]){box(root,x,y+2.7,z,.65,.06,.65,metal);box(root,x,y+2.65,z,.55,.05,.55,lightMats[i]);}const light=new THREE.PointLight(0xffe4bd,12,13,2);light.position.set(H.x-.4,y+2.4,H.z-.7);light.castShadow=false;scene.add(light);lights.push(light);action('lights'+i,'Switch '+(i?'upstairs':'downstairs')+' lights',i?2.9:3.35,i?-1.4:4.25,i);}
  const welcome=plate('WELCOME HOME',2.65,1.5,5.78,1.1,.28);welcome.userData.dynamicHouse=true;plate('101',.95,2.0,6.08,.45,.25);
  action('home-plans','Home keys, improvements & daily review',2.65,3.6,0,'home');
@@ -141,7 +153,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
   const plaqueKey=JSON.stringify([tenure,name]);if(plaqueKey===welcomeKey)return;welcomeKey=plaqueKey;
   const canvas=welcome.material.map.image,q=canvas.getContext('2d');q.fillStyle='#34483e';q.fillRect(0,0,512,128);q.fillStyle='#f5e7c8';q.font='600 36px Georgia';q.textAlign='center';q.textBaseline='middle';q.fillText(tenure==='none'?'WELCOME · TOUR HOME':String(name).slice(0,16)+' · HOME',256,66,490);welcome.material.map.needsUpdate=true;
  }
- function slideMirror(){return new THREE.MeshPhysicalMaterial({color:0xb6c5bd,metalness:.9,roughness:.13,envMapIntensity:.8});}
+ function slideMirror(){const m=new THREE.MeshPhysicalMaterial({color:0xb6c5bd,metalness:.9,roughness:.13,envMapIntensity:.8});m.onBeforeCompile=addHouseBake;m.customProgramCacheKey=()=>'maple-house-mirror';return m;}
  function syncDoor(d){d.g.rotation.y=d.angle;root.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(d.leaf,true);Object.assign(d.collider,{minX:bounds.min.x,maxX:bounds.max.x,minZ:bounds.min.z,maxZ:bounds.max.z});}
  function inSwing(d,p){if(Math.abs((p.y||0)-d.y)>1.7)return false;const q=houseLocal(p),dx=d.axis==='x'?d.w:0,dz=d.axis==='z'?d.direction*d.w:0,angle=d.sign*Math.PI/2,ox=dx*Math.cos(angle)+dz*Math.sin(angle),oz=-dx*Math.sin(angle)+dz*Math.cos(angle);return q.x>d.x+Math.min(0,dx,ox)-.5&&q.x<d.x+Math.max(0,dx,ox)+.5&&q.z>d.z+Math.min(0,dz,oz)-.5&&q.z<d.z+Math.max(0,dz,oz)+.5;}
  function update(dt=0,position=null,instant=false){tvTime+=Math.max(0,dt);for(const d of doors){if(!state[d.id]&&Math.abs(d.angle)>.02&&position&&inSwing(d,position))state[d.id]=true;const goal=state[d.id]?d.sign*Math.PI/2:0;d.angle=instant?goal:dt?THREE.MathUtils.damp(d.angle,goal,9,dt):d.angle;syncDoor(d);}
@@ -176,7 +188,18 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  function interior(p){if(!houseInside(p,.12))return null;return {minX:H.x-6.48,maxX:H.x+6.48,minZ:H.z-5.68,maxZ:H.z+5.68,ceiling:onHouseStairs(p)||p.y>2.8?6.4:3.24};}
  // Instance the actual static meshes by geometry/material. Exact world boxes
  // are retained before instancing so doors and the stairwell stay real gaps.
- root.updateMatrixWorld(true);const groups=new Map();root.traverse(m=>{if(!m.isMesh)return;for(let p=m;p&&p!==root;p=p.parent)if(p.userData.dynamicHouse)return;const k=m.geometry.uuid+':'+m.material.uuid+':'+m.castShadow;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(m);});
- for(const sources of groups.values()){const first=sources[0],batch=new THREE.InstancedMesh(first.geometry,first.material,sources.length),boxes=[];batch.name='Maple House static details';batch.castShadow=first.castShadow;batch.receiveShadow=true;sources.forEach((m,i)=>{batch.setMatrixAt(i,m.matrixWorld);const b=new THREE.Box3().setFromObject(m,true);if(b.max.y-b.min.y>.03)boxes.push({minX:b.min.x,maxX:b.max.x,minY:b.min.y,maxY:b.max.y,minZ:b.min.z,maxZ:b.max.z});m.removeFromParent();});batch.userData.architectureBoxes=boxes;batch.computeBoundingSphere();scene.add(batch);batches.push(batch);}
- update(0);return {property:H,root,actions,seats,beds,doors,colliders,batches,nearby,nearest,act,makeBed,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
+ // Static meshes merge per material with a lightmap UV (house-bake.js). Exact world
+ // boxes are kept per source, so doors and the stairwell stay real camera gaps.
+ root.updateMatrixWorld(true);const staticMeshes=[],dynamicMeshes=[];root.traverse(m=>{if(!m.isMesh)return;let dynamic=false;for(let p=m;p&&p!==root;p=p.parent)if(p.userData.dynamicHouse)dynamic=true;(dynamic?dynamicMeshes:staticMeshes).push(m);});
+ const groupOf=m=>{for(let p=m.parent;p&&p!==root;p=p.parent)if(p.userData.dynamicHouse)return p;return m;};
+ const boxesFor=m=>{const b=new THREE.Box3().setFromObject(m,true);return b.max.y-b.min.y>.03?{minX:b.min.x,maxX:b.max.x,minY:b.min.y,maxY:b.max.y,minZ:b.min.z,maxZ:b.max.z}:null;};
+ const bake=mergeHouseStatic(staticMeshes,dynamicMeshes,{boxesFor,groupOf});for(const p of proxies)p.bakeUv=bake.probeUv(p.group);for(const m of staticMeshes)m.removeFromParent();for(const mesh of bake.meshes){scene.add(mesh);batches.push(mesh);}
+ // Baked indirect light: the lightmap, plus a coarse probe grid for characters.
+ let probes=null;
+ function applyBake(texture,data=null){if(texture){houseBakeUniforms.houseBakeMap.value=texture;houseBakeUniforms.houseBakeStrength.value=1;}if(data?.probes)probes=data.probes;}
+ // Swap stand-ins for loaded models: `scenes` maps a model id to a loaded scene.
+ function installFurniture(scenes){let triangles=0,installed=0;for(const p of proxies){if(p.installed||!scenes[p.model])continue;const r=fitFurniture(p,scenes[p.model]);p.installed=r.holder;triangles+=r.triangles;installed++;}return {installed,triangles};}
+ const bakeOccluders=()=>[...batches,...proxies.flatMap(p=>{const list=[];p.group.traverse(m=>{if(m.isMesh&&!m.userData.furnitureModel)list.push(m);});return list;})];
+ function indirectAt(p){if(!probes||!p||!houseInside(p,.2))return 1;const {origin,step,dims,values}=probes,f=[p.x-origin[0],(p.y??.3)+1.1-origin[1],p.z-origin[2]].map((v,i)=>Math.max(0,Math.min(dims[i]-1.001,v/step))),i0=f.map(Math.floor),t=f.map((v,i)=>v-i0[i]);let sum=0;for(let c=0;c<8;c++){const o=[c&1,c>>1&1,c>>2&1],idx=(i0[0]+o[0])+dims[0]*((i0[1]+o[1])+dims[1]*(i0[2]+o[2]));sum+=(values[idx]??255)/255*o.reduce((w,b,k)=>w*(b?t[k]:1-t[k]),1);}return sum*sum*1.25;}
+ update(0);return {property:H,root,actions,bakeLayout:bake.layout,surfaces,applyBake,indirectAt,furnitureProxies:proxies,installFurniture,bakeOccluders,seats,beds,doors,colliders,batches,nearby,nearest,act,makeBed,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
 }
