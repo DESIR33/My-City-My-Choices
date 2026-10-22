@@ -11,6 +11,7 @@ The owner requires `PROJECT_CONTEXT.md` to be updated after every change. Every 
 - Update the relevant current-state sections, then add a dated change entry explaining the request, final behavior, affected systems, compatibility/migration, validation actually run, limits and remaining work.
 - Keep implemented, proposed, merged and published states distinct. Remove resolved issues and stale roadmap claims. Never invent missing conversation details or claim tests were run when they were not.
 - Read the known GitHub/Sites divergence before synchronizing runtime source. Preserve concurrent work and save compatibility. Do not copy one layout's index over the other without a focused diff.
+- When both checkouts are available, run `npm run check:parity -- /absolute/path/to/site-checkout` before a runtime handoff/publication. Review all differences; the command is read-only. If the Site source is unavailable, report parity as unverified. CI tests the checker but cannot independently compare the private Site.
 - Never add secrets, session data, private personal details or unrelated chat transcripts.
 - Stage context with the change; run `node scripts/check-context.mjs --staged` before committing. For committed work run `node scripts/check-context.mjs BASE_SHA HEAD_SHA`.
 - The CI context check validates each commit, including follow-up fixes. Timestamps, whitespace-only edits and generic auto-generated filler do not replace useful context. Review the prose as well as the check result.

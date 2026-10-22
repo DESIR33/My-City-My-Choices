@@ -10,7 +10,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `c8794ba454f06291ae5cf9e07407bd3a1a21eadd`, including merged work through [PR #42](https://github.com/DESIR33/My-City-My-Choices/pull/42). Current change builds on the merged context-maintenance work in PR #42 and brings neighborhood entry/address work into the repository.
+- Audited GitHub baseline: `59bc1871349d67d6bdcc82a11602d29ad2d28d4a`, through merged [PR #43](https://github.com/DESIR33/My-City-My-Choices/pull/43). The current reconciliation candidate restores hosted weather, wet-traffic, siren and mobile-recovery work to that baseline; it is not yet a claim that this candidate has merged.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
@@ -18,9 +18,9 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 ### Evidence and confidence
 
-The current source tree, runtime imports, module code, README and all 41 PR records were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
+The current source tree, runtime imports, module code, README and PR history through #43 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Known source divergence:** the audited pre-entry GitHub main has 46 `tests/*.test.mjs` files (45 gameplay files plus the context-policy file) and does not contain or import `assets/city-weather.js` or `assets/emergency-audio.js`. PRs #33–35 describe rain, wet-weather traffic and spatial emergency sirens, and PR #41 reports preserving them in the hosted playtest. The hosted suite was reported at 47 passing test files. Do not claim these two layouts are identical or that the weather/siren modules currently exist on GitHub main. Reconcile with a focused diff before synchronizing; never overwrite either index wholesale. This documentation task does not repair that divergence or independently verify the live game's runtime.
+**Runtime reconciliation:** main at the audited baseline omitted dedicated weather/siren modules and hosted mobile-budget/recovery improvements. This candidate reconciles those differences with the hosted checkout at `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`, preserving PR #43's home/address work. A reviewed entry-point patch plus eight synchronized assets makes all 80 shipped files byte-identical across the two layouts, including binary assets. Tests/docs remain layout-specific. This is a local source comparison, not a fresh live-browser acceptance test or a new Site deployment. Run the parity command again whenever either source changes.
 
 ## Contents
 
@@ -203,7 +203,9 @@ Cinematic uses EffectComposer, optional GTAO, restrained HDR bloom, grading, Out
 
 The camera checks a padded swept path against actual architecture bounds captured before batching, rechecks smoothed travel, limits terrain/ceilings and resets on teleports. Steady/Cinematic and Close/Standard/Wide settings persist separately. Do not collapse an entire building into one camera box that blocks real doorways. Moving house doors are excluded from stale static camera snapshots; physical player collision still follows them.
 
-Local clock/sunset, held Day/Sunset/Night views and street/window/headlight behavior exist. Dry/After rain road grip is in GitHub main. Actual rain/overcast/streak pools, wetting/drying traffic behavior and sirens are historically implemented and reported hosted, but their dedicated modules are absent from the audited GitHub main. Future weather reconciliation must preserve the current local-sky mode, street wetness ownership, reflection palette restoration, pause gates and performance budgets.
+Local clock/sunset, held Day/Sunset/Night views and street/window/headlight behavior exist. Weather offers manual road conditions, Clear, Rain and Heavy rain with gradual intensity, road wetting/drying, overcast lighting and an optional streak effect. Rain uses one bounded line pool (240 mobile / 700 desktop) and an indexed roof-shelter lookup. Wet traffic slows, increases following gaps/waits, looks farther ahead when braking and checks downstream clearance without deleting traffic density. Weather owns road wetness only outside manual mode; pause, local-sky preferences and temporary reflection captures retain their separate contracts.
+
+Mobile budgets cap procedural texture anisotropy at 2, use a 256-pixel grass texture and 512-pixel sun shadows, and reuse the sky environment rather than allocating a six-face HDR car reflection probe. These reduce allocation pressure; they do not prove the reported device crash is fixed. Graphics context restoration can request one Basic-mode reload, with a session-scoped two-minute cooldown against reload loops and a manual recovery action retained.
 
 Character assets are six self-hosted textured Microsoft Rocketbox variants and compatible animation clips with notices in `assets/characters/`. Detailed GLS/Senna browser assets derive from owner-supplied Blender files lacking external textures; runtime materials replace them. Keep provenance/license notices; supplied assets do not automatically grant unrelated redistribution rights. Premium vehicle source preparation lives in `tools/prepare-premium-vehicles.py` and `assets/vehicles/README.md`. Existing visual captures in `docs/visuals/` are historical asset/software-rendering evidence, not a current full-device acceptance test.
 
@@ -211,7 +213,7 @@ Character assets are six self-hosted textured Microsoft Rocketbox variants and c
 
 `city-audio.js` synthesizes original engine/RPM, rolling, bicycle chain, footsteps, surf, wind, café/crockery, pickup/collision and traffic/horn layers. Surface footsteps distinguish asphalt/concrete/grass/stone/sand/wood; airborne/seated/teleported/mounted movement does not emit walking steps. Web Audio initializes on user gesture, has saved master/category/mute settings, bounded continuous/one-shot allocations and graceful silent fallback. Menus/background pause world audio. No microphone, recorded speech or real engine recordings are required.
 
-Spatial response sirens were added in PR #35 and reported preserved on the hosted Site: bounded wail, distance/stereo/pitch variation, muted on arrival/return/missing responder, interior/vehicle filtering and saved toggle. Their module is absent from today's GitHub baseline; do not confuse historical audio evidence with a source-tree guarantee.
+Spatial response sirens use bounded wail, distance attenuation within 160 meters, stereo/pitch variation, interior/vehicle filtering and a saved toggle. Arrival, return, missing/invalid responder, disabled audio and background pause silence/reset the response. Rain audio and sirens share the existing fixed-budget Web Audio mixer and cleanup; no recordings or new permission are needed. These previously hosted systems are now included in the reconciliation candidate and its native tests; audible balance still needs real-device review.
 
 ## Architecture and source map
 
@@ -235,11 +237,14 @@ Spatial response sirens were added in PR #35 and reported preserved on the hoste
 | `police-force.js`, `police-vehicles.js` | Officer roster/patrols, cruisers/livery/emergency lights; police-force/vehicle/story tests |
 | `city-visuals.js`, `city-materials.js`, `city-atmosphere.js`, `architecture-detail.js`, `palm-trees.js` | PBR textures, terrain/trees/lighting and architecture detail; material/lighting/architecture/palm tests |
 | `city-time.js`, `local-sky.js` | Displayed clock, presets, sun/night progression; city-lighting/local-life tests |
+| `city-weather.js`, `rain-visuals.js`, `emergency-audio.js` | Weather persistence, wetness, indexed shelter, bounded rain rendering and spatial siren state; city-weather/emergency-audio tests |
 | `cinematic-renderer.js`, `graphics-recovery.js` | Effects/pixel budgets/adaptation and context-loss/startup recovery; cinematic-renderer/graphics-recovery tests |
 | `city-camera.js`, `camera-geometry.js` | Collision-aware camera, comfort settings and architecture snapshots; city-camera and native interior tests |
 | `city-audio.js` | Procedural audio/mix/settings/voices; city-audio/story-flow tests |
 | `touch-controls.js`, `session-lifecycle.js` | Pointer ownership/contextual controls, pause/background/resume; touch-controls/session-lifecycle tests |
 | `save-backups.js` | Bounded import/export, primary/checkpoint/recovery writes and validation; save-backups/story-flow tests |
+
+`scripts/check-source-parity.mjs` compares complete shipped inventories/hashes across the two layouts; `tests/source-parity.test.mjs` covers equal/missing/extra/changed files, binaries, invalid entry points, symlinks and CLI usage. `.github/workflows/game-tests.yml` runs the full Node suite on PRs and main pushes. It does not access the private Site or establish remote runtime parity automatically.
 
 No backend database, account service, authoritative multiplayer server, cloud economy or payment processor is part of the audited game. Three is the only declared npm dev dependency. Preserve `.glb`, compressed model and material files when checking out or packaging; a text-only snapshot cannot pass asset-dependent checks.
 
@@ -257,13 +262,14 @@ Primary local story key: `mapleStreetChapter1`. Story serialization includes sta
 | `mapleStreetAudioV1` | Volume/mute options |
 | `mapleStreetCameraV1` | Camera comfort/distance |
 | `mapleStreetTrafficV1` | Demand/horn preference |
+| `mapleStreetWeatherV1` | Weather mode and rain-streak preference |
 | `mapleStreetHudV1` | Focus/HUD preference |
 
 Save backups export a versioned file or accept legacy raw saves, with a preview before explicit Restore/reload/Continue. Device settings remain device-local, not in portable progress. Parsing is limited to 1 MB, with bounded depth/nodes/arrays/strings, supported versions/stages, validated numbers and refusal of markup/prototype keys. Character names must be escaped when displayed.
 
 Import/reset recovery is separate from the periodic checkpoint. Failed recovery writes must not destroy a valid active story. Primary autosave can succeed even when checkpoint metadata hits quota. Read/import callbacks invalidate when panels close/change. After import/reset, old-page writes are suppressed to avoid overwriting replacement progress during pagehide. Export remains available when autosave fails. No device sync exists; file transfer is manual.
 
-Hidden tab, blur, pagehide or supported freeze pauses input/simulation/render and flushes an active story once per away transition. Return preserves existing panels or shows compact Resume, without replacing the welcome screen. Graphics context loss similarly pauses and checkpoints before explicit Basic reload. An OS killing a process without lifecycle events can still lose recent progress; never promise guaranteed recovery.
+Hidden tab, blur, pagehide or supported freeze pauses input/simulation/render and flushes an active story once per away transition. Return preserves existing panels or shows compact Resume, without replacing the welcome screen. Graphics context loss similarly pauses and checkpoints before manual Basic reload or a rate-limited reload on context restoration. An OS killing a process without lifecycle events can still lose recent progress; never promise guaranteed recovery.
 
 ## Development and delivery
 
@@ -282,6 +288,8 @@ Node's built-in runner executes `tests/*.test.mjs`; no production build step is 
 
 GitHub PRs and the owner-private Sites playtest are separate destinations. A merged PR does not prove publication, and a successful publication does not prove GitHub main contains that source. Record branch/head/base, exact checks and deployment outcome in the change entry. Never copy the Sites index over GitHub main without reviewing source differences; weather/sirens are a known example. Preserve changes from concurrent work.
 
+When both checkouts are available, run `npm run check:parity -- /absolute/path/to/site-checkout` from the repository. It streams SHA-256 over root `index.html` and every recursive `assets/` file against the Site's `dist/` equivalents, reports missing/extra/changed paths and exits nonzero on drift. It is read-only, needs no credentials and ignores non-runtime files outside that tree. Review mismatches before publication; absence of a Site checkout means parity is unverified, not permission to overwrite it. CI tests the checker itself, not private hosted content.
+
 For a requested runtime update, use the supported Sites source opening/credential/packaging/deployment workflow and preserve its audience. Do not store tokens, auth headers, user allowlists, temporary QA pages, scratch paths or diagnostic archives in this repository. A documentation-only PR does not require changing the hosted game.
 
 `PREVIEW_SOURCE.md` links back to this guide and records the source/deployment distinction. README retains detailed chronological feature notes; its early “future work” statements can predate later home ownership. Update current summaries instead of treating historical paragraphs as an exact release manifest.
@@ -290,7 +298,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 
 ### What the existing evidence establishes
 
-- The GitHub baseline has 45 gameplay test files. This documentation initialization did not rerun those 45 or claim a new gameplay acceptance result.
+- Current reconciliation candidate: all 66 Node test cases pass across 51 test files, including context policy and six source-parity cases. All 80 shipped runtime files match the hosted source checkout at `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`. Inline entry-module syntax is also checked; these are source/native checks, not GPU acceptance.
 - PR #41 reported all 47 hosted-layout test files passing with original binary assets. Earlier counts were snapshots at their respective PRs, not a count to reuse forever.
 - Native Three tests construct actual meshes, inspect finite geometry/budgets, check paths, camera bounds, collision footprints and surfaces. Character tests load real rigs/clips with bitmap decoding mocked where appropriate.
 - Story-flow fixtures execute actual handlers with a simulated DOM: business, money, ownership, stale/duplicate actions, saves and newer home guide hooks. A passing simulated panel is not a rendered 3D playthrough.
@@ -303,7 +311,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 | --- | --- |
 | Doors do not open / no interaction guidance reported in a related project chat | Neighborhood front/patio/garage doors now animate with collision and addressed prompts; mobile CSS no longer hides the prompt. Native/UI checks pass; reproduce/confirm on the reporting device before claiming device-specific resolution |
 | Attractive addresses on every home's front wall | Implemented for all 27 homes with shared illuminated number/street atlas; native identity/orientation checks pass; physical-device readability remains unverified |
-| Weather/siren source divergence | Compare hosted source and current main before integration; restore corresponding imports/tests deliberately, not by overwriting unrelated work |
+| Future runtime source drift | Current candidate resolves the observed weather/siren/mobile gap; rerun the read-only parity command against an available current Site checkout before future handoffs |
 | PR #8 school/grocery/bus/Hudson/riverfront expansion | Historical merged PR describes these, but current main lacks its dedicated city-next test/module and several runtime identifiers; do not present the full package as currently playable without reconciliation |
 | Full GPU/mobile acceptance | Still needed on actual iPhone/Safari and desktop; test first load, doors, stairs, shadows, frame stability, audio, touch, app switching and save recovery |
 | Remaining homes/towers | Other community homes now have unfurnished ground-floor shells and front/patio/garage access; upper floors and most towers remain scenery |
@@ -322,7 +330,7 @@ Run targeted tests first, then the appropriate full suite once inputs settle. Va
 
 1. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
 2. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
-3. Reconcile hosted weather/siren code with GitHub main and check older lost/stale expansion work before planning on top of it.
+3. Keep runtime parity verified as each destination changes; audit older lost/stale PR #8 expansion work before planning on top of those historical claims.
 4. Complete device playtesting for startup/crash recovery, house entry/stairs/bed exits, mobile control visibility and scene performance.
 
 ### Next product work already requested or implied
@@ -361,6 +369,14 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-21 — Reconcile playtest runtime and guard against source drift
+
+- Request/choice: continue with the next useful task. Closed the known repository/playtest source gap before adding another gameplay system.
+- Implementation: reviewed and applied the entry-point diff from merged main `59bc1871349d67d6bdcc82a11602d29ad2d28d4a` to hosted source `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`; synchronized eight runtime assets (weather, rain, emergency audio, atmosphere, mixer, visuals, graphics recovery and traffic rhythm) and eight matching test files. Existing houses, doors, address directory and economy remain intact.
+- Guardrails: added the read-only complete-runtime parity command, six positive/negative tests and full game regression CI. Updated README, source guide and contributor instructions. CI has no Site credentials; its unit tests do not compare the private deployment.
+- Compatibility: no story schema, prices, home identities or transaction changes. Existing weather/audio preferences retain their original keys. Restored-context reloads are rate-limited; manual recovery remains. The Site already has this runtime, so no new deployment or audience change is needed.
+- Validation: 66/66 Node cases across 51 files pass with original binary assets; all 80 shipped files match across layouts. Inline module syntax and staged context-policy checks are required before handoff. Native results do not establish physical iPhone/Safari stability, GPU quality or audible balance. PR/CI outcome belongs in the final handoff; this entry does not claim an unobserved merge.
+
 ### 2026-10-21 — Neighborhood entry, plaques and address directory
 
 - Request/reason: continue the next useful work, prioritizing reported unusable doors and exterior house identities.
@@ -382,7 +398,7 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ### Historical milestones
 
-The table below is generated from the repository's PR records reviewed on 2026-10-21. All listed PRs were merged, but current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
+The table below records reviewed merged PR milestones through #43. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
 
 | PR | Milestone | Merged (UTC date) |
 | --- | --- | --- |
@@ -427,4 +443,6 @@ The table below is generated from the repository's PR records reviewed on 2026-1
 | [#39](https://github.com/DESIR33/My-City-My-Choices/pull/39) | Make the first Maple Grove house a furnished, interactive landmark | 2026-10-21 |
 | [#40](https://github.com/DESIR33/My-City-My-Choices/pull/40) | Connect Maple House ownership, improvements and daily life | 2026-10-21 |
 | [#41](https://github.com/DESIR33/My-City-My-Choices/pull/41) | Guide players through settling into their furnished home | 2026-10-21 |
+| [#42](https://github.com/DESIR33/My-City-My-Choices/pull/42) | Add maintained project context and per-change documentation policy | 2026-10-22 |
+| [#43](https://github.com/DESIR33/My-City-My-Choices/pull/43) | Connect neighborhood doors, address plaques and saved house guidance | 2026-10-22 |
 | [#42](https://github.com/DESIR33/My-City-My-Choices/pull/42) | Document project context and require updates in each change commit | 2026-10-22 |

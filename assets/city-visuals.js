@@ -25,14 +25,14 @@ function texture(image, anisotropy, color = false) {
 }
 
 export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
-  const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const anisotropy = Math.min(mobile ? 2 : 8, renderer.capabilities.getMaxAnisotropy());
   const cache = new Map(),pbr=createCityMaterials({anisotropy});
 
   function surface(kind, hex) {
     if(kind!=='grass')return pbr.surface(kind,hex);
     const key = `${kind}:${hex}`;
     if (cache.has(key)) return cache.get(key);
-    const [image, q] = canvas(), [heightImage, h] = canvas();
+    const [image, q] = canvas(mobile ? 256 : 512), [heightImage, h] = canvas(mobile ? 256 : 512);
     const rng = randomSequence(hex + kind.length * 379);
     const base = new THREE.Color(hex);
     q.fillStyle = `#${base.getHexString()}`;
@@ -263,7 +263,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   scene.add(hemisphere);
   const sun = new THREE.DirectionalLight(0xffe1ad, 2.5);
   sun.position.set(-75, 100, -55); sun.castShadow = true;
-  const shadowSize = mobile ? 1024 : 2048;
+  const shadowSize = mobile ? 512 : 2048;
   sun.shadow.mapSize.set(shadowSize, shadowSize); sun.shadow.camera.near = 1; sun.shadow.camera.far = 250;
   Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70 });
   sun.shadow.bias = -.00012; sun.shadow.normalBias = .025; sun.shadow.radius = 2;
@@ -281,6 +281,9 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
 
   let vehicleEnvironment;
   function captureVehicleEnvironment(position, excluded = []) {
+    // A six-face HDR capture can spike GPU memory on phones; the shared sky map
+    // still gives vehicles a readable reflection without allocating a probe.
+    if(mobile)return scene.environment;
     if(vehicleEnvironment)return vehicleEnvironment.texture;
     const target=new THREE.WebGLCubeRenderTarget(mobile?64:128,{type:THREE.HalfFloatType});
     const probe=new THREE.CubeCamera(.15,10000,target),generator=new THREE.PMREMGenerator(renderer);
@@ -306,12 +309,12 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   }
 
   function shopSign(text, index) {
-    const [image, q] = canvas(512); image.height = 128;
+    const [image, q] = canvas(mobile ? 256 : 512); image.height = 128;
     const colors = ['#594733', '#374f49', '#55513f', '#3c5261', '#654b48'];
     q.fillStyle = colors[index % colors.length]; q.fillRect(0, 0, 512, 128);
-    q.strokeStyle = '#b7aa84'; q.lineWidth = 10; q.strokeRect(8, 8, 496, 112);
+    q.strokeStyle = '#b7aa84'; q.lineWidth = 10; q.strokeRect(4, 4, image.width - 8, 120);
     q.fillStyle = '#f1e6cc'; q.font = '700 39px Georgia'; q.textAlign = 'center'; q.textBaseline = 'middle';
-    q.fillText(text, 256, 64, 464);
+    q.fillText(text, image.width / 2, 64, image.width - 48);
     const group = new THREE.Group(), frame = new THREE.Mesh(new THREE.BoxGeometry(1.035, 1.08, .16), new THREE.MeshStandardMaterial({ color: 0x343735, roughness: .6, metalness: .4 }));
     frame.castShadow = frame.receiveShadow = true; group.add(frame);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: texture(image, anisotropy, true), roughness: .7 }));
