@@ -169,7 +169,7 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
   buildings.push({x:-27,z:1105,w:9,d:12,height:4.7,coastal:true});
   // Moving residents stay on the promenade, away from road traffic and benches.
   const walkers=[];
-  for(let i=0;i<8;i++){const actor=characters.create({x:i%2?26:21,z:1120+i*115,model:i%3?'casual':'neighbor',shirt:[0xe3ba83,0x72aeab,0xd5868d][i%3]});walkers.push({actor,dir:i%2?1:-1,speed:.8+i%3*.15});}
+  for(let i=0;i<8;i++){const actor=characters.create({x:i%2?26:21,z:1120+i*115,model:'crowd',shirt:[0xe3ba83,0x72aeab,0xd5868d][i%3]});walkers.push({actor,dir:i%2?1:-1,speed:.8+i%3*.15});}
   // District-local traffic never wraps a coastal car back into Maple Street.
   for(let i=0;i<8;i++){const x=i<4?0:i<6?-120:-240,speed=i%2?-7:7;car(x+(speed>0?-2.4:2.4),1130+i*105,0xaaaaaa,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:1050,max:2070});}
   for(const [i,z] of [1240,1880].entries()){const speed=i?-6:6;car(-210+i*70,z+(speed>0?2.4:-2.4),0xaaaaaa,speed>0?Math.PI/2:-Math.PI/2,true,speed,'x');Object.assign(traffic.at(-1),{min:-244,max:3});}

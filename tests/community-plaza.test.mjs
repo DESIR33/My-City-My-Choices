@@ -13,9 +13,9 @@ const surface=(kind,color)=>{const key=kind+color;if(!cache.has(key))cache.set(k
 const visualKit={concrete:material,asphalt:material,grass:new THREE.MeshStandardMaterial({color:0x647853}),masonry:c=>surface('stone',c),wood:c=>surface('wood',c),brick:c=>surface('brick',c),roofing:c=>surface('roof',c),siding:c=>surface('siding',c),windowMaterial:()=>material,treeModel:(x,z)=>{planted.push({x,z});return new THREE.Group();},atmosphere:{registerGlow(){},addStreetLight:p=>lights.push(p)}};
 globalThis.document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(){}})})};
 const scene=new THREE.Scene(),groundSurfaces=[],seats=[],buildings=[],obstacles=[78,102].map(x=>({minX:x-7.35,maxX:x+7.35,minZ:-48.35,maxZ:-27.65}));
-const actors=[],characters={create:p=>{const a=new THREE.Group();a.position.set(p.x,0,p.z);a.userData.character=true;scene.add(a);actors.push(a);return a;},setSeated:(actor,pose)=>actor.userData.seated=pose};
+const actors=[],characters={create:p=>{const a=new THREE.Group();a.position.set(p.x,0,p.z);a.userData.character=true;a.userData.model=p.model;scene.add(a);actors.push(a);return a;},setSeated:(actor,pose)=>actor.userData.seated=pose};
 const plaza=createCommunityPlaza({scene,visualKit,obstacles,groundSurfaces,seats,characters});
-assert.equal(plaza.seats.length,6);assert.equal(plaza.neighbors.length,3);assert.equal(seats.filter(s=>!s.occupiedBy).length,4);assert.equal(plaza.features.filter(f=>f.kind==='slide').length,1);
+assert.equal(plaza.seats.length,6);assert.equal(plaza.neighbors.length,5);assert.deepEqual(plaza.neighbors.map(a=>a.userData.model),['crowd','crowd','crowd-child','crowd-child','crowd-child'],'two seated adults and three playground kids from the crowd pool');assert.equal(seats.filter(s=>!s.occupiedBy).length,4);assert.equal(plaza.features.filter(f=>f.kind==='slide').length,1);
 assert.ok(plaza.features.some(f=>f.kind==='pergola'));assert.equal(plaza.plantings.length,4);
 const valid=createWalkValidator(obstacles),entrance=world.MAPLE_COMMONS.entrance;
 for(const target of [...seats.map(s=>s.stand),{x:78,z:-14},{x:101,z:-18.5},{x:101,z:-23},{x:106.5,z:-23},{x:89,z:-21}]){
@@ -48,4 +48,4 @@ for(const z of [-122.4,-62.4,2.4,57.6,117.6]){const limits=world.mapleTrafficBou
 const paving=[],paveContext={...world,C:{walk:{}},scene:{},cube:(parent,x,y,z,w,h,d)=>paving.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,top:y+h}),streets:world.MAPLE_STREETS};vm.createContext(paveContext);vm.runInContext(html.slice(html.indexOf('const plannedPavingCuts='),html.indexOf('// Painted lane dividers')),paveContext);
 for(const z of [60,120])assert.ok(paving.some(r=>world.withinRect(-129,z,r)&&Math.abs(r.top-.21)<1e-8),'West sidewalk continues through removed T-junction stubs');
 assert.match(html,/const communityParkedCars=COMMUNITY_PARKED_CARS\.map/);assert.match(html,/setCityDestination\(\\'commons\\'\)/);assert.match(html,/Math\.max\(coastGroundHeight\(x,z\),plazaGroundHeight\(x,z\)\)/);
-console.log('Community plaza passed:',{meshes,triangles,seats:6,neighbors:3,drivewayCars:8,checks:'real geometry, usable seats and exits, tower stairs/slide, city routes, tree clearance, second garage bays, removed road stubs and through sidewalks'});
+console.log('Community plaza passed:',{meshes,triangles,seats:6,neighbors:5,drivewayCars:8,checks:'real geometry, usable seats and exits, tower stairs/slide, city routes, tree clearance, second garage bays, removed road stubs and through sidewalks'});

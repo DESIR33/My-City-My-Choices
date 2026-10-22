@@ -98,7 +98,8 @@ export function createCommunityPlaza({scene,visualKit,obstacles,groundSurfaces,s
  // Existing character and seat systems supply people without a new simulation.
  const neighbors=[];
  if(characters){for(const [i,seat] of [plazaSeats[0],plazaSeats[3]].entries()){
-  const actor=characters.create({x:seat.x,z:seat.z,shirt:i?0xa18166:0x657d6c,model:i?'neighbor':'casual',scale:.96});actor.rotation.y=seat.heading;characters.setSeated(actor,{height:seat.height});seat.occupiedBy='commons-neighbor-'+i;neighbors.push(actor);
- }const child=characters.create({x:106.6,z:-17.1,shirt:0xc7a45f,model:'boy',scale:.85});child.rotation.y=-Math.PI/2;neighbors.push(child);}
+  const actor=characters.create({x:seat.x,z:seat.z,shirt:i?0xa18166:0x657d6c,model:'crowd',scale:.96});actor.rotation.y=seat.heading;characters.setSeated(actor,{height:seat.height});seat.occupiedBy='commons-neighbor-'+i;neighbors.push(actor);
+ }// Kids around the play area; crowd children rotate through the Rocketbox kids.
+ for(const [x,z,heading] of [[106.6,-17.1,-Math.PI/2],[104.2,-15.4,Math.PI*.8],[107.9,-19.6,-Math.PI*.3]]){const child=characters.create({x,z,shirt:0xc7a45f,model:'crowd-child',scale:.85});child.rotation.y=heading;neighbors.push(child);}}
  return {site,root,features,seats:plazaSeats,plantings,neighbors};
 }

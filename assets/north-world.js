@@ -105,7 +105,7 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(let i=0;i<4;i++){const x=NORTH_CITY.avenues[i],speed=i%2?-8:8;car(x+(speed>0?-2.4:2.4),-1700+i*94,[0x293f51,0x8f4336,0xb8aea0,0xd3a43a][i],speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1790,max:-1136});}
   for(let i=0;i<6;i++){const z=NORTH_CITY.streets[i],speed=i%2?-7:7;car(-210+i*64,z+(speed>0?2.4:-2.4),[0xd1a82f,0x455965,0x974e35][i%3],speed>0?Math.PI/2:-Math.PI/2,true,speed,'x');Object.assign(traffic.at(-1),{min:-235,max:235});}
   for(const x of [-2.4,2.4]){const speed=x<0?11:-11;car(x,x<0?-380:-940,0x466b72,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1134,max:-176});}
-  for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:i%2?'neighbor':'casual'});}
+  for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:'crowd'});}
   for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation||0,0);if(p.quaternion)dummy.quaternion.copy(p.quaternion);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
   return {towers:TOWERS,buildings:CITY_BLOCKS,water,bridge:{surfaces:bridgeSurfaces,markings,supports}};
 }
