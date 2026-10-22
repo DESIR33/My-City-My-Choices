@@ -27,8 +27,8 @@ export function createCityNetwork(mode='drive'){
 }
 function project(p,a,b){const dx=b.x-a.x,dz=b.z-a.z,t=dx*dx+dz*dz===0?0:Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));return {...lerp(a,b,t),t};}
 export function createWalkValidator(obstacles=[]){
- const cells=new Map();for(const o of obstacles){if(o.vehicleOnly||o.houseId||o.vehiclePose||o.ride||![o.minX,o.maxX,o.minZ,o.maxZ].every(Number.isFinite))continue;for(let x=Math.floor((o.minX-.5)/16);x<=Math.floor((o.maxX+.5)/16);x++)for(let z=Math.floor((o.minZ-.5)/16);z<=Math.floor((o.maxZ+.5)/16);z++){const k=x+','+z;if(!cells.has(k))cells.set(k,[]);cells.get(k).push(o);}}
- return (x,z)=>worldWalkable(x,z)&&!(cells.get(Math.floor(x/16)+','+Math.floor(z/16))||[]).some(o=>x>o.minX-.48&&x<o.maxX+.48&&z>o.minZ-.48&&z<o.maxZ+.48);
+ const cells=new Map(),doors=[];for(const o of obstacles){if(o.dynamicDoor){doors.push(o);continue;}if(o.vehicleOnly||o.houseId||o.vehiclePose||o.ride||![o.minX,o.maxX,o.minZ,o.maxZ].every(Number.isFinite))continue;for(let x=Math.floor((o.minX-.5)/16);x<=Math.floor((o.maxX+.5)/16);x++)for(let z=Math.floor((o.minZ-.5)/16);z<=Math.floor((o.maxZ+.5)/16);z++){const k=x+','+z;if(!cells.has(k))cells.set(k,[]);cells.get(k).push(o);}}
+ return (x,z)=>worldWalkable(x,z)&&!(cells.get(Math.floor(x/16)+','+Math.floor(z/16))||[]).some(o=>x>o.minX-.48&&x<o.maxX+.48&&z>o.minZ-.48&&z<o.maxZ+.48)&&!doors.some(o=>o.minY<1.85&&o.maxY>.38&&x>o.minX-.42&&x<o.maxX+.42&&z>o.minZ-.42&&z<o.maxZ+.42);
 }
 export function lineClear(a,b,valid){const n=Math.max(1,Math.ceil(distance(a,b)/.6));for(let i=0;i<=n;i++){const p=lerp(a,b,i/n);if(!valid(p.x,p.z))return false;}return true;}
 export function localWalkPath(a,b,valid){

@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import {MAPLE_STREETS,MAPLE_GROVE,mapleOnRoad,COMMUNITY_ROADS,COMMUNITY_HOMES,communityPoint,communityDriveway,communityRoadRect,communityOnRoad,worldDrivable,withinRect} from './world-rules.js';
+import {createResidentialDoors} from './residential-doors.js';
 
 // Metre-scale homes, private lots and streets share the same layout as navigation
 // and vehicle collision. Static detail is merged by the existing city batcher.
 export function createPlannedCommunity({scene,visualKit,obstacles,buildings,groundSurfaces}){
   const streetRoot=new THREE.Group();streetRoot.userData.staticArchitecture=true;streetRoot.name='Maple Grove streets and landscaping';scene.add(streetRoot);
   const unit=new THREE.BoxGeometry(1,1,1),materialCache=new Map(),grassGeometries=new Map(),homes=[],gateways=[],architectureRoots=[streetRoot];
+  const doorSystem=createResidentialDoors({scene,obstacles}),addressPlaques=[];
   const material=(color,roughness=.84,metalness=0)=>{const key=color+':'+roughness+':'+metalness;if(!materialCache.has(key))materialCache.set(key,new THREE.MeshStandardMaterial({color,roughness,metalness}));return materialCache.get(key);};
   const concrete=visualKit.concrete,grass=visualKit.grass,asphalt=visualKit.asphalt,trim=material(0xe5e0d3),dark=material(0x29383b,.6,.25),foundation=material(0xaca79a),wood=visualKit.wood(0x988160),whiteFence=material(0xdad8ca),mulch=material(0x4b3f32),metal=material(0x38433e,.55,.5);
   const palette=[
@@ -25,6 +27,26 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   function solid(home,x,z,w,d,kind){const p=home?communityPoint(home,x,z):{x,z};const obstacle={minX:p.x-w/2,maxX:p.x+w/2,minZ:p.z-d/2,maxZ:p.z+d/2,kind,homeId:home?.id};obstacles.push(obstacle);return obstacle;}
   function surface(home,x,z,w,d,top,mat,kind,bottom=top-.08){const p=home?communityPoint(home,x,z):{x,z};if(mat!==grass||!home)box(streetRoot,p.x,bottom,p.z,w,top-bottom,d,mat,false);const s={minX:p.x-w/2,maxX:p.x+w/2,minZ:p.z-d/2,maxZ:p.z+d/2,top,kind,homeId:home?.id};groundSurfaces.push(s);return s;}
   function textPlate(parent,text,x,y,z,w,h,background='#24483e',yaw=0){const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const q=canvas.getContext('2d');q.fillStyle=background;q.fillRect(0,0,512,128);q.strokeStyle='#c9c6aa';q.lineWidth=5;q.strokeRect(5,5,502,118);q.fillStyle='#fff4d8';q.font='600 48px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,66,480);const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map,roughness:.8,side:THREE.DoubleSide}));mesh.position.set(x,y,z);mesh.rotation.y=yaw;parent.add(mesh);return mesh;}
+  // One texture atlas keeps all unique addresses legible without 27 extra draws.
+  const addressCanvas=document.createElement('canvas');addressCanvas.width=addressCanvas.height=1024;
+  const aq=addressCanvas.getContext('2d'),addressMap=new THREE.CanvasTexture(addressCanvas);addressMap.colorSpace=THREE.SRGBColorSpace;
+  const addressMaterial=new THREE.MeshStandardMaterial({map:addressMap,emissiveMap:addressMap,emissive:0xffe2ac,emissiveIntensity:.08,roughness:.48});
+  visualKit.atmosphere.registerGlow(addressMaterial,{day:.05,night:.65});
+  function addressPlaque(root,home,x,z){const index=addressPlaques.length,col=index%4,row=Math.floor(index/4),left=col*256,top=row*128;
+    aq.fillStyle='#192d2c';aq.fillRect(left,top,256,128);aq.strokeStyle='#c4a76c';aq.lineWidth=2;aq.strokeRect(left+8,top+8,240,112);
+    aq.textAlign='center';aq.textBaseline='middle';aq.fillStyle='#f4dca9';aq.font='600 76px Georgia';aq.fillText(String(home.address),left+128,top+53,218);
+    aq.fillStyle='#d7cfb8';aq.font='12px Arial';aq.fillText(home.street.toUpperCase(),left+128,top+103,218);
+    box(root,x,1.22,z,1.22,.73,.07,material(0xb39760,.32,.65),false);box(root,x,1.245,z+.041,1.17,.68,.035,dark,false);
+    const geometry=new THREE.PlaneGeometry(1.13,.64),uv=geometry.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,(col+uv.getX(i))/4,1-(row+1)/8+uv.getY(i)/8);
+    const face=new THREE.Mesh(geometry,addressMaterial);face.position.set(x,1.585,z+.062);face.name='Address plaque · '+home.address+' '+home.street;face.userData.address=home.address+' '+home.street;root.add(face);
+    addressPlaques.push({homeId:home.id,address:face.userData.address,face,position:communityPoint(home,x,z),heading:home.heading});
+  }
+  function lowerWall(root,home,axis,fixed,a,b,mat,openings=[]){const xs=[a,b,...openings.flatMap(o=>[o.a,o.b])].sort((x,y)=>x-y),ys=[.3,3.18,...openings.map(o=>o.top)].sort((x,y)=>x-y);
+    for(let i=1;i<xs.length;i++)for(let j=1;j<ys.length;j++){const lo=xs[i-1],hi=xs[i],y=ys[j-1],top=ys[j],mid=(lo+hi)/2;if(hi-lo<.001||top-y<.001||openings.some(o=>mid>o.a&&mid<o.b&&y<o.top))continue;
+      const x=axis==='x'?mid:fixed,z=axis==='x'?fixed:mid,w=axis==='x'?hi-lo:.22,d=axis==='x'?.22:hi-lo;
+      box(root,x,y,z,w,top-y,d,mat);if(y<1.85)Object.assign(solid(home,x,z,w,d,'community-wall'),{minY:y,maxY:top});
+    }
+  }
   // A flat developed site replaces the forest skirt underneath the subdivision.
   surface(null,(MAPLE_GROVE.minX+MAPLE_GROVE.maxX)/2,(MAPLE_GROVE.minZ+MAPLE_GROVE.maxZ)/2,MAPLE_GROVE.maxX-MAPLE_GROVE.minX,MAPLE_GROVE.maxZ-MAPLE_GROVE.minZ,.02,grass,'grass',-.07);
   const roadRects=COMMUNITY_ROADS.map(r=>communityRoadRect(r)),walkRects=COMMUNITY_ROADS.map(r=>communityRoadRect(r,3.3)),drives=COMMUNITY_HOMES.map(communityDriveway);
@@ -65,8 +87,11 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     // The developed-site lawn already covers every lot; avoid coplanar grass.
     surface(home,0,(rear+frontLot)/2,home.lotWidth-.12,frontLot-rear,.025,grass,'grass',-.055);
     if(home.id!=='maple-grove-1'){
-    box(root,0,-.055,0,w+.34,.355,d+.34,foundation);box(root,0,.3,0,w,6.1,d,p.siding);
-    box(root,0,.3,front+.035,w,2.77,.09,p.brick);for(const side of [-1,1])box(root,side*(w/2+.035),.3,0,.09,2.77,d,p.brick);
+    box(root,0,-.055,0,w+.34,.355,d+.34,foundation);box(root,0,3.18,0,w,3.22,d,p.siding);
+    lowerWall(root,home,'x',front,-w/2,w/2,p.brick,[{a:garageX-3,b:garageX+3,top:2.85},{a:doorX-.85,b:doorX+.85,top:2.85}]);
+    lowerWall(root,home,'x',-front,-w/2,w/2,p.siding,[{a:w*.24-.85,b:w*.24+.85,top:2.85}]);
+    for(const side of [-1,1])lowerWall(root,home,'z',side*w/2,-front,front,p.brick);
+    surface(home,0,0,w-.22,d-.22,.3,visualKit.wood(0x988160),'wood',.22);
     box(root,0,3.04,front+.08,w+.08,.17,.15,trim);box(root,0,6.27,front+.08,w+.16,.13,.15,trim);
     for(const side of [-1,1]){box(root,side*(w/2+.07),.3,front,.13,6.1,.15,trim,false);box(root,side*(w/2+.16),.24,-front+.4,.09,6.1,.09,metal,false);}
     const turn=home.plan===2?Math.PI/2:0;gable(root,0,0,turn?d+1:w+1,turn?w+1:d+1,6.4,home.plan===3?2.45:2.12,p.roof,p.siding,turn);
@@ -76,25 +101,25 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     for(const side of [-1,1])for(const z of [-d*.27,d*.24])for(const y of [1.2,4.27])windowOn(root,side*(w/2+.08),y,z,1.1,1.38,side*Math.PI/2,home.palette+Math.round(y));
     for(const x of [-w*.27,w*.27]){windowOn(root,x,4.27,-front-.08,1.35,1.45,Math.PI,home.palette+3);if(x<0)windowOn(root,x,1.2,-front-.08,1.45,1.4,Math.PI,home.palette+2);}
     // Both garage bays share one paneled two-car overhead door.
-    box(root,garageX,.28,front+.12,6.25,2.5,.17,trim,false);box(root,garageX,.36,front+.23,5.98,2.25,.08,material(0xc9c9c0),false);
-    for(let y=.64;y<2.6;y+=.38)box(root,garageX,y,front+.281,5.88,.035,.025,foundation,false);
-    for(const x of [-2.1,-.7,.7,2.1])box(root,garageX+x,2.17,front+.29,1.08,.28,.035,visualKit.windowMaterial(1),false);
-    box(root,doorX,.3,front+.12,1.25,2.43,.13,trim,false);box(root,doorX,.4,front+.22,1.02,2.22,.08,p.door,false);box(root,doorX,1.6,front+.27,.55,.78,.04,visualKit.windowMaterial(5),false);box(root,doorX+.35,1.42,front+.3,.055,.11,.04,material(0xb39b63,.3,.6),false);
+    for(const side of [-1,1]){box(root,garageX+side*3.09,.3,front+.12,.16,2.55,.2,trim,false);box(root,doorX+side*.93,.3,front+.12,.16,2.55,.2,trim,false);}
+    box(root,garageX,2.85,front+.12,6.34,.15,.2,trim,false);box(root,doorX,2.85,front+.12,2.02,.15,.2,trim,false);
+    doorSystem.add(home,'garage',{x:garageX,z:front+.18,width:5.98,height:2.5,material:p.door});doorSystem.add(home,'front',{x:doorX,z:front+.18,material:p.door});
     surface(home,porchX,front+.87,w*.40,1.65,.3,concrete,'concrete',.14);surface(home,doorX,front+1.94,1.65,.65,.17,concrete,'concrete',.08);surface(home,doorX,front+2.53,1.7,.6,.09,concrete,'concrete',.025);
     for(const x of [w*.08,w*.48]){box(root,x,.3,front+1.42,.18,2.65,.18,trim);solid(home,x,front+1.42,.22,.22,'porch-post');}box(root,porchX,3.02,front+.88,w*.44,.16,2.05,trim);box(root,porchX,3.18,front+.88,w*.45,.12,2.15,p.roof);
     for(const x of [garageX-3.3,doorX+.94]){box(root,x,2.03,front+.19,.2,.42,.18,dark,false);box(root,x,2.1,front+.29,.14,.23,.08,porchLight,false);}
-    }
+    }else doorSystem.add(home,'garage',{x:garageX,z:front+.18,width:5.98,height:2.5,material:p.door});
     const drive=communityDriveway(home);surface(null,(drive.minX+drive.maxX)/2,(drive.minZ+drive.maxZ)/2,drive.maxX-drive.minX,drive.maxZ-drive.minZ,drive.top,concrete,'concrete',.025);
     for(let localZ=front+3;localZ<Math.abs(home.roadZ-home.z)-7.3;localZ+=3.2)box(root,garageX,.081,localZ,6.5,.003,.018,foundation,false);
     const walkEnd=Math.abs(home.roadZ-home.z)-9.1,walkStart=front+2.7;surface(home,doorX,(walkStart+walkEnd)/2,1.55,walkEnd-walkStart,.085,concrete,'concrete',.025);
     // A rear door, patio and lawn make every backyard a usable separate space.
-    if(home.id!=='maple-grove-1'){box(root,w*.24,.3,-front-.11,1.65,2.4,.13,trim,false);box(root,w*.24,.42,-front-.2,1.42,2.16,.06,visualKit.windowMaterial(3),false);
+    if(home.id!=='maple-grove-1'){for(const side of [-1,1])box(root,w*.24+side*.93,.3,-front-.12,.16,2.55,.2,trim,false);box(root,w*.24,2.85,-front-.12,2.02,.15,.2,trim,false);doorSystem.add(home,'rear',{x:w*.24,z:-front-.18,material:p.door});
     }
     const patio=surface(home,w*.2,-front-2.3,5.2,4.2,.085,concrete,'concrete',.025);
     if(home.id!=='maple-grove-1'){box(root,-w/2-1.05,.05,-front+1,1.25,.08,1.3,concrete,false);box(root,-w/2-1.05,.13,-front+1,1.05,.92,1.05,metal);for(let y=.23;y<.95;y+=.13)box(root,-w/2-1.05,y,-front+1.53,.96,.035,.025,dark,false);solid(home,-w/2-1.05,-front+1,1.1,1.1,'air-conditioner');
     const shrubs=material(0x5d7750);for(const x of [-w*.44,w*.46]){box(root,x,.025,front+.8,1.35,.08,.9,mulch,false);for(let i=0;i<2;i++){const shrub=new THREE.Mesh(new THREE.SphereGeometry(.42,10,7),shrubs);shrub.position.set(x+(i-.5)*.5,.44,front+.83);shrub.scale.y=.78;root.add(shrub);}}
     }
     const mailboxX=home.lotWidth*.39,mailboxZ=Math.abs(home.roadZ-home.z)-11.2;box(root,mailboxX,.025,mailboxZ,.1,1.05,.1,metal);box(root,mailboxX,1.07,mailboxZ,.42,.3,.58,dark);textPlate(root,String(home.address),mailboxX,1.22,mailboxZ+.301,.38,.16,'#344b43');
+    addressPlaque(root,home,doorX-1.6,front+.24);
     if(home.fenced){const fenceMat=home.palette===4?whiteFence:wood,bound=home.lotWidth/2-.4,start=-front+.65,gapFront=-front-.7,gapBack=-front-3.1;
       fence(root,home,-bound,rear,bound,rear,fenceMat);fence(root,home,-bound,rear,-bound,start,fenceMat);fence(root,home,bound,rear,bound,gapBack,fenceMat);fence(root,home,bound,gapFront,bound,start,fenceMat);
       // An open gate leaf rests perpendicular to the side fence; the 2.4 m
@@ -104,7 +129,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     const frontTree=communityPoint(home,home.lotWidth*.36,Math.abs(home.roadZ-home.z)-13.3),backTree=communityPoint(home,-home.lotWidth*.33,rear+3.2);
     scene.add(visualKit.treeModel(frontTree.x,frontTree.z,.55));solid(null,frontTree.x,frontTree.z,.38,.38,'tree');
     if(!home.existing){scene.add(visualKit.treeModel(backTree.x,backTree.z,.62));solid(null,backTree.x,backTree.z,.4,.4,'tree');}
-    const houseBlock=solid(home,0,0,w+.4,d+.4,'community-house');if(home.id==='maple-grove-1')houseBlock.vehicleOnly=true;buildings.push({...home,shop:false,height:9.05,residential:true});homes.push({...home,driveway:drive,patio,backyard:{minX:home.x-home.lotWidth/2+.4,maxX:home.x+home.lotWidth/2-.4,minZ:Math.min(home.rearZ,home.z-(home.heading===0?1:-1)*(front+.8)),maxZ:Math.max(home.rearZ,home.z-(home.heading===0?1:-1)*(front+.8))}});
+    const houseBlock=solid(home,0,0,w+.4,d+.4,'community-house');houseBlock.vehicleOnly=true;buildings.push({...home,shop:false,height:9.05,residential:true});homes.push({...home,fullAddress:home.address+' '+home.street,driveway:drive,patio,backyard:{minX:home.x-home.lotWidth/2+.4,maxX:home.x+home.lotWidth/2-.4,minZ:Math.min(home.rearZ,home.z-(home.heading===0?1:-1)*(front+.8)),maxZ:Math.max(home.rearZ,home.z-(home.heading===0?1:-1)*(front+.8))}});
   }
   for(const z of [-165,-120,-45])for(const x of [-311.5,-140.5]){box(streetRoot,x,.02,z,.23,.28,.23,foundation);box(streetRoot,x,.3,z,.09,5.7,.09,metal);box(streetRoot,x,5.96,z,1.35,.12,.4,metal);box(streetRoot,x,5.91,z,1.12,.05,.32,porchLight,false);visualKit.atmosphere.addStreetLight({x,y:5.91,z,groundY:.06});solid(null,x,z,.25,.25,'streetlight');}
   for(const z of [-140,-18]){const monument=new THREE.Group();monument.position.set(-135.8,0,z);monument.rotation.y=Math.PI/2;monument.userData.staticArchitecture=true;scene.add(monument);architectureRoots.push(monument);box(monument,0,.02,0,8.4,.38,1.3,foundation);box(monument,0,.4,0,7.8,1.48,.85,visualKit.brick(0x8c705c));box(monument,0,1.88,0,8.2,.14,1.05,trim);textPlate(monument,'MAPLE GROVE',0,1.2,.44,6.9,.8,'#2e473e');solid(null,-135.8,z,1.3,8.4,'community-monument');}
@@ -133,5 +158,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     });
     mesh.userData.architectureBoxes=boxes;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();scene.add(mesh);architectureBatches.push(mesh);
   }
-  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,fenced:homes.filter(h=>h.fenced).length};
+  addressMap.needsUpdate=true;doorSystem.finalize();
+  function interior(p){const home=homes.find(h=>h.id!=='maple-grove-1'&&Math.abs(p.x-h.x)<h.w/2-.15&&Math.abs(p.z-h.z)<h.d/2-.15);return home?{minX:home.x-home.w/2+.22,maxX:home.x+home.w/2-.22,minZ:home.z-home.d/2+.22,maxZ:home.z+home.d/2-.22,ceiling:3.18}:null;}
+  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:doorSystem.update,interior,fenced:homes.filter(h=>h.fenced).length};
 }

@@ -22,7 +22,7 @@ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 // Housing is intentionally multiline; include the complete installment handler.
 const housingEnd=html.indexOf('const shopItems=',html.indexOf('function housingPanel('));
 const housingSource=html.slice(html.indexOf('function housingPanel('),housingEnd);
-const handlers=html.slice(html.indexOf("let settlingCueKey=''"),html.indexOf('const destinations={modelHome:'));
+const handlers=html.slice(html.indexOf("let settlingCueKey=''"),html.indexOf('const destinations={'));
 const logs=[],c={...homeRules,MODEL_HOME,houseInside,avatarName:'Jesus',stage:'done',marketDay:2,cash:20,saved:4,housingChoice:'none',housingLoanBalance:0,housingSpent:0,homeLife:freshHomeLife(),driving:null,riding:null,carLife:{},garageCar:{position:{x:0,z:0}},business:0,businessStory:{history:[]},player:{position:{x:0,z:0,y:0}},sideJobEarned:0,logDecision:(...v)=>logs.push(v),moneySet(){},saveGame(){},hudText:s=>String(s).replace(/[<>]/g,''),storyMoney:n=>'$'+(n/100).toFixed(2),purchasePlanNote:()=>'',usePlanReserve(){},reviewPlannedSpend:()=>false,setCityDestination(){},openPlanner(){},startNextMarketDay(){}};
 Object.assign(c,{navigationTarget:null,destinations:{modelHome:{}},applyNavigationTarget:t=>{c.navigationTarget=t;},objectiveSet:(title,hint)=>{c.objective={title,hint};},notify(){},closeGamePanel(){},setCityDestination(){}});
 c.window=c;vm.createContext(c);c.show=s=>{vm.runInContext('homeProjectTicket=null',c);c.panel=s;};vm.runInContext(housingSource+handlers,c);
