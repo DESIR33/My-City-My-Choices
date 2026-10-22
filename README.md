@@ -28,6 +28,20 @@ python3 -m http.server 8000
 
 Visit http://localhost:8000. Three.js currently loads from jsDelivr, so the browser needs an internet connection. Chapter progress saves automatically in the current browser using local storage.
 
+
+## Learning layer: adaptive money skills, Garden Club and parent progress
+
+Chapter 1 questions now come from `assets/learning/` instead of fixed lists. Twelve skills (coin values, counting money, making change, adding prices, affordability, profit, saving for a goal, budgeting, risk, borrowing cost, reading for detail, time and order) each have five levels and a seeded generator, so reloading never rerolls a question.
+
+- **Age tiers.** The welcome screen asks a grown-up for the child's age (Sprout 6 to 7, Builder 8 to 9, Planner 10 to 12) and an optional 4-digit parent PIN. Planner types answers; younger tiers choose from options.
+- **Placement warm-up.** Mom's wallet lesson asks three warm-up questions on first launch. Results nudge starting levels and may suggest a different tier to the parent; the tier only changes when the parent switches it.
+- **Mastery.** Three first-try answers move a skill up a level; two misses move it down and show a worked example. Mastery needs 4 of the last 5 right at the tier's target level, and skills come back for review after misses or a week away. Every wrong answer gets a strategy hint, then partial work, then the worked solution.
+- **Business customers** at the restaurant, store and service business ask generated questions picked from the child's weakest skills. Market change uses a payment that grows with the child's change level (from $1.25 up to a $20 bill); $5 and $10 bills are now in the change tray.
+- **Garden Club** offers three pretend plans (Seed Jar, Steady Garden, Weather Garden). Kids run 20-season tests and see the paths on a chart, answer a risk question, then commit $1 for five seasons and reflect on whether the plan fit their goal.
+- **Parents page** (city menu, behind the PIN): skill grid with status and level, stuck skills with the missed question and a try-at-home idea, money choices, and settings for age, tier, skill reset, PIN and progress export.
+
+The story economy ($5 starting wallet, $1 prices) is unchanged; tiers scale the questions, not the wallet. Run `node --test tests/learning-*.test.mjs` for the generator, mastery, garden and parent checks.
+
 ## Controls
 
 - **WASD** or arrow keys: walk; while driving, W accelerates, S brakes/reverses, and A/D steer
