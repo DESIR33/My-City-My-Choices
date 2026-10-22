@@ -6,7 +6,7 @@ import {footContactLift} from './character-grounding.js';
 import { characterFacingYaw } from './character-controls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { MODELS, crowdModel } from './character-roster.js';
-import { AMBIENT_MOTIONS, PHONE_MOTIONS, ambientMotion } from './crowd-life.js';
+import { AMBIENT_MOTIONS, PHONE_MOTIONS, ambientMotion, SEATED_MOTIONS, seatedMotion } from './crowd-life.js';
 export { MODELS, CROWD_ADULTS, CROWD_CHILDREN, crowdModel } from './character-roster.js';
 
 
@@ -131,6 +131,10 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
   const pending = new Set();
   let crowdCount=0;const ambientClips=new Map();
   // Ambient clips download per animation set, only once someone needs them.
+  const seatedClips=new Map();
+  function seatedMotions(set){if(!seatedClips.has(set))seatedClips.set(set,Promise.all(Object.entries(SEATED_MOTIONS).map(async ([name,file])=>({name,gltf:await load(set+'_'+file+'.glb')}))));return seatedClips.get(set);}
+  // Seated clips load the first time a character of that set sits down.
+  function loadSeated(data){if(data.seatedLoading||!data.ready)return;data.seatedLoading=true;seatedMotions(MODELS[data.model].set).then(list=>{for(const {name,gltf:motion} of list){const clip=retargetMotion(motion.animations[0],motion.scene,data.source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}data.seatedReady=true;}).catch(error=>{data.seatedLoading=false;onError('Seated gestures could not load.',error);});}
   function ambientMotions(set){if(!ambientClips.has(set))ambientClips.set(set,Promise.all(Object.entries(AMBIENT_MOTIONS).map(async ([name,file])=>({name,gltf:await load(set+'_'+file+'.glb')}))));return ambientClips.get(set);}
   function phoneProp(){const phone=new THREE.Mesh(new THREE.BoxGeometry(.072,.145,.011),new THREE.MeshStandardMaterial({color:0x15181c,roughness:.35,metalness:.4}));phone.name='Phone';phone.castShadow=true;phone.visible=false;return phone;}
   function load(file) { return loader.loadAsync(new URL(file,baseURL).href); }
@@ -258,7 +262,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
         data.accessories.policeBadge.visible=data.police;
         data.accessories.fireHelmet.visible=data.firefighter;data.accessories.fireStripes.visible=data.firefighter;
       }
-      fallback.visible=false;data.ready=true;setMotion(data,'idle');data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
+      fallback.visible=false;data.ready=true;setMotion(data,'idle');if(data.seated)loadSeated(data);data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
       if(data.ambient)ambientMotions(MODELS[model].set).then(list=>{for(const {name,gltf:motion} of list){const clip=retargetMotion(motion.animations[0],motion.scene,source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}const hand=source.getObjectByName((MODELS[model].bones||'Bip01')+'_R_Hand');if(hand){data.phone=phoneProp();hand.add(data.phone);const s=hand.getWorldScale(new THREE.Vector3()).x;data.phone.scale.setScalar(.8/Math.max(1e-6,s));data.phone.position.set(.09/s,.015/s,.025/s);data.phone.rotation.set(Math.PI/2,0,Math.PI/2);}data.ambientReady=true;}).catch(error=>onError('Townsperson gestures could not load.',error));
       data.mixer.update(0);actor.updateMatrixWorld(true);if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
       return actor;
@@ -274,14 +278,24 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
   }
   function setResting(actor,rest=null){const d=actor.userData.character;d.resting=rest;d.seated=null;if(d.visual){d.visual.rotation.x=0;d.visual.position.y=0;}}
   function restingPose(actor,data){if(!data.visual)return;data.visual.rotation.x=-Math.PI/2;data.visual.position.y=0;actor.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(data.visual,true);data.visual.position.y+=actor.position.y+data.resting.height-bounds.min.y;actor.updateMatrixWorld(true);}
-  function setSeated(actor,seat=null){const d=actor.userData.character;d.seated=seat;if(!seat&&d.visual)d.visual.position.y=0;}
+  function setSeated(actor,seat=null){const d=actor.userData.character;d.seated=seat;if(!seat&&d.visual)d.visual.position.y=0;if(seat)loadSeated(d);}
   function seatedPose(actor,data){
     const find=(side,part)=>{let result;data.source.traverse(b=>{if(b.isBone&&b.name.replaceAll('_',' ').endsWith((side?side+' ':'')+part))result=b;});return result;};
     const pelvis=find('', 'Pelvis');if(!pelvis)return;
     data.visual.position.y=0;actor.updateMatrixWorld(true);data.visual.position.y+=actor.position.y+data.seated.height+.04-pelvis.getWorldPosition(new THREE.Vector3()).y;actor.updateMatrixWorld(true);
     const forward=new THREE.Vector3(Math.sin(actor.rotation.y),0,Math.cos(actor.rotation.y));
     function aim(bone,child,direction){if(!bone||!child)return;const parent=bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),direction.clone().applyQuaternion(parent).normalize());actor.updateMatrixWorld(true);}
-    for(const side of ['L','R']){const thigh=find(side,'Thigh'),calf=find(side,'Calf'),foot=find(side,'Foot');aim(thigh,calf,forward.clone().add(new THREE.Vector3(0,-.08,0)));aim(calf,foot,new THREE.Vector3(0,-1,0));const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand');aim(upper,fore,forward.clone().multiplyScalar(.22).add(new THREE.Vector3(0,-1,0)));aim(fore,hand,forward.clone().add(new THREE.Vector3(0,-.15,0)));}
+    // Seated clips animate the upper body; legs still fit this seat's height (the clips assume a taller chair).
+    const clipUpper=!!SEATED_MOTIONS[data.active];
+    // Two-bone leg fit: the foot lands on the ground in front of the seat with the knee forward.
+    // Legs too short for the seat (small kids) simply reach toward that spot and dangle.
+    const point=(bone,child,target)=>{if(!bone||!child)return;const dir=target.clone().sub(bone.getWorldPosition(new THREE.Vector3())).applyQuaternion(bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert()).normalize();bone.quaternion.setFromUnitVectors(child.position.clone().normalize(),dir);actor.updateMatrixWorld(true);};
+    const ankle=actor.position.y+.075*data.height/1.75;
+    for(const side of ['L','R']){const thigh=find(side,'Thigh'),calf=find(side,'Calf'),foot=find(side,'Foot');
+      if(thigh&&calf&&foot){aim(thigh,calf,forward.clone().add(new THREE.Vector3(0,-.08,0)));const hip=thigh.getWorldPosition(new THREE.Vector3()),knee0=calf.getWorldPosition(new THREE.Vector3()),l1=hip.distanceTo(knee0),l2=knee0.distanceTo(foot.getWorldPosition(new THREE.Vector3()));
+        const target=hip.clone().addScaledVector(forward,l1*.9);target.y=ankle;const delta=target.clone().sub(hip),reach=THREE.MathUtils.clamp(delta.length(),Math.abs(l1-l2)+.001,l1+l2-.001),axis=delta.normalize(),along=(l1*l1-l2*l2+reach*reach)/(2*reach),bend=forward.clone().addScaledVector(axis,-forward.dot(axis)).normalize(),knee=hip.clone().addScaledVector(axis,along).addScaledVector(bend,Math.sqrt(Math.max(0,l1*l1-along*along)));
+        point(thigh,calf,knee);point(calf,foot,hip.clone().addScaledVector(axis,reach));}
+      if(clipUpper)continue;const upper=find(side,'UpperArm'),fore=find(side,'Forearm'),hand=find(side,'Hand');aim(upper,fore,forward.clone().multiplyScalar(.22).add(new THREE.Vector3(0,-1,0)));aim(fore,hand,forward.clone().add(new THREE.Vector3(0,-.15,0)));}
   }
   function setRiding(actor,ride=null){const d=actor.userData.character;d.riding=ride;if(d.visual)d.visual.position.set(0,0,0);if(!ride){actor.rotation.x=actor.rotation.z=0;}setAppearance(actor,d.appearance);}
   function ridingPose(actor,data){
@@ -320,7 +334,8 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       // Ignore teleports between businesses when selecting a movement animation.
       const speed=dt>0&&displacement<1?displacement/dt:0;data.speed=THREE.MathUtils.damp(data.speed,speed,12,dt);
       data.life+=dt;let state=actor.userData.vertical?.grounded===false||data.seated||data.resting||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';
-      if(state==='idle'&&data.ambientReady&&!data.seated&&!data.resting&&!data.riding&&!(data.activity&&data.activity.type!=='idle')){const pick=ambientMotion(data.ambient,data.life,{seed:data.seed,turn:data.turn});if(data.actions[pick])state=pick;}
+      if(data.seated&&data.seatedReady&&!data.resting&&!data.riding){const pick=seatedMotion(data.life,{seed:data.seed});if(data.actions[pick])state=pick;}
+      else if(state==='idle'&&data.ambientReady&&!data.seated&&!data.resting&&!data.riding&&!(data.activity&&data.activity.type!=='idle')){const pick=ambientMotion(data.ambient,data.life,{seed:data.seed,turn:data.turn});if(data.actions[pick])state=pick;}
       setMotion(data,state);if(data.phone)data.phone.visible=PHONE_MOTIONS.includes(state);
       data.actions[state].setEffectiveTimeScale(state==='walk'||state==='run'?THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9):1);
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}

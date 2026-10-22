@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Builds the ambient motion clips (looking around, texting, waiting, talking and
-// listening) for both Rocketbox animation sets from the original FBX files.
+// listening) and the seated idles for both Rocketbox animation sets from the
+// original FBX files.
 // Keeps only what retargeting uses (bone rotations and the root's translation)
 // and drops redundant keyframes. Run from the repository root:
 //
@@ -14,7 +15,7 @@ import {writeFile,mkdtemp,rm} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createRequire} from 'node:module';
-import {AMBIENT_MOTIONS} from '../assets/crowd-life.js';
+import {AMBIENT_MOTIONS,SEATED_MOTIONS} from '../assets/crowd-life.js';
 
 let NodeIO,ALL_EXTENSIONS,resample,prune;
 try{({NodeIO}=await import('@gltf-transform/core'));({ALL_EXTENSIONS}=await import('@gltf-transform/extensions'));({resample,prune}=await import('@gltf-transform/functions'));}
@@ -25,7 +26,7 @@ const FBX2GLTF=join(dirname(createRequire(import.meta.url).resolve('fbx2gltf/pac
 const DIR='Assets/Animations/all_animations_max_motextr_static/';
 const io=new NodeIO().registerExtensions(ALL_EXTENSIONS);
 
-for(const set of ['f','m'])for(const file of Object.values(AMBIENT_MOTIONS)){
+for(const set of ['f','m'])for(const file of [...Object.values(AMBIENT_MOTIONS),...Object.values(SEATED_MOTIONS)]){
  const source=set+'_'+file+'.max.fbx',tmp=await mkdtemp(join(tmpdir(),'motion-'));
  await writeFile(join(tmp,'clip.fbx'),execFileSync('git',['-C',RB,'cat-file','-p','HEAD:'+DIR+source],{maxBuffer:1<<28}));
  execFileSync(FBX2GLTF,['--binary','--input',join(tmp,'clip.fbx'),'--output',join(tmp,'clip')],{stdio:'ignore'});

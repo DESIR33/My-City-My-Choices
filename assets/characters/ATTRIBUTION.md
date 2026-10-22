@@ -13,3 +13,5 @@ Meshopt buffer compression was expanded at build time so a runtime WebAssembly d
 Roughness maps (2026-10-22): `tools/prepare-characters.mjs` added a roughness map to each of the six models above, made from the original Rocketbox specular scan, so skin, eyes and lips catch light. Crowd models in `crowd/` are further Rocketbox avatars converted from the original FBX files by the same tool; see `crowd/README.md`.
 
 Ambient motions (2026-10-22): looking around, texting, waiting, and talking/listening gestures for both animation sets (`f_`/`m_` `idle_look_around_01`, `cell_phone_textmessage`, `idle_waiting_01`, `gestic_talk_neutral_01`, `gestic_talk_relaxed_01`, `gestic_listen_neutral_01`, `gestic_listen_accept_01`) are Rocketbox motions converted by `tools/prepare-motions.mjs`, keeping only bone rotations and root motion.
+
+Seated idles (2026-10-22): `f_`/`m_` `sit_chair_idle_neutral_01`, `sit_chair_idle_look_around`, `sit_chair_breathe_01` and `sit_chair_idle_relaxed_01` are Rocketbox motions converted by `tools/prepare-motions.mjs`.
