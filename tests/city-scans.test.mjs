@@ -12,7 +12,7 @@ assert.deepEqual(Object.keys(CITY_SCANS).sort(),Object.keys(SURFACE_PROFILES).so
 for(const size of [1024,512]){
  let bytes=0;const files=cityScanFiles(size);assert.equal(files.length,Object.keys(CITY_SCANS).length*3);
  for(const f of files){const path=file('assets/'+f.dir+'/textures/'+f.name),head=(await readFile(path)).subarray(0,12);assert.deepEqual([...head],KTX2,f.name+' is KTX2');if(f.dir==='city')bytes+=(await stat(path)).size;}
- assert.ok(bytes<(size===1024?3e6:1e6),'city scan download at '+size+' px: '+bytes);
+ assert.ok(bytes<(size===1024?3.4e6:1.1e6),'city scan download at '+size+' px: '+bytes);
 }
 // Rotated siding cannot share the house's unrotated maps.
 assert.ok(cityScanFiles(1024).filter(f=>f.kind==='siding').every(f=>f.dir==='city'));
@@ -33,8 +33,13 @@ assert.notEqual(early.color.getHex(),late.color.getHex(),'each building keeps it
 assert.equal(pbr.surface('stucco',0xf0e6d6).userData.scanned,undefined,'failed kind keeps procedural maps');
 // Shader tile follows the scan and the program cache key changes with it.
 assert.match(early.customProgramCacheKey(),/:1\.5$/);const shader={vertexShader:'#include <project_vertex>',fragmentShader:'#include <map_fragment>'};early.onBeforeCompile(shader);assert.match(shader.vertexShader,/cityUV\/=1\.5000/);
+// Lawns: grass is a shared PBR kind with an anti-tiling second sample; other kinds are not.
+const lawn=pbr.surface('grass',0x3c6335),lawnShader={vertexShader:'#include <project_vertex>',fragmentShader:'#include <map_fragment>'};lawn.onBeforeCompile(lawnShader);
+assert.match(lawnShader.fragmentShader,/cityMacroUv/);assert.match(lawnShader.fragmentShader,/cityPatch/);assert.equal(lawn.userData.tileSize,CITY_SCANS.grass.tile);
+assert.doesNotMatch(shader.fragmentShader,/cityMacroUv/,'roofs do not get the lawn treatment');
+const visualsSource=await readFile(file('assets/city-visuals.js'),'utf8');assert.match(visualsSource,/function surface\(kind, hex\) \{ return pbr\.surface\(kind,hex\); \}/,'city grass is the shared PBR material');assert.match(visualsSource,/grass: surface\('grass'/);
 // Wet roads keep their scan roughness scale.
 pbr.setWetness(1);assert.ok(Math.abs(road.roughness-.33*(CITY_SCANS.asphalt.roughness??1))<1e-6);pbr.setWetness(0);assert.equal(road.roughness,CITY_SCANS.asphalt.roughness??1);
 // Shared house maps decode once when the same loader serves both.
 const urls=[...fake.keys()];assert.equal(new Set(urls).size,urls.length);assert.ok(urls.some(u=>u.startsWith('./assets/house/textures/red_brick_03-512-nor')));
-console.log('City scans passed: every surface kind, KTX2 files and budgets, attribution, shared upgrade with tint, tile, roughness and wetness, failed-kind fallback and shared house maps.');
+console.log('City scans passed: every surface kind including lawns, KTX2 files and budgets, attribution, shared upgrade with tint, tile, roughness and wetness, failed-kind fallback and shared house maps.');

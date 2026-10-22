@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export const SURFACE_PROFILES=Object.freeze({
- asphalt:{tile:3,roughness:.88,relief:.42},concrete:{tile:3,roughness:.91,relief:.36},brick:{tile:1.5,roughness:.86,relief:.7},stone:{tile:2.4,roughness:.78,relief:.48},stucco:{tile:2,roughness:.94,relief:.24},roof:{tile:2.4,roughness:.92,relief:.55},siding:{tile:2.4,roughness:.84,relief:.45},wood:{tile:1.8,roughness:.78,relief:.35}
+ asphalt:{tile:3,roughness:.88,relief:.42},concrete:{tile:3,roughness:.91,relief:.36},brick:{tile:1.5,roughness:.86,relief:.7},stone:{tile:2.4,roughness:.78,relief:.48},stucco:{tile:2,roughness:.94,relief:.24},roof:{tile:2.4,roughness:.92,relief:.55},siding:{tile:2.4,roughness:.84,relief:.45},wood:{tile:1.8,roughness:.78,relief:.35},grass:{tile:2.5,roughness:.96,relief:.5,macro:.45}
 });
 const fract=x=>x-Math.floor(x),clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const hash=(x,y,seed)=>fract(Math.sin(x*127.1+y*311.7+seed*71.3)*43758.5453);
@@ -20,17 +20,24 @@ export function generateSurfaceMaps(kind,size=256){
   else if(kind==='concrete'){const seam=Math.min(fract(u*2),1-fract(u*2),fract(v*2),1-fract(v*2))<.005;value=seam?.70:.91+(coarse-.5)*.045+(n-.5)*.055;relief=seam?.25:.6+(n-.5)*.07;occlusion=seam?.72:1;}
   else if(kind==='stucco'){value=.94+(n-.5)*.08;relief=.5+(n-.5)*.32;}
   else if(kind==='siding'||kind==='roof'){const row=Math.floor(v*12),seam=fract(v*12)<.075,vertical=kind==='roof'&&fract(u*8+(row%2)*.5)<.025;value=seam||vertical?.70:.87+coarse*.09;relief=seam||vertical?.22:.65;occlusion=seam?.75:1;}
+  else if(kind==='grass'){const blade=hash(x,Math.floor(y/3),seed);value=.84+(blade-.5)*.22+(coarse-.5)*.1;relief=.45+blade*.25;rough=.9+n*.08;}
   else if(kind==='wood'){const grain=Math.sin(u*180+Math.sin(v*25)*3);value=.85+grain*.07+(n-.5)*.07;relief=.5+grain*.12;}
   const k=(y*size+x)*4;for(let c=0;c<3;c++)color[k+c]=Math.round(clamp(value,0,1)*255);color[k+3]=255;orm[k]=Math.round(occlusion*255);orm[k+1]=Math.round(clamp(rough,.15,1)*255);orm[k+2]=0;orm[k+3]=255;height[y*size+x]=relief;
  }
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){const at=(a,b)=>height[((b+size)%size)*size+(a+size)%size],dx=(at(x-1,y)-at(x+1,y))*spec.relief,dy=(at(x,y-1)-at(x,y+1))*spec.relief,length=Math.hypot(dx,dy,1),k=(y*size+x)*4;normal[k]=Math.round((dx/length*.5+.5)*255);normal[k+1]=Math.round((dy/length*.5+.5)*255);normal[k+2]=Math.round((1/length*.5+.5)*255);normal[k+3]=255;}
  return {color,normal,orm,size};
 }
-export function applyWorldSurfaceUV(shader,tile){
+export function applyWorldSurfaceUV(shader,tile,macro=0){
  // Compute metres after instance/model transforms, so a 150 m tower never stretches a single brick tile.
  shader.vertexShader='varying vec3 vCitySurfacePosition;\n'+shader.vertexShader;
  shader.fragmentShader='varying vec3 vCitySurfacePosition;\n'+shader.fragmentShader;
- shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\nfloat cityMacro=.98+.012*sin(vCitySurfacePosition.x*.27+vCitySurfacePosition.y*.51)+.008*sin(vCitySurfacePosition.z*.38-vCitySurfacePosition.y*.13);\ndiffuseColor.rgb*=cityMacro;');
+ shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\nfloat cityMacro=.98+.012*sin(vCitySurfacePosition.x*.27+vCitySurfacePosition.y*.51)+.008*sin(vCitySurfacePosition.z*.38-vCitySurfacePosition.y*.13);\ndiffuseColor.rgb*=cityMacro;'+(macro>0?`
+#ifdef USE_MAP
+// Anti-tiling: a second, rotated sample about 3.4x larger breaks up visible repeats on wide lawns.
+vec2 cityMacroUv=mat2(.8,-.6,.6,.8)*vMapUv*.29+vec2(.31,.17);diffuseColor.rgb*=mix(vec3(1.0),texture2D(map,cityMacroUv).rgb*1.27,${Number(macro).toFixed(3)});
+// Low-frequency patches of greener and drier turf.
+float cityPatch=sin(vCitySurfacePosition.x*.083+sin(vCitySurfacePosition.z*.061)*1.7)*sin(vCitySurfacePosition.z*.071+vCitySurfacePosition.x*.023);diffuseColor.rgb*=mix(vec3(1.0),vec3(1.08,1.04,.86),max(0.0,cityPatch)*.55);diffuseColor.rgb*=1.0-max(0.0,-cityPatch)*.12;
+#endif`:''));
  shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',`#include <project_vertex>
  vec4 cityP=vec4(transformed,1.0);
  #ifdef USE_INSTANCING
@@ -57,7 +64,7 @@ export function applyWorldSurfaceUV(shader,tile){
 export function createCityMaterials({anisotropy=4}={}){
  const maps=new Map(),materials=new Map(),roads=new Set(),scanned=new Map();let wetness=0;
  const map=(bytes,size,color=false)=>{const t=new THREE.DataTexture(bytes,size,size);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=anisotropy;if(color)t.colorSpace=THREE.SRGBColorSpace;t.needsUpdate=true;return t;};
- function surface(kind,hex){const key=kind+':'+hex;if(materials.has(key))return materials.get(key);const p=SURFACE_PROFILES[kind];if(!maps.has(kind)){const d=generateSurfaceMaps(kind);maps.set(kind,{map:map(d.color,d.size,true),normalMap:map(d.normal,d.size),packed:map(d.orm,d.size)});}const m=maps.get(kind),material=new THREE.MeshPhysicalMaterial({name:'PBR '+kind,color:hex,map:m.map,normalMap:m.normalMap,roughnessMap:m.packed,aoMap:m.packed,aoMapIntensity:.35,normalScale:new THREE.Vector2(1,1),roughness:1,metalness:0,clearcoat:kind==='asphalt'?.03:0});material.userData.tileSize=p.tile;material.userData.surfaceKind=kind;material.userData.baseColor=new THREE.Color(hex);material.onBeforeCompile=shader=>applyWorldSurfaceUV(shader,material.userData.tileSize);material.customProgramCacheKey=()=>kind+'-metre-uv-v1:'+material.userData.tileSize;if(scanned.has(kind))useMaps(material,scanned.get(kind));materials.set(key,material);if(kind==='asphalt'){roads.add(material);applyWetness(material);}return material;}
+ function surface(kind,hex){const key=kind+':'+hex;if(materials.has(key))return materials.get(key);const p=SURFACE_PROFILES[kind];if(!maps.has(kind)){const d=generateSurfaceMaps(kind);maps.set(kind,{map:map(d.color,d.size,true),normalMap:map(d.normal,d.size),packed:map(d.orm,d.size)});}const m=maps.get(kind),material=new THREE.MeshPhysicalMaterial({name:'PBR '+kind,color:hex,map:m.map,normalMap:m.normalMap,roughnessMap:m.packed,aoMap:m.packed,aoMapIntensity:.35,normalScale:new THREE.Vector2(1,1),roughness:1,metalness:0,clearcoat:kind==='asphalt'?.03:0});material.userData.tileSize=p.tile;material.userData.surfaceKind=kind;material.userData.baseColor=new THREE.Color(hex);material.onBeforeCompile=shader=>applyWorldSurfaceUV(shader,material.userData.tileSize,p.macro||0);material.customProgramCacheKey=()=>kind+'-metre-uv-v1:'+material.userData.tileSize;if(scanned.has(kind))useMaps(material,scanned.get(kind));materials.set(key,material);if(kind==='asphalt'){roads.add(material);applyWetness(material);}return material;}
  // Replace one kind's shared maps (every tint at once) with scanned ones.
  function useMaps(material,m){material.map=m.map;material.normalMap=m.normalMap;material.roughnessMap=material.aoMap=m.packed;material.userData.tileSize=m.tile;material.userData.scanned=true;material.userData.roughnessScale=m.roughness??1;if(roads.has(material))applyWetness(material);else material.roughness=material.userData.roughnessScale;material.needsUpdate=true;}
  function upgrade(kind,m){if(!SURFACE_PROFILES[kind])throw new Error('Unknown surface '+kind);const old=maps.get(kind);scanned.set(kind,m);maps.set(kind,{map:m.map,normalMap:m.normalMap,packed:m.packed});for(const material of materials.values())if(material.userData.surfaceKind===kind)useMaps(material,m);if(old&&!Object.values(old).some(t=>t===m.map||t===m.normalMap||t===m.packed))for(const t of Object.values(old))t.dispose();}
