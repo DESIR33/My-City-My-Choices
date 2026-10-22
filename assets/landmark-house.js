@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {textileStyle} from './home-life.js';
 import {MODEL_HOME as H,freshHouse,restoreHouse,houseLocal,houseInside,onHouseStairs,houseFloorAt,houseObstacleBlocks} from './house-rules.js';
 
 // One persistent property, built at world scale. Moving leaves stay outside the
@@ -131,11 +132,13 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  for(const x of [-3.5,-2.6,-1.7]){shape(projectGroups.planters,cylinder,x,.48,-7.2,.29,.5,.29,mat(0xad7152));shape(projectGroups.planters,sphere,x,.94,-7.2,.34,.55,.34,mat(0x66836a));}
  for(let i=0;i<4;i++)box(projectGroups.study,.35+i*.14,H.upper+.81,4.95,.1,.32+i*.02,.24,mat([0x577c8a,0x8d6954,0x9f9b71,0x697c66][i]));
  shape(projectGroups.study,cylinder,1.95,H.upper+.95,4.9,.12,.2,.12,ceramic);shape(projectGroups.study,sphere,1.95,H.upper+1.17,4.9,.18,.24,.18,mat(0x66836a));
- let livingKey='';
+ let livingKey='',welcomeKey='';
  function applyLiving(living,{name='Player'}={}){
-  const ids=Array.isArray(living?.improvements)?living.improvements:[],tenure=living?.tenure||'none',key=JSON.stringify([tenure,name,ids]);if(key===livingKey)return;livingKey=key;
-  rug.color.setHex(ids.includes('textiles')?0x557d98:0x9a8671);fabric.color.setHex(ids.includes('textiles')?0x647f97:0x819385);
+  const ids=Array.isArray(living?.improvements)?living.improvements:[],tenure=living?.tenure||'none',style=textileStyle(living?.textileStyle),key=JSON.stringify([tenure,name,ids,style.id]);if(key===livingKey)return;livingKey=key;
+  rug.color.setHex(ids.includes('textiles')?style.rug:0x9a8671);fabric.color.setHex(ids.includes('textiles')?style.fabric:0x819385);
+  beds.find(b=>b.id==='bed2').duvet.material.color.setHex(ids.includes('textiles')?style.guest:0x9f8b76);
   for(const id of ['planters','study'])projectGroups[id].visible=ids.includes(id);
+  const plaqueKey=JSON.stringify([tenure,name]);if(plaqueKey===welcomeKey)return;welcomeKey=plaqueKey;
   const canvas=welcome.material.map.image,q=canvas.getContext('2d');q.fillStyle='#34483e';q.fillRect(0,0,512,128);q.fillStyle='#f5e7c8';q.font='600 36px Georgia';q.textAlign='center';q.textBaseline='middle';q.fillText(tenure==='none'?'WELCOME · TOUR HOME':String(name).slice(0,16)+' · HOME',256,66,490);welcome.material.map.needsUpdate=true;
  }
  function slideMirror(){return new THREE.MeshPhysicalMaterial({color:0xb6c5bd,metalness:.9,roughness:.13,envMapIntensity:.8});}

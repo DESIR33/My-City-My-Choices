@@ -10,18 +10,18 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `888e7d933072d35d5ff228f307eb06b71af225f8`, through merged [PR #46](https://github.com/DESIR33/My-City-My-Choices/pull/46). The two-floor house guide is merged and published in private Site version 65 (source `256ba374e13a4c855c05a36ce3de6e07bc05887b`). The current change adds responsive household sound; its PR/publication outcomes are recorded in the handoff.
+- Audited GitHub baseline: main `c2f794c444bc80852bf357789fe507ec04bc9470`, through merged [PR #50](https://github.com/DESIR33/My-City-My-Choices/pull/50) (adaptive learning layer). Open [PR #48](https://github.com/DESIR33/My-City-My-Choices/pull/48) (nearby house-guide marker) also carries the textile-style follow-up from PR #49, which was merged into #48's branch rather than main. Main was merged into #48 to resolve conflicts with the learning layer. The marker is published in private Site version 67 (source `c793a7bf14ac88d76c97253c798fdeedecff2fce`). The learning layer and textile styles were not verified as published to the Site.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
-- Learning layer (proposed in PR `learning-design`, not merged or published): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
+- Learning layer (merged in PR #50; not verified as published to the Site): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
 - Multiplayer, server-assigned properties, cloud save synchronization and a production real-estate economy are not built.
 
 ### Evidence and confidence
 
-The current source tree, runtime imports, module code, README and PR history through #46 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
+The current source tree, runtime imports, module code, README and PR history through #50 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Runtime reconciliation:** merged PR #44 restored dedicated weather/siren modules and mobile-budget/recovery improvements from hosted source `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`, preserving PR #43's home/address work. All 80 shipped files matched across layouts, including binaries. The house guide added one module; the current household-audio change adds another and makes all 82 runtime files match across the candidate layouts. Tests/docs remain layout-specific. Source parity does not establish live-browser or physical-device acceptance; rerun the comparison whenever either source changes.
+**Runtime reconciliation:** merged PR #44 restored dedicated weather/siren modules and mobile-budget/recovery improvements from hosted source `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`, preserving PR #43's home/address work. All 80 shipped files matched across layouts, including binaries. The house guide and household audio each added a module; the current marker adds one more and makes all 83 runtime files match across the candidate layouts. Tests/docs remain layout-specific. Source parity does not establish live-browser or physical-device acceptance; rerun the comparison whenever either source changes.
 
 ## Contents
 
@@ -102,6 +102,8 @@ In the furnished house, E / the touch action opens a compact chooser when multip
 
 **City menu → House rooms & objects** opens the paused house guide; the nearby-object chooser links to it too. Switch Downstairs/Upstairs to inspect walls, furniture, the six household door leaves, stairs and room names. Gold marks the player's position on its actual floor; a teal star marks the selected object's approach point. The room directory lists all 25 furnished non-door interactions. Selecting one closes the panel and shows a location cue in the existing route line while inside: use the east-side stairs, open a room door, or interact nearby. A city destination stays selected and its cue returns outside. Focus view retains its existing hiding behavior. Successful interaction with the selected object clears the guidance; Stop house guidance cancels it. Outside, use the explicit Directions to the house button for city navigation.
 
+A selected object also gets a small stationary mint floor ring and diamond at its real approach point when nearby. It is visible only on the same floor, within six meters, with clear player/camera sightlines against the household collision boxes and moving door leaves. The camera must stay between that floor and ceiling. It hides during stairs/jumps beyond the floor tolerance, outside, menus/background, driving/riding, sitting/resting and Focus view. Canceling/completing the existing guide or restoring an invalid target hides it automatically. It indicates where to stand, not an outline of the furniture, a walking path or an automatic interaction. Existing text/map guidance still works when the marker is hidden.
+
 ## World and landmarks
 
 World units are approximately meters; X is east/west, north is negative Z, south positive Z. This is a continuous fictional world, not a georeferenced real city.
@@ -140,6 +142,8 @@ The latest home-life work adds a personalized plaque and three visual projects w
 
 House-guide plans are SVG built on demand from the actual house collision boxes, live household door bounds and action approach points. `HOUSE_ROOMS` groups actions and identifies the utility/main/second-bedroom/bathroom doors; update this metadata and its tests when changing the architecture. Plans are location diagrams, not computed walking routes. They do not draw a line through walls, move players, open doors or activate furniture. The shared neighborhood overhead garage door is outside the six household leaves shown. Closed exit-door hints take precedence before changing floors. No new scene meshes, lights, textures or render targets are allocated.
 
+The separate in-world marker uses two fixed meshes (72 triangles total) sharing one unlit, translucent, front-facing material. Depth testing remains enabled; it adds no lights, shadows, textures or postprocessing targets. It is excluded from camera-architecture snapshots and adds no collision/navigation/shelter boxes. Target lookup is cached per house and segment checks inspect only that house's bounded collider list, not every scene triangle. Updates run after camera following and reuse the original geometry/material. This is a tiny rendering addition; native tests cannot establish its GPU appearance or device frame rate.
+
 
 ### Neighborhood entry and finding addresses
 
@@ -165,7 +169,7 @@ Courier contracts are nearby on-foot pickup and explicit handoff: Maple Bakery �
 
 ### Learning layer: adaptive skills, Garden Club and Parents page
 
-Status: implemented on the `learning-design` branch and proposed for merge; not published to the private Site. Owner-approved design: a living design doc ("My City, My Choices: Learning Design") covering an adaptive 6 to 12 age band, a skills map, a mastery model, the Garden Club redo and a parent progress view.
+Status: merged to main in PR #50; not verified as published to the private Site. Owner-approved design: a living design doc ("My City, My Choices: Learning Design") covering an adaptive 6 to 12 age band, a skills map, a mastery model, the Garden Club redo and a parent progress view.
 
 - **Skills.** `assets/learning/` defines 12 skills (coin values, counting money, making change, adding prices, affordability, business profit, saving for a goal, budgeting, risk, borrowing cost, reading for detail, time and order), each with five levels. Generators are pure and seeded by the save's `childId`, so reloads do not reroll a question. Options are shuffled with distractors from common mistakes; hint 1 never states the answer. All learning strings live in `content.en.js` so a Spanish file can follow.
 - **Tiers.** Sprout 6 to 7, Builder 8 to 9, Planner 10 to 12, chosen from the child's age on the welcome screen (grown-up section with optional 4-digit PIN). Planner types numeric answers; younger tiers choose. Saves without learning data default to Builder.
@@ -192,12 +196,16 @@ Rent/buy becomes available after business day two. Tours remain free. All prices
 | --- | --- | --- |
 | Rent / renew | $2 for seven business days including signing day | Explicit choice; no auto-renewal, late fees or automatic eviction |
 | Buy | $5 down + five optional $1 installments | Existing remaining debt/payments preserved; owner cannot switch to renting accidentally |
-| Ocean blue textiles | $1 | One-time actual rug/sofa/bedding change |
+| Ocean blue textiles | $1 | One-time actual rug/sofa/bedding change; unlocks three free textile styles |
 | Backyard container garden | $1.50 | One-time three terracotta planters |
 | Upstairs study | $1.25 | One-time books/plant on actual desk |
 | Daily review | Free, optional, once per business day | Must be inside; reports results/earnings/savings/upcoming plans; no reward, deduction or auto-time advance |
 
 `home-life.js` assigns the local story to `maple-grove-1`. Legacy paid rent/purchase migrates without charging again; an old rental gets seven days from its saved business day. Buying retains projects and does not credit prior rent toward the purchase. Project quotes use cents and reject stale, canceled, repeated or unaffordable confirmation; preserve planned-spending review, business profit and protected savings.
+
+**Home & daily life → Make it your own → Find your home’s colors** offers Ocean blue, Garden sage and Warm clay, with three labeled color samples per style matching the actual rug, sofa/main-bed duvet and guest-bed duvet. The existing `textiles` project still costs 100 cents once and initially installs the original ocean/neutral appearance. Owning that project unlocks unlimited free restyles. Selection saves immediately, refreshes the selected state and changes existing materials; no placement editing or new furnishings are implied. All three options can be inspected before purchase but remain disabled until eligible. Styling requires an active rental/ownership, completed business stage and being out of vehicles, matching project-install eligibility. It can be planned away from home. Expired rental preserves installed appearance and palette, while renewal restores editing. Repeated selection is idempotent; no wallet, savings, debt, business-day, spending or journal changes occur.
+
+`TEXTILE_STYLES`, `textileStyle()` and `restyleHome()` share the whitelist between UI, restoration and scene application. `applyLiving()` now keys its cache by palette too; a separate plaque cache avoids a welcome-texture upload on restyle. Rug/fabric/guest-bed material objects and all geometry/collision are reused. Existing project IDs/prices and their purchase review remain unchanged.
 
 Help me settle in is optional and persisted: `idle → arrive → wardrobe → rest → review → done`, with a separate pause flag. Nearby real entry/upper-floor/bed actions advance it in order; remote or out-of-order calls cannot skip steps. Existing business/customer objectives take priority. Resuming away from home routes back; expired rental pauses eligibility until renewal. A review already completed that business day can still finish the guide without a duplicate journal entry. Do not replace this with automatic overnight rent or an unrequested needs/energy grind.
 
@@ -255,6 +263,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 | `house-rules.js`, `landmark-house.js`, `home-life.js` | Stable property state, multi-level geometry, reachable-object choices/state labels, household actions, tenure/projects/guide; landmark-house/house-interactions/home-life/story-flow tests |
 | `house-guide.js` | Room/action directory, floor classification, location cues and SVG plans from actual household bounds; house-guide/story-flow tests |
 | `house-audio.js` | Original action sound profiles and cached, position/floor/door-aware sampling of saved household sources; house-audio/city-audio/story-flow tests |
+| `house-target-visuals.js` | Saved-guide approach marker, floor/range/occlusion visibility and reusable scene resources; house-target-visuals tests execute the actual frame integration |
 | `city-rules.js`, `civic-world.js`, `cafe-activity.js`, `interior-visits.js` | Café/bakery/services, food tickets, NPC service/visitors and seats; city-life/cafe-service/local-life tests |
 | `business-days.js`, `money-planner.js`, `city-errands.js` | Morning quotes/results, reservations/transfers and work steps; business-days/money-planner/local-life/story-flow tests |
 | `wardrobe.js`, `clothing-world.js` | Paid catalogue, owned outfits/avatar changes and store; wardrobe/story-flow tests |
@@ -284,6 +293,8 @@ No backend database, account service, authoritative multiplayer server, cloud ec
 Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. The proposed learning layer adds `learning` (version 1: `childId`, `tier`, `age`, `placementDone`, `parentPinHash`, `tierSuggestion`, Garden reflections and per-skill level/status/streaks/last 8 attempts) and `gardenReflectionDue`; `restoreLearning` validates both, and saves without them load as Builder with every skill New. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
 
 Optional `houseGuide: {targetId}` stores only a whitelisted furnished-object ID, independently from city navigation and settling progress. Old saves default to no target; invalid/removed/door IDs are dropped. The existing portable backup format carries it without a version change. Selecting, canceling and successfully using the target use normal story saves, and New story clears it. Tours and guidance are free; no ownership, wallet, savings or business-day change occurs.
+
+`homeLife.textileStyle` is an optional whitelisted string (`ocean`, `sage`, `clay`), default `ocean`. It uses the existing home-life version 1 and portable save format. Missing/invalid values restore the original palette; non-owners and stories without the textile project discard any saved alternate selection. Legacy textile purchases are not charged again. Expired rentals retain their palette and project list. New story resets the field, and serializer/export/import already include the complete home-life object.
 
 | Local key | Purpose |
 | --- | --- |
@@ -331,7 +342,10 @@ For a requested runtime update, use the supported Sites source opening/credentia
 
 ### What the existing evidence establishes
 
-- The household-audio candidate passes all 69 Node cases across 54 repository test files and all 52 hosted-layout cases. PR #46 previously passed 68/68 and both GitHub workflows. Native house checks retain 98 meshes / 11,742 triangles / 46,190 measured geometry/instance bytes; these figures exclude full-game GPU memory.
+- PR #48 merged with main after PR #50 (marker, textile styles and learning layer together): all 91 Node cases pass across 59 test files; the inline entry module passes `node --check`. Not browser-, GPU-, device- or Site-parity-tested after the merge.
+- Textile styling passes the current full native suite (71 cases across 56 repository files; 54 hosted-layout cases). New coverage exercises old/invalid/portable saves, rental boundaries, rejected and repeated choices, actual panel/action dispatch with zero wallet and unchanged savings/debt, real rug/sofa/both-bed colors and 3,000 changes with stable geometry/material/collision resources and no texture uploads. Existing house geometry remains 98 meshes / 11,742 triangles / 46,190 measured bytes. Isolated browser UI and final parity outcomes are recorded in the change entry; these are not a rendered 3D or physical-device acceptance claim.
+- The house-marker candidate passes all 70 Node cases across 55 repository test files and all 53 hosted-layout cases, plus focused checks after the marker material/projection checks. PR #47 previously passed 69/69 and both GitHub workflows. The furnished house itself retains 98 meshes / 11,742 triangles / 46,190 measured geometry/instance bytes; the separate marker adds two meshes and 72 triangles. These figures exclude full-game GPU memory.
+- Current browser startup again reaches the graphics-recovery dialog because WebGL cannot initialize. No rendered-marker acceptance is claimed. Native checks verify all 25 actual approaches, live door/wall/furniture occlusion, floor/ceiling/range gates, real frame integration, portrait/desktop mathematical projection, camera-snapshot exclusion, stable resources across 10,000 updates and disposal. Physical GPU/device inspection remains required.
 - Browser Web Audio QA used a temporary page importing the shipped mixer: offline rendering produced a finite, nonzero door waveform; live context unlock accepted switch feedback after a click; disabling Household sounds refused it. The temporary page was removed before packaging. This establishes browser API/gesture/mute operation, not listening quality, spatial realism or physical-device sound balance.
 - House-guide browser QA used a temporary isolated page with actual house data, guide handlers and shipped CSS: both floor plans, floor switching, selected marker, object selection and refreshed target rendered correctly at desktop and 390-pixel iframe widths. Temporary QA pages are removed before packaging. The known full-game WebGL limitation and physical-device acceptance remain unresolved.
 - Browser QA used a temporary isolated page with the actual shipped house scene data, chooser handlers and CSS: curtain selection/state refresh rendered correctly at desktop and 390-pixel iframe widths. That page was removed before packaging. Full game startup still reaches the graphics-recovery dialog because this QA browser cannot initialize WebGL. This verifies the chooser layout/interaction, not a rendered walk through the house or physical touch hardware.
@@ -354,7 +368,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 | Premium visuals | Procedural materials/assets are an improvement; scanned materials, GTA-level fidelity, ray tracing, destruction and production streaming are not implemented |
 | Physics/camera | Assisted kinematic simulation and conservative architecture bounds; not full rigid-body realism or automatic safety around all dynamic vehicles |
 | Persistence | Browser-local plus manual backups; no multiplayer authoritative state or cross-device automatic sync |
-| Learning layer playtest | Proposed PR only. Simulated-DOM story flow and generator/mastery tests pass; needs a real playthrough at Sprout and Planner tiers, mobile layout checks of question/Garden/Parents panels, and tuning of level thresholds and hint wording |
+| Learning layer playtest | Merged in PR #50, not yet playtested. Simulated-DOM story flow and generator/mastery tests pass; needs a real playthrough at Sprout and Planner tiers, mobile layout checks of question/Garden/Parents panels, and tuning of level thresholds and hint wording |
 | Learning economy scale | Tiers scale questions and the market payment, not wallet size or prices; rescaling the story economy by tier is a separate decision |
 | Documentation gate | Checks that the context actually changes per commit; cannot judge semantic completeness. Merge blocking requires the repository owner to mark the workflow check required in branch protection/rulesets |
 
@@ -366,7 +380,7 @@ Run targeted tests first, then the appropriate full suite once inputs settle. Va
 
 ### Immediate, grounded in owner feedback
 
-1. If the learning-layer PR merges: playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds and hints. Its runtime changes make the private Site differ until it is deliberately published; rerun parity before publishing.
+1. Learning layer is merged (PR #50): playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds and hints. Its runtime changes make the private Site differ until it is deliberately published; rerun parity before publishing.
 2. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
 3. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
 4. Keep runtime parity verified as each destination changes; audit older lost/stale PR #8 expansion work before planning on top of those historical claims.
@@ -408,13 +422,41 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-22 — Merge the learning layer into the house-marker PR
+
+- Request / reason: owner asked to resolve PR #48's merge conflict after PR #50 (learning layer) merged to main.
+- Result: merged main `c2f794c` into `codex/house-guide-target-marker`. All code (`index.html`, `assets/`, tests) merged without conflict; only this file conflicted, where both sides added ledger entries. Both entry sets are kept. Status lines now say the learning layer is merged, and the PR table lists #50.
+- Correction: PR #50's commits omitted its intended baseline, merge-forward and PR-table context updates because a chained shell command stopped before the edit ran. Those details are added here.
+- Compatibility: no runtime behavior change from the merge itself. Saves keep `houseGuide`, `homeLife.textileStyle`, `learning` and `gardenReflectionDue` side by side; the City menu keeps House rooms & objects and Parents.
+- Validation: `npm test` 91/91 across 59 files; inline module syntax check; context policy check. No browser, GPU, device or Site-parity check.
+- Remaining work: unchanged from the marker, textile and learning entries below. Publishing this combined runtime to the Site requires a parity run first.
+
+### 2026-10-22 — Give the furnished home saved textile styles
+
+- Request / choice: continue useful landmark development. Extend the existing paid textile improvement into a small decorating experience, preserving the pending marker PR #48 and its published playtest.
+- Result: Home & daily life → Make it your own presents Ocean blue, Garden sage and Warm clay swatches, current selection and free restyling after the existing 100-cent textile purchase. Selection updates the actual rug, sofa/main-bed fabric and guest-bed duvet; no furniture placement or automatic purchase occurs. Active home access, completed business stage and being out of vehicles are required. Installed appearance survives rental expiry; renewal unlocks editing again.
+- Affected: `home-life.js` shared catalogue/eligibility/restoration, `landmark-house.js` existing materials/cache, actual entry-point panel/action/CSS, new `home-decor.test.mjs`, README/source notes and this context. The follow-up is based on PR #48 head `97fd6a53a8a79af51e1882b55217cbb8173007b1`, rather than silently dropping its unmerged work.
+- Compatibility / budget: optional whitelisted `homeLife.textileStyle`, default ocean, keeps version 1 and existing portable saves. Legacy installed textiles retain the original colors with no repayment. Missing/invalid/unowned styles reset safely. Free changes preserve wallet, savings, debt, spending and day. No new meshes, colliders, lights, textures or rendering targets; no material/geometry allocations or plaque uploads when changing palettes.
+- Validation: repository 71/71 cases across 56 test files; hosted layout 54/54. Coverage includes portable/legacy/invalid saves, lease boundary/renewal, one-time unlock, zero-wallet styling, actual panel handlers and repeat/invalid/vehicle/story refusal, real material colors and 3,000 stable-resource scene updates. Isolated browser panels using shipped handlers/CSS passed desktop and 390-pixel phone-width selection/scrolling. Temporary QA pages were removed before packaging. Syntax, staged context-policy, whitespace and all 83 runtime-file parity checks pass.
+- Limits / delivery: isolated UI and native Three checks do not prove rendered 3D appearance or physical-device frame stability. Publish to the existing owner-private Site, then open a stacked GitHub PR against #48 while it remains open. Exact source/deployment/PR/CI outcomes belong in the handoff; do not infer a merge.
+
+### 2026-10-22 — Mark the selected household approach in the world
+
+- Request / reason: continue the next useful improvement. The house directory supplies a plan and text, but a nearby visual cue makes the selected interaction point easier to recognize while walking.
+- Result: added a stationary mint ring/diamond using the existing saved `houseGuide.targetId`. It follows the actual action approach on the correct floor, within six meters, only when player and camera sightlines clear household colliders. Live doors, walls and furniture can hide it. Menus/background, vehicles, seats/resting, stairs, floor/ceiling mismatch and Focus view hide it; cancel/completion removes it through existing guide state.
+- Affected: new `house-target-visuals.js`, initialization and post-camera frame update in `index.html`, focused native/integration tests and current README/source/context. Camera snapshots ignore the decoration; no physics, navigation or rain-shelter obstacle is introduced.
+- Compatibility / budget: no new save or settings fields, charges, rewards or automatic household actions. Two fixed meshes, 72 triangles and one depth-tested unlit material; no lights, shadows, textures, new render targets or geometry/material allocation during updates. Front faces avoid duplicate transparent back/front passes; cleanup disposes resources once.
+- Validation: full repository 70/70 cases across 55 files; hosted source 53/53; focused marker checks after projection/material polish; syntax/context/whitespace checks and all 83 runtime files matched. Real scene tests cover every approach, closed/open door changes, wall/furniture occlusion, both floors, camera height, range, invalid targets, pause/vehicle/seat/Focus gates, actual shipped frame-call execution, portrait/desktop projection, camera-box exclusion, unchanged save and stable resources over 10,000 updates.
+- Limits / delivery: browser WebGL still fails at startup, so native geometry/visibility tests do not verify rendered appearance or physical-device performance. Publish to the existing owner-private playtest and open the GitHub PR; final source/deployment/CI outcomes belong in the handoff, not an assumed merge.
+
 ### 2026-10-22 — Adaptive learning layer (skills, mastery, Garden Club, Parents page)
 
 - Request / reason: owner asked to improve the game's learning design, chose an adaptive 6 to 12 band with skills map + mastery, Garden Club redo and a parent progress view, approved the design doc, and asked for the code as a PR to main.
-- Result and status: implemented on branch `learning-design` and proposed for merge. Not merged or published. Placement only suggests a tier (owner decision in the design doc).
+- Result and status: merged to main in PR #50; not verified as published to the Site. Placement only suggests a tier (owner decision in the design doc).
 - Affected files / systems: new `assets/learning/` modules and three `tests/learning-*.test.mjs` files; `index.html` (welcome-screen grown-up setup, wallet warm-up, generated customer questions, market payment scaling and $5/$10 bills, Garden Club, Parents menu entry, styles, save fields); `tests/story-flow.test.mjs` (wrong-then-right task answers, placement, Garden settle/reflection, Parents page, serializer); README section.
 - State/save/migration: adds `learning` and `gardenReflectionDue` to the story save; older saves default to Builder with skills New; legacy Garden investments settle with their original payouts. The fixed `businessTasks` lists are removed. Economy prices/earnings unchanged.
 - Validation actually run: `npm test` 86/86 across 54 files on this branch from main `72ed6aa`; generator checks cover all 12 skills × 5 levels × 1,000 seeds; inline module syntax checked. Earlier on the previous base the game loaded in headless Chromium with software WebGL with no page errors and the learning panels were screenshot-checked at desktop and phone widths in a harness. No GPU, physical-device or audio check. Site parity not checked (Site checkout unavailable); this runtime change intentionally diverges from the published Site until deployed.
+- Merge forward: the work arrived as an owner-supplied archive built on `72ed6aa`. It was recommitted there (86/86), then merged with main through PR #47 before PR #50. Conflicts were additive: CSS, `houseGuide` and `learning` save/restore/reset fields, and the City menu, which lists both House rooms & objects and Parents. After that merge `npm test` passed 89/89 across 57 files. These notes were intended for PR #50 but were omitted from its commits by a scripting error, and are recorded here instead.
 - Remaining work: child playtest and tuning; Spanish strings and read-aloud; optional tier-scaled economy; play-time tracking.
 ### 2026-10-22 — Give household actions responsive sound
 
@@ -473,7 +515,7 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ### Historical milestones
 
-The table below records reviewed merged PR milestones through #46. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
+The table below records reviewed merged PR milestones through #50 merged to main. PR #48 is open; PR #49 merged into #48's branch, not main. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
 
 | PR | Milestone | Merged (UTC date) |
 | --- | --- | --- |
@@ -523,3 +565,5 @@ The table below records reviewed merged PR milestones through #46. Current-sourc
 | [#44](https://github.com/DESIR33/My-City-My-Choices/pull/44) | Reconcile playtest weather, sirens and mobile recovery with GitHub | 2026-10-22 |
 | [#45](https://github.com/DESIR33/My-City-My-Choices/pull/45) | Make every nearby household object selectable in the Maple House | 2026-10-22 |
 | [#46](https://github.com/DESIR33/My-City-My-Choices/pull/46) | Add a two-floor house map and saved furniture guidance | 2026-10-22 |
+| [#47](https://github.com/DESIR33/My-City-My-Choices/pull/47) | Add responsive household sound with bounded audio layers | 2026-10-22 |
+| [#50](https://github.com/DESIR33/My-City-My-Choices/pull/50) | Add adaptive learning layer: skills, mastery, Garden Club and Parents page | 2026-10-22 |
