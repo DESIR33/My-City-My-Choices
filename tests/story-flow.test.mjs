@@ -217,6 +217,24 @@ run('hide();driving=null;riding=null;seatedAt=null;stage="parent";player.positio
 run('interactNow()');assert.equal(doorUses,1);assert.match(doc.querySelector('#promptText').textContent,/Tap Close door/);assert.equal(run('near.actionLabel'),'Close door');delete c.residentialCommunity;
 assert.ok(!html.includes('.touch-mode .hud .prompt{display:none!important}'),'Mobile contextual interaction guidance remains visible');
 console.log('House door UI passed: actual proximity discovery, addressed mobile guidance, interaction dispatch, and open/close labels.');
+// Exercise the real furnished scene through the shipped prompt and modal handlers.
+const {createLandmarkHouse}=await import('../assets/landmark-house.js');
+const drawing=new Proxy({},{get:()=>()=>{}});globalThis.document={createElement:()=>({getContext:()=>drawing})};
+const houseScene=new THREE.Scene(),houseKit=Object.fromEntries(['wood','brick','siding','roofing','masonry'].map(key=>[key,color=>new THREE.MeshStandardMaterial({color})]));
+const actualHome=createLandmarkHouse({scene:houseScene,visualKit:houseKit,obstacles:[],groundSurfaces:[]});c.landmarkHome=actualHome;
+actualHome.restore({...actualHome.state,front:true,bedroom1:true,bedroom2:true,bathroom:true});
+const bedApproach=actualHome.actions.find(a=>a.id==='bed1'),houseCash=run('cash'),houseSaved=run('saved');
+run('hide();driving=null;riding=null;seatedAt=null;player.position.set('+bedApproach.x+','+bedApproach.y+','+bedApproach.z+');findNear()');
+assert.equal(run('near.actionLabel'),'Choose object');assert.match(doc.querySelector('#promptText').textContent,/2 objects nearby.*Tap Choose object/);
+run('interactNow()');assert.match(doc.querySelector('#panel').innerHTML,/Main bed/);assert.match(doc.querySelector('#panel').innerHTML,/Bedroom curtains/);assert.ok(run('gameplayBlocked()'),'Object chooser pauses normal gameplay');
+c.chooseHouseObject('curtains');assert.equal(actualHome.state.curtains,false);assert.match(doc.querySelector('#panel').innerHTML,/Closed · Open/);
+assert.equal(JSON.parse(storage.get('mapleStreetChapter1')).house.curtains,false,'Chooser changes use normal story saves');
+c.chooseHouseObject('tv');assert.equal(actualHome.state.tv,false,'A stale or remote choice cannot act');
+c.chooseHouseObject('bed1');assert.match(doc.querySelector('#panel').innerHTML,/A quiet place to rest/);c.restInHouse('bed1');assert.ok(run('seatedAt'));assert.equal(run('gameplayBlocked()'),false,'Resting closes the chooser');run('standFromSeat()');
+const chairApproach=actualHome.actions.find(a=>a.id==='desk-chair');run('player.position.set('+chairApproach.x+','+chairApproach.y+','+chairApproach.z+')');c.openNearbyHouseObjects();c.chooseHouseObject('desk-chair');assert.ok(run('seatedAt'));assert.equal(run('gameplayBlocked()'),false,'Sitting from the chooser releases the modal');run('standFromSeat()');
+run('player.position.set('+houseRules.MODEL_HOME.entry.x+',.3,'+houseRules.MODEL_HOME.entry.z+');hide();findNear();interactNow()');assert.equal(doc.querySelector('#modal').classList.contains('show'),false,'Front doors remain direct interactions');
+assert.equal(run('cash'),houseCash);assert.equal(run('saved'),houseSaved);delete c.landmarkHome;delete globalThis.document;
+console.log('Furnished-object UI passed: overlapping choices, current states, actual execution/save, remote refusal, pause, seating/bed transitions, direct doors and unchanged money.');
 const directoryWallet=run('cash'),directorySavings=run('saved');
 c.openNeighborhoodAddresses();assert.ok(doc.querySelector('#panel').innerHTML.includes('Maple Grove')||run('modal.innerHTML').includes('Maple Grove'));
 for(const address of communityAddresses.COMMUNITY_ADDRESSES){c.setCityDestination(address.id);assert.equal(run('navigationTarget.name'),address.address);assert.equal(JSON.parse(run('serializeGame()')).navigation.targetId,address.id);}

@@ -149,13 +149,23 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
   tvClock+=dt;if(!dt||state.tv&&position&&houseInside(position)&&tvClock>.5){tvClock=0;tvPicture();}
  }
  function blocked(x,z,y=.3,ignore=null){return colliders.some(o=>o.fixtureId!==ignore&&houseObstacleBlocks(o,x,z,y));}
- function nearest(p){const level=(p.y||0)>H.upper-.65?1:0;const near=actions.filter(a=>a.floor===level&&Math.hypot(a.x-p.x,a.z-p.z)<(a.radius||1.65)&&Math.abs(a.y-(p.y||0))<1.35&&clear(p,a,a.kind==='door'?a.id:null));const item=near.sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0];return item?.kind==='door'?{...item,title:(state[item.id]?'Close ':'Open ')+item.title.replace(/^Open \/ close (the )?/, '')+' · '+H.address,actionLabel:state[item.id]?'Close door':'Open door'}:item||null;}
+ const objectNames={fridge:'Refrigerator',oven:'Oven',tap:'Kitchen tap',cabinet:'Kitchen drawers',shower:'Shower',washer:'Washing machine',desk:'Study lamp',lights0:'Downstairs lights',lights1:'Upstairs lights',curtains:'Bedroom curtains'};
+ function describe(a){
+  if(a.kind==='door')return {...a,title:(state[a.id]?'Close ':'Open ')+a.title.replace(/^Open \/ close (the )?/, '')+' · '+H.address,actionLabel:state[a.id]?'Close door':'Open door'};
+  if(a.id==='tv'){const channels=['Nature','City stories','Garden time'];return {...a,title:'TV',status:state.tv?channels[state.channel]:'Off',actionLabel:!state.tv?'Turn on':state.channel<2?'Next channel':'Turn off'};}
+  if(a.kind==='toggle'){const open=['fridge','oven','cabinet','curtains'].includes(a.id);return {...a,title:objectNames[a.id]||a.title,status:state[a.id]?(open?'Open':'On'):(open?'Closed':'Off'),actionLabel:state[a.id]?(open?'Close':'Turn off'):(open?'Open':'Turn on')};}
+  if(a.kind==='bed')return {...a,title:a.id==='bed1'?'Main bed':'Second bed',status:state[a.id]?'Made':'Bedding turned down',actionLabel:'Rest or make bed'};
+  return {...a,actionLabel:a.kind==='seat'?'Sit':a.kind==='wardrobe'?'Open wardrobe':a.kind==='home'?'Home & daily life':a.id==='toilet'?'Flush':a.id==='bath-sink'?'Wash hands':'Read'};
+ }
+ function reachable(a,p){return !!p&&[p.x,p.z,p.y??0].every(Number.isFinite)&&a.floor===((p.y||0)>H.upper-.65?1:0)&&Math.hypot(a.x-p.x,a.z-p.z)<=(a.radius||1.65)&&Math.abs(a.y-(p.y||0))<1.35&&clear(p,a,a.kind==='door'?a.id:null);}
+ function nearby(p){return actions.filter(a=>reachable(a,p)).sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z)).map(describe);}
+ function nearest(p){const items=nearby(p),item=items[0];return item?{...item,nearbyCount:items.filter(a=>a.kind!=='door').length}:null;}
  function clear(a,b,ignore=null){const distance=Math.hypot(b.x-a.x,b.z-a.z),n=Math.max(1,Math.ceil(distance/.2));for(let i=0;i<=n;i++)if(blocked(a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n,a.y||.3,ignore))return false;return true;}
- function act(id,p){const a=actions.find(a=>a.id===id);if(!a||!p||Math.hypot(a.x-p.x,a.z-p.z)>(a.radius||1.65)||Math.abs(a.y-(p.y||0))>1.35||!clear(p,a,a.kind==='door'?id:null))return {ok:false,message:'Move closer to this object.'};
+ function act(id,p){const a=actions.find(a=>a.id===id);if(!a||!reachable(a,p))return {ok:false,message:'Move closer to this object.'};
   if(a.kind==='home')return {ok:true,action:a};if(a.kind==='seat'||a.kind==='bed')return {ok:true,seat:a.seat,bed:a.kind==='bed',action:a};if(a.kind==='wardrobe')return {ok:true,wardrobe:true};if(a.kind==='read')return {ok:true,message:a.message};
   if(a.kind==='door'&&state[id]&&inSwing(a.door,p))return {ok:false,message:'Step clear of the doorway before closing it.'};
   if(id==='tv'){if(!state.tv){state.tv=true;state.channel=0;}else if(state.channel<2)state.channel++;else state.tv=false;}else state[id]=!state[id];
-  update(0,p);return {ok:true,message:id==='tv'?(state.tv?['Nature on TV','City stories on TV','Garden time on TV'][state.channel]:'TV switched off'):a.kind==='door'?(state[id]?'Door opened. Walk inside.':'Door closed.'):a.title+' · '+(state[id]?'on / open':'off / closed')};
+  update(0,p);const info=describe(a);return {ok:true,message:id==='tv'?(state.tv?['Nature on TV','City stories on TV','Garden time on TV'][state.channel]:'TV switched off'):a.kind==='door'?(state[id]?'Door opened. Walk inside.':'Door closed.'):info.title+' · '+info.status.toLowerCase()};
  }
  function makeBed(id){if(!beds.some(b=>b.id===id))return false;state[id]=!state[id];update(0);return state[id];}
  function serialize(p){return {...state,visit:p&&houseInside(p)?{floor:(p.y||0)>H.upper-.65?1:0}:null};}
@@ -165,5 +175,5 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  // are retained before instancing so doors and the stairwell stay real gaps.
  root.updateMatrixWorld(true);const groups=new Map();root.traverse(m=>{if(!m.isMesh)return;for(let p=m;p&&p!==root;p=p.parent)if(p.userData.dynamicHouse)return;const k=m.geometry.uuid+':'+m.material.uuid+':'+m.castShadow;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(m);});
  for(const sources of groups.values()){const first=sources[0],batch=new THREE.InstancedMesh(first.geometry,first.material,sources.length),boxes=[];batch.name='Maple House static details';batch.castShadow=first.castShadow;batch.receiveShadow=true;sources.forEach((m,i)=>{batch.setMatrixAt(i,m.matrixWorld);const b=new THREE.Box3().setFromObject(m,true);if(b.max.y-b.min.y>.03)boxes.push({minX:b.min.x,maxX:b.max.x,minY:b.min.y,maxY:b.max.y,minZ:b.min.z,maxZ:b.max.z});m.removeFromParent();});batch.userData.architectureBoxes=boxes;batch.computeBoundingSphere();scene.add(batch);batches.push(batch);}
- update(0);return {property:H,root,actions,seats,beds,doors,colliders,batches,nearest,act,makeBed,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
+ update(0);return {property:H,root,actions,seats,beds,doors,colliders,batches,nearby,nearest,act,makeBed,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
 }
