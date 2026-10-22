@@ -10,11 +10,12 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: main `c2f794c444bc80852bf357789fe507ec04bc9470`, through merged [PR #50](https://github.com/DESIR33/My-City-My-Choices/pull/50) (adaptive learning layer). Open [PR #48](https://github.com/DESIR33/My-City-My-Choices/pull/48) (nearby house-guide marker) also carries the textile-style follow-up from PR #49, which was merged into #48's branch rather than main. Main was merged into #48 to resolve conflicts with the learning layer. The marker is published in private Site version 67 (source `c793a7bf14ac88d76c97253c798fdeedecff2fce`). The learning layer and textile styles were not verified as published to the Site.
+- Audited GitHub baseline: main `af1f7cb8fd163af9a1b6f6c0b2522f9b9f2f60a8`, through merged [PR #48](https://github.com/DESIR33/My-City-My-Choices/pull/48) (nearby house-guide marker, carrying the PR #49 textile styles) on top of [PR #50](https://github.com/DESIR33/My-City-My-Choices/pull/50) (adaptive learning layer). The marker was published in private Site version 67 (source `c793a7bf14ac88d76c97253c798fdeedecff2fce`); the learning layer, textile styles and tier-scaled money were not verified as published to the Site.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
 - Learning layer (merged in PR #50; not verified as published to the Site): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
+- Tier-scaled story money (proposed in PR `tier-economy`, not merged or published): the age tier now also sets the money scale. Sprout keeps today's coin economy; Builder uses ×10 amounts plus weekly savings interest; Planner uses realistic amounts with a weekly paycheck and taxes, loans with interest and monthly bills. See [Tier-scaled story money](#tier-scaled-story-money).
 - Multiplayer, server-assigned properties, cloud save synchronization and a production real-estate economy are not built.
 
 ### Evidence and confidence
@@ -178,7 +179,19 @@ Status: merged to main in PR #50; not verified as published to the private Site.
 - **Customers.** Restaurant/store/service customers ask a question picked from that business's skill pool, weakest skill first (about 70% practice, 30% review). The market stall keeps the coin tray; the customer's payment scales with the change level (from the next quarter up to a $20 bill), and $5/$10 bills joined the tray. Story price, earnings and costs are unchanged.
 - **Garden Club.** Replaces the one-coin-flip investment with three pretend plans: Seed Jar (+2% always), Steady Garden (70%: +6%, 30%: −3%) and Weather Garden (50%: +30%, 50%: −20%). Kids run 20-season test charts before choosing, answer a `risk.choose` question (Builder+), commit $1 for five seasons that settle when the next business day starts, then answer a reflection question. Legacy `patient`/`weather` investments still settle with their original payouts.
 - **Parents page.** City menu → Parents, behind the PIN when set (SHA-256 with the child id). Shows tier, questions answered, first-try rate, each skill's status/level, stuck skills with the missed question and a try-at-home prompt, money choices and settings (age, tier, skill reset, PIN, progress export via the existing save download).
-- **Not done.** The story economy is not tier-scaled ($5 wallet and $1 prices for all ages). No Spanish file, read-aloud, play-time tracking or cloud/parent account sync yet.
+- **Not done.** No Spanish file, read-aloud, play-time tracking or cloud/parent account sync yet. Story money is now tier-scaled (next section).
+
+### Tier-scaled story money
+
+Status: implemented on branch `tier-economy` and proposed for merge; not published to the Site. Owner decisions (2026-10-22): a price sheet per tier (not one flat multiplier), the same days-to-goal pacing in every tier, all four Planner systems (paycheck with tax, savings interest, loan interest, monthly bills), Builder gets bigger numbers plus savings interest only, and a parent's tier change converts balances so progress carries over. Read-aloud was explicitly declined.
+
+- **Where money lives.** `assets/economy.js` holds the tier tables. Module catalogues (cars, clothes, food, courier pay, home projects, business-day events) keep their original values, which are Sprout money, and scale them through `scaled(cents, category)` at the active tier. The entry point writes every original amount as Sprout dollars through `S(d)` (`usS` and `usd` format it), so Sprout output is unchanged.
+- **Categories.** Factors by Sprout/Builder/Planner: core 1/10/100 (start wallet, goals, supplies, sale prices, restock, upgrades, neighbor job, first shift, Garden Club, plan steps); rent 1/10/150; home projects 1/10/100; clothes 1/10/15; food 1/3/4; courier 1/10/20; car price 1/10/1000; fuel 1/10/25; service 1/10/100. Planner housing is its own table: $25,000 price, $1,000 down, $500 installments, and loan interest. Tests keep goals and business pacing identical and rent and down payment within twice the original pace.
+- **Planner examples.** $500 start, $300 starter supplies, $100 per sale, $200 restock, $600 bike goal, $300/week rent, $4,000 or $6,000 cars, $50 fuel fills, $30 to $60 clothes, $25 to $75 deliveries.
+- **Weekly money.** `assets/money-life.js` runs at each new in-game week (every seven business days, when a business day starts, next to the Garden result). Savings interest: Builder 2% and Planner 1% per week. Planner only: courier pay waits for payday with 10% tax withheld and a pay stub; the home loan grows 0.5% and a car loan 1% per week; phone ($50) and, when housed, utilities ($150) bills arrive every fourth week. Bills and loan payments are always by choice; nothing adds late fees or pays automatically. Neighbor-job pay stays immediate in every tier because it is the restock recovery path. Rates are larger than real ones on purpose so the change is visible.
+- **UI.** My city plan gains a "This week’s money" section (interest, waiting pay, tax, loans, last pay stub) and bill buttons. Maple Motors computes its comparison table, and Planner can pay 20% down and borrow the rest, with loan payments in the garage. Housing shows tier rent, price, installments and interest. The change tray, customer payments, plan steps and Garden Club stake follow the tier. The Parents page explains the money scale.
+- **Learning questions.** `generateQuestion(..., {moneyUnit})` renders money skills (prices, afford, profit, saving, budget, risk, borrowing, reading) at the tier's core factor. Coin, change and time skills stay unscaled. The generators are linear in money, so tests prove every scaled question equals the original at ×10 and ×100.
+- **Not done.** No real-world rate accuracy, credit scores or late fees by design. Planner tax is a flat pretend 10%. The story journal keeps old entries in the amounts they were written in.
 
 ### Shops, food and cars
 
@@ -190,7 +203,7 @@ Maple Motors offers fictional used/refreshed coupes ($4/$6), fuel/service and an
 
 ### Housing, improvements and daily review
 
-Rent/buy becomes available after business day two. Tours remain free. All prices below are fictional learning prices:
+Rent/buy becomes available after business day two. Tours remain free. All prices below are fictional learning prices in Sprout money; Builder multiplies them by 10, and Planner uses $300/week rent, a $25,000 home ($1,000 down, $500 installments, 0.5% weekly loan interest) and ×100 projects (see Tier-scaled story money):
 
 | Action | Price / effect | Constraints |
 | --- | --- | --- |
@@ -265,6 +278,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 | `house-audio.js` | Original action sound profiles and cached, position/floor/door-aware sampling of saved household sources; house-audio/city-audio/story-flow tests |
 | `house-target-visuals.js` | Saved-guide approach marker, floor/range/occlusion visibility and reusable scene resources; house-target-visuals tests execute the actual frame integration |
 | `city-rules.js`, `civic-world.js`, `cafe-activity.js`, `interior-visits.js` | Café/bakery/services, food tickets, NPC service/visitors and seats; city-life/cafe-service/local-life tests |
+| `economy.js`, `money-life.js` | Tier money tables, conversion, formatting and change trays; weekly interest, payday, loans and bills; economy/story-flow tests |
 | `business-days.js`, `money-planner.js`, `city-errands.js` | Morning quotes/results, reservations/transfers and work steps; business-days/money-planner/local-life/story-flow tests |
 | `wardrobe.js`, `clothing-world.js` | Paid catalogue, owned outfits/avatar changes and store; wardrobe/story-flow tests |
 | `courier-jobs.js`, `courier-visuals.js`, `city-navigation.js` | Delivery state/receipts, parcel/markers, road/sidewalk routing; courier-jobs/courier-visuals/city-navigation tests |
@@ -293,6 +307,8 @@ No backend database, account service, authoritative multiplayer server, cloud ec
 Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. The proposed learning layer adds `learning` (version 1: `childId`, `tier`, `age`, `placementDone`, `parentPinHash`, `tierSuggestion`, Garden reflections and per-skill level/status/streaks/last 8 attempts) and `gardenReflectionDue`; `restoreLearning` validates both, and saves without them load as Builder with every skill New. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
 
 Optional `houseGuide: {targetId}` stores only a whitelisted furnished-object ID, independently from city navigation and settling progress. Old saves default to no target; invalid/removed/door IDs are dropped. The existing portable backup format carries it without a version change. Selecting, canceling and successfully using the target use normal story saves, and New story clears it. Tours and guidance are free; no ownership, wallet, savings or business-day change occurs.
+
+Tier money adds `economy: {version: 1, tier}` and `moneyLife` (version 1: `lastWeek`, pending pay and the last 10 pay stubs, `carLoan`, `bills`, interest/tax/loan totals). `economy.tier` records which tier's money the stored amounts are in. Saves without it are read as Sprout amounts (all money before this change) and convert to the child's tier on load; older saves default to Builder, so their amounts multiply by 10. A saved `moneyLife` absent from old saves starts at the current week, so no interest is backdated. A Parents tier change converts every stored amount once (wallet, savings, plan reserves, business history, loans, receipts and car/clothes/food/courier totals), pays out waiting Planner pay in full when leaving Planner, and logs a journal entry.
 
 `homeLife.textileStyle` is an optional whitelisted string (`ocean`, `sage`, `clay`), default `ocean`. It uses the existing home-life version 1 and portable save format. Missing/invalid values restore the original palette; non-owners and stories without the textile project discard any saved alternate selection. Legacy textile purchases are not charged again. Expired rentals retain their palette and project list. New story resets the field, and serializer/export/import already include the complete home-life object.
 
@@ -342,6 +358,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 
 ### What the existing evidence establishes
 
+- Tier-money candidate: all 107 Node cases pass across 61 test files. New coverage: tier tables, pacing bands, reversible conversion, formatting, change trays, weekly interest/payday/loans/bills, save round trips, every scaled skill × level × 200 seeds at ×10 and ×100, scaled market payments, and full Planner and Builder playthroughs through the real handlers (supplies, change tray, restock, rent and loan-backed purchase, weekly interest and bills, payday tax, financed car, parent conversion and legacy-save migration). The inline entry module passes `node --check`. The full game also loaded in headless Chromium (software rendering, three.js served locally): an 11-year-old's new story showed a $500 wallet, $300/$500 supply plans at $100/$125 per sale, a $600 bike goal, and the planner's weekly-money section with $25/$100 steps, with no page or console errors. Screenshots timed out under software WebGL, so visual layout and the phone width were not checked.
 - PR #48 merged with main after PR #50 (marker, textile styles and learning layer together): all 91 Node cases pass across 59 test files; the inline entry module passes `node --check`. Not browser-, GPU-, device- or Site-parity-tested after the merge.
 - Textile styling passes the current full native suite (71 cases across 56 repository files; 54 hosted-layout cases). New coverage exercises old/invalid/portable saves, rental boundaries, rejected and repeated choices, actual panel/action dispatch with zero wallet and unchanged savings/debt, real rug/sofa/both-bed colors and 3,000 changes with stable geometry/material/collision resources and no texture uploads. Existing house geometry remains 98 meshes / 11,742 triangles / 46,190 measured bytes. Isolated browser UI and final parity outcomes are recorded in the change entry; these are not a rendered 3D or physical-device acceptance claim.
 - The house-marker candidate passes all 70 Node cases across 55 repository test files and all 53 hosted-layout cases, plus focused checks after the marker material/projection checks. PR #47 previously passed 69/69 and both GitHub workflows. The furnished house itself retains 98 meshes / 11,742 triangles / 46,190 measured geometry/instance bytes; the separate marker adds two meshes and 72 triangles. These figures exclude full-game GPU memory.
@@ -369,7 +386,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 | Physics/camera | Assisted kinematic simulation and conservative architecture bounds; not full rigid-body realism or automatic safety around all dynamic vehicles |
 | Persistence | Browser-local plus manual backups; no multiplayer authoritative state or cross-device automatic sync |
 | Learning layer playtest | Merged in PR #50, not yet playtested. Simulated-DOM story flow and generator/mastery tests pass; needs a real playthrough at Sprout and Planner tiers, mobile layout checks of question/Garden/Parents panels, and tuning of level thresholds and hint wording |
-| Learning economy scale | Tiers scale questions and the market payment, not wallet size or prices; rescaling the story economy by tier is a separate decision |
+| Tier money playtest | Proposed PR only. Needs a real Planner and Builder playthrough to check amounts read naturally, payday and bills feel fair, and phone layout of the planner money section and garage loan rows |
 | Documentation gate | Checks that the context actually changes per commit; cannot judge semantic completeness. Merge blocking requires the repository owner to mark the workflow check required in branch protection/rulesets |
 
 ### Regression checklist for the next runtime edit
@@ -380,7 +397,7 @@ Run targeted tests first, then the appropriate full suite once inputs settle. Va
 
 ### Immediate, grounded in owner feedback
 
-1. Learning layer is merged (PR #50): playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds and hints. Its runtime changes make the private Site differ until it is deliberately published; rerun parity before publishing.
+1. Learning layer is merged (PR #50) and tier money is proposed: playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds, hints, weekly rates and Planner prices. Its runtime changes make the private Site differ until it is deliberately published; rerun parity before publishing.
 2. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
 3. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
 4. Keep runtime parity verified as each destination changes; audit older lost/stale PR #8 expansion work before planning on top of those historical claims.
@@ -421,6 +438,15 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-22 — Scale story money by age tier
+
+- Request / reason: owner asked for a tier-scaled economy so older kids handle realistic amounts (rent, a paycheck, interest), and chose a per-tier price sheet with equal pacing, all four Planner systems, savings interest for Builder and converting balances on a tier change. Read-aloud was declined.
+- Result and status: implemented on branch `tier-economy` and proposed for merge. Not merged or published.
+- Affected files / systems: new `assets/economy.js`, `assets/money-life.js`, `tests/economy.test.mjs`, `tests/learning-money-scale.test.mjs`; catalogues scaled in `vehicle-ownership.js` (plus financed buys), `home-life.js`, `wardrobe.js`, `courier-jobs.js`, `city-rules.js`, `city-errands.js`, `business-days.js`; learning `format.js`, `skills.js`, `question.js`, `generators/money-basics.js`, `parent-view.js`, `content.en.js`; `index.html` (every money amount, money formatting with thousands separators, housing terms, garage table and loans, planner weekly-money section and bills, payday hook, conversion, save fields, Parents tier change); test loaders in five existing tests resolve the new `./economy.js` import; `story-flow.test.mjs` pins its original playthrough to Sprout and adds Planner and Builder playthroughs; `home-life.test.mjs` gets the economy helpers.
+- State/save/migration: adds `economy` and `moneyLife`. Old saves are Sprout amounts and convert to the child's tier on load (default Builder ×10). No fees, penalties or automatic payments are introduced.
+- Validation actually run: `npm test` 107/107 across 61 files; inline module `node --check`; context check. Headless Chromium load of the full game at Planner: correct wallet, supply, goal and planner amounts, no page errors; no screenshots (software WebGL too slow). No GPU or physical-device check. Site parity not run (Site checkout unavailable); this runtime change intentionally diverges from the Site until published.
+- Remaining work: child playtest and tuning of rates and Planner prices; decide whether old journal entries should show converted amounts.
 
 ### 2026-10-22 — Merge the learning layer into the house-marker PR
 

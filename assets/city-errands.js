@@ -1,4 +1,5 @@
 // Visible first-job steps and the outfits used to get ready. Money stays in the wallet.
+import {core,formatMoney} from './economy.js';
 export const OUTFITS = Object.freeze([
   {id:'everyday', name:'Everyday clothes', shirt:0x496d84, shoes:0x303f52, detail:'The blue shirt you arrived in.'},
   {id:'work', name:'Work clothes', shirt:0x1d4e3c, shoes:0x241c16, detail:'A neat green shirt and dark shoes for a job.'},
@@ -40,7 +41,7 @@ export function clockInForJob(state) {
   if (state.paid) return {ok:false, state, reason:'You already finished today’s shift.'};
   if (!state.found) return {ok:false, state, reason:'Read the help-wanted board first.'};
   if (state.outfit !== 'work') return {ok:false, state, reason:'Change into work clothes at home before the shift starts.'};
-  return {ok:true, pay:2, state:{...state, found:true, dressed:true, ready:true, paid:true, outfit:'work'}};
+  return {ok:true, pay:core('firstShift')/100, state:{...state, found:true, dressed:true, ready:true, paid:true, outfit:'work'}};
 }
 
 export function jobSteps(state) {
@@ -48,7 +49,7 @@ export function jobSteps(state) {
     {id:'find', done:!!state.found, text:'Find the help-wanted board by your home'},
     {id:'dress', done:state.outfit === 'work' || !!state.paid, text:'Get ready: change into work clothes at home'},
     {id:'return', done:!!state.paid, text:'Go back to the board wearing those clothes'},
-    {id:'pay', done:!!state.paid, text:'Check your wallet for the $2 pay'},
+    {id:'pay', done:!!state.paid, text:'Check your wallet for the '+formatMoney(core('firstShift'),{short:true})+' pay'},
   ];
 }
 

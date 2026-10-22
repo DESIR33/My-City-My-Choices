@@ -78,14 +78,16 @@ export function changeMake(level,seed){
   return numberQuestion({skill,level:L,prompt:t('change.make.p',{name,price:money(price),paid:money(paid)}),answer,format:answer<100?'cents':'money',distractors:[columnSlip(paid,price),answer+100,answer-100,answer+10,answer-10,price],hints:[t('change.make.h1'),t('change.make.h2',{paid:money(paid),price:money(price)})]});
 }
 // For the market stall: the story price stays fixed; the level decides what the customer hands over.
-export function marketPayment(level,price,seed){
-  const L=levelOf(level),rng=createRng('market:'+L+':'+seed);
-  const nextQuarter=Math.ceil((price+1)/25)*25,nextDollar=Math.ceil((price+1)/100)*100;
+// `unit` is the story's money scale (Builder 10, Planner 100): payments round up in
+// the same steps as the tier's prices, so change stays sensible at every scale.
+export function marketPayment(level,price,seed,unit=1){
+  const L=levelOf(level),rng=createRng('market:'+L+':'+seed),u=Number.isSafeInteger(unit)&&unit>0?unit:1;
+  const q=25*u,d=100*u,nextQuarter=Math.ceil((price+1)/q)*q,nextDollar=Math.ceil((price+1)/d)*d;
   if(L===1)return nextQuarter;
-  if(L===2)return rng.chance(.5)?nextDollar:nextDollar+100;
-  if(L===3)return Math.max(500,nextDollar);
-  if(L===4)return Math.max(1000,nextDollar);
-  return Math.max(2000,nextDollar);
+  if(L===2)return rng.chance(.5)?nextDollar:nextDollar+d;
+  if(L===3)return Math.max(500*u,nextDollar);
+  if(L===4)return Math.max(1000*u,nextDollar);
+  return Math.max(2000*u,nextDollar);
 }
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 export {cap};

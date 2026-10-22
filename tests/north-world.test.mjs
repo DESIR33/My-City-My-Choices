@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+const economyUrl=['../assets/economy.js','../dist/assets/economy.js'].map(p=>new URL(p,import.meta.url)).find(u=>existsSync(u)),withEconomy=s=>s.replace(/(from\s*['"])\.\/economy\.js(['"])/g,'$1'+economyUrl.href+'$2');
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/'+p,import.meta.url),'utf8'));
-const moduleFrom=s=>import('data:text/javascript;base64,'+Buffer.from(s).toString('base64'));
+const moduleFrom=s=>import('data:text/javascript;base64,'+Buffer.from(withEconomy(s)).toString('base64'));
 const world=await moduleFrom(await read('assets/world-rules.js'));
 const {TOWERS,CITY_BLOCKS,worldWalkable,worldDrivable,onBridge,bridgeHeight,northResponseRoute}=world;
 assert.equal(TOWERS.length,15);assert.equal(new Set(TOWERS.map(t=>t.name)).size,15);assert.ok(TOWERS.every(t=>t.height>=88));

@@ -52,6 +52,7 @@ export function parentHtml(m){
   h+='<label>Tier <select id="parentTier">'+TIER_ORDER.map(id=>'<option value="'+id+'"'+(id===m.tier?' selected':'')+'>'+TIERS[id].name+'</option>').join('')+'</select></label>';
   h+='<label>Reset a skill <select id="parentResetSkill"><option value="">Choose…</option>'+m.skills.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</select></label>';
   h+='<label>'+(m.hasPin?'Change PIN':'Set a PIN')+' <input id="parentNewPin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="4 digits"></label></div>';
+  h+='<p class="parentNote">'+esc(t('parent.moneyScale'))+'</p>';
   if(!m.hasPin)h+='<p class="parentNote">'+esc(t('parent.noPin'))+'</p>';
   h+='<div class="actions"><button class="primary" onclick="saveParentSettings()">Save settings</button><button onclick="downloadCitySave()">Export progress</button><button onclick="closeGamePanel()">Close</button></div><div id="feedback"></div>';
   return h;

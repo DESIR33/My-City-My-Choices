@@ -40,7 +40,29 @@ Chapter 1 questions now come from `assets/learning/` instead of fixed lists. Twe
 - **Garden Club** offers three pretend plans (Seed Jar, Steady Garden, Weather Garden). Kids run 20-season tests and see the paths on a chart, answer a risk question, then commit $1 for five seasons and reflect on whether the plan fit their goal.
 - **Parents page** (city menu, behind the PIN): skill grid with status and level, stuck skills with the missed question and a try-at-home idea, money choices, and settings for age, tier, skill reset, PIN and progress export.
 
-The story economy ($5 starting wallet, $1 prices) is unchanged; tiers scale the questions, not the wallet. Run `node --test tests/learning-*.test.mjs` for the generator, mastery, garden and parent checks.
+The amounts above are Sprout money; the next section scales them for older tiers. Run `node --test tests/learning-*.test.mjs` for the generator, mastery, garden and parent checks.
+
+## Tier-scaled money: bigger, more realistic numbers for older kids
+
+The age tier also sets the story's money (`assets/economy.js`). Every tier keeps the same pace toward a savings goal; only the size of the numbers and the real-life systems change.
+
+| | Sprout (6 to 7) | Builder (8 to 9) | Planner (10 to 12) |
+| --- | --- | --- | --- |
+| Starting wallet | $5 | $50 | $500 |
+| Starter supplies / sale price | $3 / $1 | $30 / $10 | $300 / $100 |
+| Bike goal | $6 | $60 | $600 |
+| Rent for a week | $2 | $20 | $300 |
+| Buy the home | $10 ($5 down) | $100 ($50 down) | $25,000 ($1,000 down, loan) |
+| Used car | $4 | $40 | $4,000 (or 20% down with a loan) |
+| Weekly systems | none | 2% savings interest | 1% savings interest, payday with 10% tax, loan interest, monthly bills |
+
+- **Payday (Planner).** City deliveries add to a weekly paycheck. On payday the stub shows what was earned, what was withheld for taxes and what reached the wallet.
+- **Loans (Planner).** The home loan grows 0.5% and a car loan 1% each week on what is still owed, so paying sooner costs less. Payments are always the player's choice.
+- **Bills (Planner).** A phone bill and, with a home, a utilities bill arrive every fourth week. Pay them from My city plan; they never add late fees.
+- **Learning questions** about prices, profit, saving, budgets, risk and borrowing use the same scale, so the math matches the wallet. Coin and change skills stay in real coins, and the market change tray holds bills for older tiers.
+- **Changing tiers** on the Parents page converts all story money, so progress carries over. Saves from before this change load as Sprout money and convert to the child's tier.
+
+Run `node --test tests/economy.test.mjs tests/learning-money-scale.test.mjs` for the tier tables, weekly systems and scaled questions; `tests/story-flow.test.mjs` plays Sprout, Builder and Planner stories through the real handlers.
 
 ## Controls
 

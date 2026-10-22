@@ -4,6 +4,7 @@ import {pricesAdd,affordCompare,bizProfit} from './generators/spending.js';
 import {saveGoal,budgetPlan,riskChoose,borrowCost} from './generators/planning.js';
 import {readDetail,timeOrder} from './generators/everyday.js';
 import {tierAtLeast} from './tiers.js';
+import {setMoneyUnit} from './format.js';
 
 export const SKILLS=Object.freeze([
   {id:'coins.value',name:'Coin and bill values',minTier:'sprout',generate:coinsValue},
@@ -22,10 +23,20 @@ export const SKILLS=Object.freeze([
 
 export const skillById=id=>SKILLS.find(s=>s.id===id)||null;
 export const skillsForTier=tier=>SKILLS.filter(s=>tierAtLeast(tier,s.minTier));
+// Skills whose money amounts follow the story's tier scale. Coin and change skills
+// stay in real coins; time questions have no money.
+export const SCALED_SKILLS=Object.freeze(['prices.add','afford.compare','biz.profit','save.goal','budget.plan','risk.choose','borrow.cost','read.detail']);
+// Every money generator is linear in its amounts, so rendering at unit k and
+// multiplying the answer by k gives the exact question at k times the money.
 export function generateQuestion(skillId,level,seed,opts){
   const s=skillById(skillId);
   if(!s)throw Error('Unknown skill '+skillId);
-  return s.generate(level,seed,opts);
+  const k=SCALED_SKILLS.includes(skillId)&&Number.isSafeInteger(opts?.moneyUnit)&&opts.moneyUnit>1?opts.moneyUnit:1;
+  if(k===1)return s.generate(level,seed,opts);
+  let q;setMoneyUnit(k);
+  try{q=s.generate(level,seed,opts)}finally{setMoneyUnit(1)}
+  if(q.kind==='number'&&(q.format==='money'||q.format==='cents'))q={...q,answer:q.answer*k,distractors:q.distractors.map(d=>d*k),unit:k};
+  return q;
 }
 // Skills each business practices for its customers, besides counting change.
 // The market stall (0) practices change.make only.

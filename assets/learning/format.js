@@ -1,6 +1,10 @@
 // Answer values are integers: money in cents, time in minutes after midnight, counts as whole numbers.
-export const money=c=>{const a=Math.abs(c),d=Math.floor(a/100),r=String(a%100).padStart(2,'0');return (c<0?'-':'')+'$'+String(d).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'.'+r};
-export const cents=c=>c<100?c+'¢':money(c);
+// Story money scale for the current question. 1 everywhere except while skills.js
+// generates a question at a bigger tier's scale; see generateQuestion.
+let unit=1;
+export function setMoneyUnit(u){unit=Number.isSafeInteger(u)&&u>0?u:1;return unit}
+export const money=c=>{c*=unit;const a=Math.abs(c),d=Math.floor(a/100),r=String(a%100).padStart(2,'0');return (c<0?'-':'')+'$'+String(d).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'.'+r};
+export const cents=c=>c*unit<100?c*unit+'¢':money(c);
 export function clock(min){
   const m=((min%1440)+1440)%1440,h=Math.floor(m/60),mm=m%60,h12=h%12===0?12:h%12;
   return h12+':'+String(mm).padStart(2,'0');

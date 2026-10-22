@@ -1,4 +1,7 @@
 import {MODEL_HOME} from './house-rules.js';
+import {scaled,homePurchase,rentPrice} from './economy.js';
+// Project costs are Sprout money; projectCost() scales them to the active tier.
+export const projectCost=(p,tier)=>scaled(p.cost,'projects',tier);
 
 export const HOME_PROJECTS=Object.freeze([
   {id:'textiles',name:'Ocean blue textiles',cost:100,detail:'A blue living-room rug and coordinated sofa and bedding.'},
@@ -28,13 +31,13 @@ export function restoreHomeLife(value,legacy={}){
   if(s.tenure!=='none'&&SETTLING_STEPS.includes(value.settling))s.settling=value.settling;
   s.settlingPaused=value.settlingPaused===true;
   if(s.tenure!=='none')s.improvements=HOME_PROJECTS.filter(p=>Array.isArray(value.improvements)&&value.improvements.includes(p.id)).map(p=>p.id);
-  s.improvementSpent=s.improvements.reduce((sum,id)=>sum+HOME_PROJECTS.find(p=>p.id===id).cost,0);
+  s.improvementSpent=s.improvements.reduce((sum,id)=>sum+projectCost(HOME_PROJECTS.find(p=>p.id===id)),0);
   if(s.improvements.includes('textiles'))s.textileStyle=textileStyle(value.textileStyle).id;
   return s;
 }
 export function homeAccess(s,day){return s?.propertyId===MODEL_HOME.id&&(s.tenure==='owner'||s.tenure==='rent'&&integer(day,1)&&day<=s.rentThroughDay);}
-export function homeProjectQuote(s,id,wallet,day){const project=HOME_PROJECTS.find(p=>p.id===id);if(!homeAccess(s,day))return {ok:false,reason:'Rent or buy this home before making improvements. Renew an expired rental first.'};if(!project||s.improvements.includes(id))return {ok:false,reason:'That improvement is unavailable or already installed.'};if(!integer(wallet,0,1e11)||wallet<project.cost)return {ok:false,reason:'Keep saving: your wallet cannot cover this improvement.'};return {ok:true,project,walletAfter:wallet-project.cost};}
-export function installHomeProject(s,id,wallet,day){const q=homeProjectQuote(s,id,wallet,day);if(!q.ok)return q;return {...q,state:{...s,improvements:[...s.improvements,id],improvementSpent:s.improvementSpent+q.project.cost}};}
+export function homeProjectQuote(s,id,wallet,day){const project=HOME_PROJECTS.find(p=>p.id===id);if(!homeAccess(s,day))return {ok:false,reason:'Rent or buy this home before making improvements. Renew an expired rental first.'};if(!project||s.improvements.includes(id))return {ok:false,reason:'That improvement is unavailable or already installed.'};const cost=projectCost(project);if(!integer(wallet,0,1e11)||wallet<cost)return {ok:false,reason:'Keep saving: your wallet cannot cover this improvement.'};return {ok:true,project,cost,walletAfter:wallet-cost};}
+export function installHomeProject(s,id,wallet,day){const q=homeProjectQuote(s,id,wallet,day);if(!q.ok)return q;return {...q,state:{...s,improvements:[...s.improvements,id],improvementSpent:s.improvementSpent+q.cost}};}
 export function restyleHome(s,id,day){
   if(!homeAccess(s,day))return {ok:false,reason:'Rent or buy this home, or renew your rental, before restyling.'};
   if(!s.improvements?.includes('textiles'))return {ok:false,reason:'Install Ocean blue textiles once to unlock all three styles.'};
@@ -42,7 +45,7 @@ export function restyleHome(s,id,day){
   if(!style)return {ok:false,reason:'Choose one of the available textile styles.'};
   return {ok:true,style,state:s.textileStyle===id?s:{...s,textileStyle:id}};
 }
-export function homeUpcoming(s,day,loanBalance=0){if(s.tenure==='owner')return loanBalance>0?{label:'Next optional home installment',cost:100}:null;if(s.tenure==='rent')return {label:day>s.rentThroughDay?'Rental renewal available':'Rent paid through business day '+s.rentThroughDay,cost:day>s.rentThroughDay?200:0};return null;}
+export function homeUpcoming(s,day,loanBalance=0){if(s.tenure==='owner')return loanBalance>0?{label:'Next optional home installment',cost:Math.min(Math.round(loanBalance*100),homePurchase().installment)}:null;if(s.tenure==='rent')return {label:day>s.rentThroughDay?'Rental renewal available':'Rent paid through business day '+s.rentThroughDay,cost:day>s.rentThroughDay?rentPrice():0};return null;}
 
 export function settlingCue(s){return ({
  arrive:{title:'Head home · 101 Maple Grove',hint:'Follow the route to your driveway. Park, step out, open the front door and walk inside.'},
