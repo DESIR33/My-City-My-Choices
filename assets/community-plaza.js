@@ -70,7 +70,7 @@ export function createCommunityPlaza({scene,visualKit,obstacles,groundSurfaces,s
  // Low planting beds stay at the corners, clear of entrances and play routes.
  for(const [x,z] of [[71.7,-25.8],[108.2,-25.8],[71.7,-12.5],[108.2,-12.5]]){
   box(x,.21,z,1.6,.38,1.6,brick);box(x,.59,z,1.45,.025,1.45,joint);solid(x,z,1.65,1.65,'planter');
-  for(const side of [-1,1]){const m=new THREE.Mesh(ball,foliage);m.position.set(x+side*.28,.83,z);m.scale.set(.5,.43,.5);root.add(m);}plantings.push({x,z});
+  for(const side of [-1,1]){if(visualKit.shrub?.(x+side*.28,.6,z,{width:.95,height:.72,tint:0x55703f}))continue;const m=new THREE.Mesh(ball,foliage);m.position.set(x+side*.28,.83,z);m.scale.set(.5,.43,.5);root.add(m);}plantings.push({x,z});
  }
  // A timber play tower, broad stair and stainless slide; rails enclose its
  // high sides while the stair and slide openings remain physically accessible.
