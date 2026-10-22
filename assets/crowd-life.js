@@ -25,5 +25,16 @@ export function ambientMotion(mode,time,{seed=0,turn=0}={}){
  return LONER[Math.floor(t/9)%LONER.length];
 }
 
+// Seated idles for anyone on a chair, bench or couch (player included). The
+// clips carry the sitting pose; the game only lifts the pelvis to the seat.
+export const SEATED_MOTIONS=Object.freeze({
+ sit:'sit_chair_idle_neutral_01',
+ sitLook:'sit_chair_idle_look_around',
+ sitBreathe:'sit_chair_breathe_01',
+ sitRelaxed:'sit_chair_idle_relaxed_01'
+});
+const SEATED=['sit','sitLook','sit','sitBreathe','sit','sitRelaxed'];
+export function seatedMotion(time,{seed=0}={}){return SEATED[Math.floor((Math.max(0,time)+seed*2.9)/10)%SEATED.length];}
+
 // Phones get a smaller crowd so fewer distinct models load at once.
 export const CROWD_LIMITS=Object.freeze({desktop:{adults:Infinity,children:Infinity},mobile:{adults:6,children:2}});
