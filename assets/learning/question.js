@@ -28,10 +28,10 @@ function stepFor(format,answer){
   return [1,2,3,5];
 }
 // Fill wrong options: generator mistakes first, then near misses. All unique, positive, never the answer.
-export function fillDistractors(answer,format,mistakes,count,rng){
+export function fillDistractors(answer,format,mistakes,count,rng,unit=1){
   const out=[];const ok=v=>Number.isInteger(v)&&v>0&&v!==answer&&!out.includes(v)&&(format!=='time'||!sameClock(v,answer));
   for(const m of rng.shuffle(mistakes))if(out.length<count&&ok(m))out.push(m);
-  const steps=stepFor(format,answer);
+  const steps=stepFor(format,answer/unit).map(s=>format==='money'||format==='cents'?s*unit:s);
   for(let i=0;out.length<count&&i<40;i++){
     const s=steps[i%steps.length]*(1+Math.floor(i/steps.length));
     const v=rng.chance(.5)?answer+s:answer-s;
@@ -45,7 +45,7 @@ export function present(q,{mode='choice',options=4,seed='0'}={}){
   const rng=createRng('present:'+seed+':'+q.prompt);
   if(q.kind==='number'&&mode==='number')return {...q,mode:'number',options:[],correctIndex:-1};
   if(q.kind==='number'){
-    const wrong=fillDistractors(q.answer,q.format,q.distractors,options-1,rng);
+    const wrong=fillDistractors(q.answer,q.format,q.distractors,options-1,rng,q.unit||1);
     const values=rng.shuffle([q.answer,...wrong]);
     return {...q,mode:'choice',options:values.map(v=>({label:formatValue(v,q.format),value:v})),correctIndex:values.indexOf(q.answer)};
   }

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+const economyUrl=['../assets/economy.js','../dist/assets/economy.js'].map(p=>new URL(p,import.meta.url)).find(u=>existsSync(u)),withEconomy=s=>s.replace(/(from\s*['"])\.\/economy\.js(['"])/g,'$1'+economyUrl.href+'$2');
 const source=await readFile(new URL('../assets/vehicle-ownership.js',import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/assets/vehicle-ownership.js',import.meta.url),'utf8'));
-const {freshCarOwnership,restoreCarOwnership,carBudget,fuelQuote,transactCar,useOwnedCar}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {freshCarOwnership,restoreCarOwnership,carBudget,fuelQuote,transactCar,useOwnedCar}=await import('data:text/javascript;base64,'+Buffer.from(withEconomy(source)).toString('base64'));
 const fresh=freshCarOwnership();assert.equal(fresh.offerId,null);assert.deepEqual(restoreCarOwnership(null),fresh);
 let fail=transactCar(fresh,399,'buy','used');assert.equal(fail.ok,false);assert.equal(fresh.offerId,null);assert.equal(fail.walletCents,399);
 let bought=transactCar(fresh,700,'buy','used');assert.ok(bought.ok);assert.equal(bought.walletCents,300);assert.equal(bought.car.fuel,8);assert.equal(bought.car.purchaseSpent,400);assert.equal(transactCar(bought.car,300,'buy','refreshed').ok,false,'No duplicate purchase');

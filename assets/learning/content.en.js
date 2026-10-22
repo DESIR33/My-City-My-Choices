@@ -139,6 +139,7 @@ export const TEXT={
   'home.time.order':'Ask them to plan the time you need to leave for an appointment.',
   'parent.title':'Parent progress','parent.pinPrompt':'Enter the parent PIN','parent.pinWrong':'That PIN does not match.',
   'parent.noPin':'No parent PIN is set. Set one so only a grown-up can change these settings.',
+'parent.moneyScale':'The tier also sets the story money. Sprout keeps a $5 wallet and coins. Builder uses tens of dollars and pays weekly savings interest. Planner uses realistic amounts with a weekly paycheck and taxes, loans with interest, and monthly bills. Changing the tier converts all story money so progress carries over.',
   'parent.summary':'{name} · {tier} · {questions} questions answered, {rate}% right on the first try',
   'parent.stuck':'Stuck on','parent.none':'Nothing stuck right now.','parent.tryHome':'Try at home',
   'parent.money':'Money choices','parent.suggest':'The warm-up check suggests the {tier} tier. You can switch below.',

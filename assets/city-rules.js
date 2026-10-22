@@ -1,3 +1,6 @@
+import {scaled} from './economy.js';
+// Menu prices are Sprout money; menuPrice() scales them to the active tier.
+export const menuPrice=(item,tier)=>scaled(item.price,'food',tier);
 export const CAFE_MENU = Object.freeze([
   {id:'coffee',name:'Fresh brewed coffee',description:'Ground, brewed, and poured by our cashier.',price:100},
   {id:'espresso',name:'Espresso',description:'A freshly pulled espresso shot.',price:125},
@@ -39,9 +42,9 @@ export function restoreCityLife(saved) {
 export function buyCafeOrder(state,wallet,id,day=1){
   const item=CAFE_MENU.find(m=>m.id===id),service=state.cafeService||freshCityLife().cafeService;
   if(service.pending)return {ok:false,state,wallet,reason:'Collect your paid order before ordering again.'};
-  if(!item||!Number.isSafeInteger(wallet)||wallet<item.price)return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
-  const ticket=service.nextTicket,receipt={ticket,id:item.id,name:item.name,price:item.price,day,collected:false};
-  return {ok:true,wallet:wallet-item.price,item,state:{...state,cafeSpent:state.cafeSpent+item.price,cafeReceipts:[...state.cafeReceipts,receipt].slice(-30),cafeService:{...service,nextTicket:ticket+1,till:service.till+item.price,ledger:[...service.ledger,{ticket,id,price:item.price,customer:'player'}].slice(-30),pending:{ticket,id,status:'queued',remaining:id==='latte'?9:6}}}};
+  if(!item||!Number.isSafeInteger(wallet)||wallet<menuPrice(item))return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
+  const ticket=service.nextTicket,receipt={ticket,id:item.id,name:item.name,price:menuPrice(item),day,collected:false};
+  return {ok:true,wallet:wallet-menuPrice(item),item,state:{...state,cafeSpent:state.cafeSpent+menuPrice(item),cafeReceipts:[...state.cafeReceipts,receipt].slice(-30),cafeService:{...service,nextTicket:ticket+1,till:service.till+menuPrice(item),ledger:[...service.ledger,{ticket,id,price:menuPrice(item),customer:'player'}].slice(-30),pending:{ticket,id,status:'queued',remaining:id==='latte'?9:6}}}};
 }
 export function progressCafeOrder(state,dt){
   const p=state.cafeService?.pending;
@@ -55,13 +58,13 @@ export function collectCafeOrder(state){
 }
 export function payCafeCustomer(state,customer,id){
   const item=CAFE_MENU.find(m=>m.id===id),s=state.cafeService;
-  if(!s||!item||!Number.isSafeInteger(customer.wallet)||customer.wallet<item.price)return false;
-  customer.wallet-=item.price;s.till+=item.price;s.customerSales++;s.ledger.push({ticket:s.nextTicket++,customer:customer.id,id,price:item.price});s.ledger=s.ledger.slice(-30);return true;
+  if(!s||!item||!Number.isSafeInteger(customer.wallet)||customer.wallet<menuPrice(item))return false;
+  customer.wallet-=menuPrice(item);s.till+=menuPrice(item);s.customerSales++;s.ledger.push({ticket:s.nextTicket++,customer:customer.id,id,price:menuPrice(item)});s.ledger=s.ledger.slice(-30);return true;
 }
 export function buyBakeryOrder(state,wallet,id,day=1){
   const item=BAKERY_MENU.find(m=>m.id===id);
-  if(!item||!Number.isSafeInteger(wallet)||wallet<item.price)return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
-  return {ok:true,wallet:wallet-item.price,item,state:{...state,bakerySpent:(state.bakerySpent||0)+item.price,bakeryReceipts:[...(state.bakeryReceipts||[]),{id:item.id,name:item.name,price:item.price,day}].slice(-30)}};
+  if(!item||!Number.isSafeInteger(wallet)||wallet<menuPrice(item))return {ok:false,state,wallet,reason:'You need enough wallet cash before an order can be prepared.'};
+  return {ok:true,wallet:wallet-menuPrice(item),item,state:{...state,bakerySpent:(state.bakerySpent||0)+menuPrice(item),bakeryReceipts:[...(state.bakeryReceipts||[]),{id:item.id,name:item.name,price:menuPrice(item),day}].slice(-30)}};
 }
 export function recordCrash(state,vehicle,impactSpeed){
   if(!vehicle?.id||!Number.isFinite(impactSpeed)||impactSpeed<1.2||state.incidents.some(i=>i.vehicleId===vehicle.id&&['dispatched','attending'].includes(i.status)))return {ok:false,state};
@@ -69,8 +72,8 @@ export function recordCrash(state,vehicle,impactSpeed){
   return {ok:true,incident,state:{...state,incidents:[...state.incidents,incident].slice(-20)}};
 }
 export function repairCrash(state,wallet,id){
-  if(wallet<75||!state.disabledVehicles.some(v=>v.id===id))return {ok:false,state,wallet};
-  return {ok:true,wallet:wallet-75,state:{...state,disabledVehicles:state.disabledVehicles.filter(v=>v.id!==id),incidents:state.incidents.map(i=>i.vehicleId===id?{...i,status:'recovered'}:i)}};
+  if(wallet<scaled(75,'service')||!state.disabledVehicles.some(v=>v.id===id))return {ok:false,state,wallet};
+  return {ok:true,wallet:wallet-scaled(75,'service'),state:{...state,disabledVehicles:state.disabledVehicles.filter(v=>v.id!==id),incidents:state.incidents.map(i=>i.vehicleId===id?{...i,status:'recovered'}:i)}};
 }
 // A responder travels through the station driveway and along the city road grid.
 export function policeResponseRoute(start,target,streets=[-120,-60,0,60,120]){

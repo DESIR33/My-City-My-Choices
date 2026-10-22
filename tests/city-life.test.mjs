@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
+import {existsSync} from 'node:fs';
+const economyUrl=['../assets/economy.js','../dist/assets/economy.js'].map(p=>new URL(p,import.meta.url)).find(u=>existsSync(u)),withEconomy=s=>s.replace(/(from\s*['"])\.\/economy\.js(['"])/g,'$1'+economyUrl.href+'$2');
 const read=path=>readFile(new URL('../'+path,import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/'+path,import.meta.url),'utf8'));
-const source=await read('assets/city-rules.js');const {CAFE_MENU,freshCityLife,restoreCityLife,buyCafeOrder,recordCrash,repairCrash,policeResponseRoute,advanceResponse}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const source=await read('assets/city-rules.js');const {CAFE_MENU,freshCityLife,restoreCityLife,buyCafeOrder,recordCrash,repairCrash,policeResponseRoute,advanceResponse}=await import('data:text/javascript;base64,'+Buffer.from(withEconomy(source)).toString('base64'));
 let state=freshCityLife();for(const item of CAFE_MENU){const refused=buyCafeOrder(state,item.price-1,item.id);assert.equal(refused.ok,false);assert.equal(refused.wallet,item.price-1);assert.equal(refused.state,state);const bought=buyCafeOrder(state,item.price,item.id);assert.ok(bought.ok);assert.equal(bought.wallet,0);assert.equal(bought.state.cafeReceipts.length,1);assert.equal(bought.state.cafeSpent,item.price);}assert.equal(buyCafeOrder(state,0,'fruit').ok,false);
 const crashed=recordCrash(state,{id:'test-car',x:62,z:38,heading:0},7);assert.ok(crashed.ok);assert.equal(crashed.state.disabledVehicles.length,0,'Crashes record an incident without locking a vehicle');assert.equal(recordCrash(crashed.state,{id:'test-car',x:62,z:38,heading:0},9).ok,false,'A pending report is not duplicated');assert.equal(recordCrash(state,{id:'soft',x:0,z:0,heading:0},.8).ok,false);
 const legacy={...crashed.state,disabledVehicles:[{id:'test-car',x:62,z:38,heading:0}]};assert.equal(repairCrash(legacy,74,'test-car').ok,false);const repaired=repairCrash(legacy,75,'test-car');assert.ok(repaired.ok);assert.equal(repaired.wallet,0);assert.equal(repaired.state.disabledVehicles.length,0);assert.equal(restoreCityLife(JSON.parse(JSON.stringify(crashed.state))).incidents[0].vehicleId,'test-car');

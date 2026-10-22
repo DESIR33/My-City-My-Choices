@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+const economyUrl=['../assets/economy.js','../dist/assets/economy.js'].map(p=>new URL(p,import.meta.url)).find(u=>existsSync(u)),withEconomy=s=>s.replace(/(from\s*['"])\.\/economy\.js(['"])/g,'$1'+economyUrl.href+'$2');
 const text=await readFile(new URL('../assets/business-days.js',import.meta.url),'utf8').catch(()=>readFile(new URL('../dist/assets/business-days.js',import.meta.url),'utf8'));
-const {freshBusinessStory,restoreBusinessStory,morningEvent,businessDayQuote,recordBusinessDay}=await import('data:text/javascript;base64,'+Buffer.from(text).toString('base64'));
+const {freshBusinessStory,restoreBusinessStory,morningEvent,businessDayQuote,recordBusinessDay}=await import('data:text/javascript;base64,'+Buffer.from(withEconomy(text)).toString('base64'));
 const story=freshBusinessStory();assert.equal(morningEvent(2,story),null);assert.equal(businessDayQuote(3,-1,story),null);
 const fair=businessDayQuote(3,0,story);assert.equal(fair.cost,300);assert.equal(fair.customers,6);assert.equal(fair.revenue,600);assert.equal(fair.profit,300);
 assert.equal(businessDayQuote(3,0,story,true).customers,8);assert.equal(businessDayQuote(4,1,story).price,75);

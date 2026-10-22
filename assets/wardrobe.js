@@ -1,3 +1,6 @@
+import {scaled} from './economy.js';
+// Catalogue prices are Sprout money; clothingPrice() scales them to the active tier.
+export const clothingPrice=(item,tier)=>scaled(item.price,'clothes',tier);
 export const CLOTHING_STORE=Object.freeze({x:42,z:30,entry:{x:42,z:42},counter:{x:45,z:23.6}});
 export const CLOTHING_SLOTS=Object.freeze({top:'Tops',bottom:'Trousers',shoes:'Shoes',hat:'Hats',backpack:'Bags'});
 export const CLOTHES=Object.freeze([
@@ -36,7 +39,7 @@ export function restoreWardrobe(saved,legacy={},colors={}){
 }
 export function buyClothes(state,wallet,ids,day=1){
  if(!Array.isArray(ids)||!ids.length||ids.some(id=>!CLOTHES.some(i=>i.id===id)))return {ok:false,state,wallet,reason:'Choose an item from the shop.'};
- const items=[...new Set(ids)].map(id=>CLOTHES.find(i=>i.id===id)).filter(i=>i.price>0&&!state.owned.includes(i.id)),total=items.reduce((n,i)=>n+i.price,0);
+ const items=[...new Set(ids)].map(id=>CLOTHES.find(i=>i.id===id)).filter(i=>i.price>0&&!state.owned.includes(i.id)),total=items.reduce((n,i)=>n+clothingPrice(i),0);
  if(!items.length||!Number.isSafeInteger(wallet)||wallet<total)return {ok:false,state,wallet,reason:items.length?'Your wallet does not cover this basket.':'These clothes are already yours.'};
  const equipped={...state.equipped};for(const item of items)equipped[item.slot]=item.id;
  return {ok:true,items,total,wallet:wallet-total,state:{...state,owned:[...state.owned,...items.map(i=>i.id)],equipped,spent:state.spent+total,receipts:[...state.receipts,{items:items.map(i=>i.id),total,day}].slice(-30)}};
