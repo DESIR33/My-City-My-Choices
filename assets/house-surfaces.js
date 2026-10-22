@@ -7,6 +7,7 @@ import {applyWorldSurfaceUV} from './city-materials.js';
 // arrive asynchronously, and tests or failed downloads keep the plain colors.
 // `tile` is the real-world size of one texture repeat in metres. `albedo` is the
 // average reflectance the light bake uses for one bounce of indirect light.
+// `roughness` above 1 scales a glossy scan's roughness map toward a matte finish.
 export const HOUSE_TEXTURES=Object.freeze({
  laminate_floor_02:{maps:['diff','nor','arm'],size:1.7},
  painted_plaster_wall:{maps:['diff','nor','arm'],size:2},
@@ -23,8 +24,8 @@ export const HOUSE_SURFACES=Object.freeze({
  // Painted walls read as flat paint: only the surface relief and roughness are scanned.
  plaster:{texture:'painted_plaster_wall',detail:true,color:0xf4ede0,roughness:1,albedo:.74},
  stucco:{texture:'painted_plaster_wall',color:0xf3e6cf,roughness:1,albedo:.66,scale:1.12},
- brick:{texture:'red_brick_03',color:0xffffff,roughness:1,albedo:.26,scale:1.25},
- roof:{texture:'grey_roof_tiles_02',color:0xd8d8d8,roughness:1,albedo:.17},
+ brick:{texture:'red_brick_03',color:0xffffff,roughness:1.45,albedo:.26,scale:1.25},
+ roof:{texture:'grey_roof_tiles_02',color:0xd8d8d8,roughness:1.6,albedo:.17},
  paving:{texture:'concrete_pavement',color:0xf2eee6,roughness:1,albedo:.42},
  oak:{texture:'kitchen_wood',color:0xf0c690,roughness:1,albedo:.34},
  walnut:{texture:'wood_table_001',color:0xc8a98c,roughness:1,albedo:.12},

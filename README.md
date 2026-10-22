@@ -407,6 +407,10 @@ The Maple House is the first realism pilot. Floors, walls, brick, roof, paving, 
 
 Attribution lives in `assets/house/textures/ATTRIBUTION.md` and `assets/house/furniture/ATTRIBUTION.md`. To rebuild assets, install the tool packages listed at the top of each script in `tools/` with `npm install --no-save`, then run `node tools/prepare-house-textures.mjs`, `node tools/prepare-house-furniture.mjs` or `node tools/bake-house-light.mjs`. Rebake after any change to house geometry; `node --test tests/house-realism.test.mjs` fails when the bake is stale. Phones download 512 px textures (about 4 MB extra in total), desktops 1024 px (about 7 MB).
 
+### Scanned surfaces across the city
+
+Every community home, road, sidewalk and downtown facade now uses scanned CC0 surfaces (asphalt, concrete, brick, concrete wall panels, plaster, roof tiles, lap siding and wood) once they load. Each building keeps its own paint color because the scans ship as grayscale tone maps. Credits are in `assets/city/textures/ATTRIBUTION.md`; rebuild with `node tools/prepare-city-textures.mjs` after installing the packages listed in its header. Extra download is about 2.5 MB on desktop and 0.75 MB on phones.
+
 ### A home on Maple Grove
 
 **Menu → Home & daily life** connects the housing ledger to the furnished home at **101 Maple Grove Lane**. The house remains available for free tours. After completing business day two, rent for $2 for seven business days (including the signing day), or buy for $5 down and five optional $1 installments. All amounts are fictional learning prices. Renting never renews automatically, and an expired rental has no late fees or automatic eviction. Renewal is an explicit $2 choice. Buying retains installed improvements; rent is separate from the purchase price. An owner cannot accidentally switch back to renting.
