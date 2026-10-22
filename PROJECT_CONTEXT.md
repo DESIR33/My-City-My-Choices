@@ -10,7 +10,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `998c7523c36e45e65dbb8a732785f99d4de3b400`, through merged [PR #47](https://github.com/DESIR33/My-City-My-Choices/pull/47). Household sound is merged and published in private Site version 66 (source `700d75eb2fd4fa72f7771866a33471ee52c14acc`). The current change adds a nearby in-world marker for the selected house-guide object; its PR/publication outcomes are recorded in the handoff.
+- Audited GitHub baseline: `998c7523c36e45e65dbb8a732785f99d4de3b400`, through merged [PR #47](https://github.com/DESIR33/My-City-My-Choices/pull/47). Follow-up base is open [PR #48](https://github.com/DESIR33/My-City-My-Choices/pull/48), head `97fd6a53a8a79af51e1882b55217cbb8173007b1`. Its nearby house-guide marker is published in private Site version 67, source `c793a7bf14ac88d76c97253c798fdeedecff2fce`. This change adds saved textile styles and preserves the marker; final PR/publication outcomes are recorded in the handoff, not assumed merged.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
@@ -182,12 +182,16 @@ Rent/buy becomes available after business day two. Tours remain free. All prices
 | --- | --- | --- |
 | Rent / renew | $2 for seven business days including signing day | Explicit choice; no auto-renewal, late fees or automatic eviction |
 | Buy | $5 down + five optional $1 installments | Existing remaining debt/payments preserved; owner cannot switch to renting accidentally |
-| Ocean blue textiles | $1 | One-time actual rug/sofa/bedding change |
+| Ocean blue textiles | $1 | One-time actual rug/sofa/bedding change; unlocks three free textile styles |
 | Backyard container garden | $1.50 | One-time three terracotta planters |
 | Upstairs study | $1.25 | One-time books/plant on actual desk |
 | Daily review | Free, optional, once per business day | Must be inside; reports results/earnings/savings/upcoming plans; no reward, deduction or auto-time advance |
 
 `home-life.js` assigns the local story to `maple-grove-1`. Legacy paid rent/purchase migrates without charging again; an old rental gets seven days from its saved business day. Buying retains projects and does not credit prior rent toward the purchase. Project quotes use cents and reject stale, canceled, repeated or unaffordable confirmation; preserve planned-spending review, business profit and protected savings.
+
+**Home & daily life → Make it your own → Find your home’s colors** offers Ocean blue, Garden sage and Warm clay, with three labeled color samples per style matching the actual rug, sofa/main-bed duvet and guest-bed duvet. The existing `textiles` project still costs 100 cents once and initially installs the original ocean/neutral appearance. Owning that project unlocks unlimited free restyles. Selection saves immediately, refreshes the selected state and changes existing materials; no placement editing or new furnishings are implied. All three options can be inspected before purchase but remain disabled until eligible. Styling requires an active rental/ownership, completed business stage and being out of vehicles, matching project-install eligibility. It can be planned away from home. Expired rental preserves installed appearance and palette, while renewal restores editing. Repeated selection is idempotent; no wallet, savings, debt, business-day, spending or journal changes occur.
+
+`TEXTILE_STYLES`, `textileStyle()` and `restyleHome()` share the whitelist between UI, restoration and scene application. `applyLiving()` now keys its cache by palette too; a separate plaque cache avoids a welcome-texture upload on restyle. Rug/fabric/guest-bed material objects and all geometry/collision are reused. Existing project IDs/prices and their purchase review remain unchanged.
 
 Help me settle in is optional and persisted: `idle → arrive → wardrobe → rest → review → done`, with a separate pause flag. Nearby real entry/upper-floor/bed actions advance it in order; remote or out-of-order calls cannot skip steps. Existing business/customer objectives take priority. Resuming away from home routes back; expired rental pauses eligibility until renewal. A review already completed that business day can still finish the guide without a duplicate journal entry. Do not replace this with automatic overnight rent or an unrequested needs/energy grind.
 
@@ -275,6 +279,8 @@ Primary local story key: `mapleStreetChapter1`. Story serialization includes sta
 
 Optional `houseGuide: {targetId}` stores only a whitelisted furnished-object ID, independently from city navigation and settling progress. Old saves default to no target; invalid/removed/door IDs are dropped. The existing portable backup format carries it without a version change. Selecting, canceling and successfully using the target use normal story saves, and New story clears it. Tours and guidance are free; no ownership, wallet, savings or business-day change occurs.
 
+`homeLife.textileStyle` is an optional whitelisted string (`ocean`, `sage`, `clay`), default `ocean`. It uses the existing home-life version 1 and portable save format. Missing/invalid values restore the original palette; non-owners and stories without the textile project discard any saved alternate selection. Legacy textile purchases are not charged again. Expired rentals retain their palette and project list. New story resets the field, and serializer/export/import already include the complete home-life object.
+
 | Local key | Purpose |
 | --- | --- |
 | `mapleStreetChapter1` | Story progress |
@@ -321,6 +327,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 
 ### What the existing evidence establishes
 
+- Textile styling passes the current full native suite (71 cases across 56 repository files; 54 hosted-layout cases). New coverage exercises old/invalid/portable saves, rental boundaries, rejected and repeated choices, actual panel/action dispatch with zero wallet and unchanged savings/debt, real rug/sofa/both-bed colors and 3,000 changes with stable geometry/material/collision resources and no texture uploads. Existing house geometry remains 98 meshes / 11,742 triangles / 46,190 measured bytes. Isolated browser UI and final parity outcomes are recorded in the change entry; these are not a rendered 3D or physical-device acceptance claim.
 - The house-marker candidate passes all 70 Node cases across 55 repository test files and all 53 hosted-layout cases, plus focused checks after the marker material/projection checks. PR #47 previously passed 69/69 and both GitHub workflows. The furnished house itself retains 98 meshes / 11,742 triangles / 46,190 measured geometry/instance bytes; the separate marker adds two meshes and 72 triangles. These figures exclude full-game GPU memory.
 - Current browser startup again reaches the graphics-recovery dialog because WebGL cannot initialize. No rendered-marker acceptance is claimed. Native checks verify all 25 actual approaches, live door/wall/furniture occlusion, floor/ceiling/range gates, real frame integration, portrait/desktop mathematical projection, camera-snapshot exclusion, stable resources across 10,000 updates and disposal. Physical GPU/device inspection remains required.
 - Browser Web Audio QA used a temporary page importing the shipped mixer: offline rendering produced a finite, nonzero door waveform; live context unlock accepted switch feedback after a click; disabling Household sounds refused it. The temporary page was removed before packaging. This establishes browser API/gesture/mute operation, not listening quality, spatial realism or physical-device sound balance.
@@ -395,6 +402,15 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-22 — Give the furnished home saved textile styles
+
+- Request / choice: continue useful landmark development. Extend the existing paid textile improvement into a small decorating experience, preserving the pending marker PR #48 and its published playtest.
+- Result: Home & daily life → Make it your own presents Ocean blue, Garden sage and Warm clay swatches, current selection and free restyling after the existing 100-cent textile purchase. Selection updates the actual rug, sofa/main-bed fabric and guest-bed duvet; no furniture placement or automatic purchase occurs. Active home access, completed business stage and being out of vehicles are required. Installed appearance survives rental expiry; renewal unlocks editing again.
+- Affected: `home-life.js` shared catalogue/eligibility/restoration, `landmark-house.js` existing materials/cache, actual entry-point panel/action/CSS, new `home-decor.test.mjs`, README/source notes and this context. The follow-up is based on PR #48 head `97fd6a53a8a79af51e1882b55217cbb8173007b1`, rather than silently dropping its unmerged work.
+- Compatibility / budget: optional whitelisted `homeLife.textileStyle`, default ocean, keeps version 1 and existing portable saves. Legacy installed textiles retain the original colors with no repayment. Missing/invalid/unowned styles reset safely. Free changes preserve wallet, savings, debt, spending and day. No new meshes, colliders, lights, textures or rendering targets; no material/geometry allocations or plaque uploads when changing palettes.
+- Validation: repository 71/71 cases across 56 test files; hosted layout 54/54. Coverage includes portable/legacy/invalid saves, lease boundary/renewal, one-time unlock, zero-wallet styling, actual panel handlers and repeat/invalid/vehicle/story refusal, real material colors and 3,000 stable-resource scene updates. Isolated browser panels using shipped handlers/CSS passed desktop and 390-pixel phone-width selection/scrolling. Temporary QA pages were removed before packaging. Syntax, staged context-policy, whitespace and all 83 runtime-file parity checks pass.
+- Limits / delivery: isolated UI and native Three checks do not prove rendered 3D appearance or physical-device frame stability. Publish to the existing owner-private Site, then open a stacked GitHub PR against #48 while it remains open. Exact source/deployment/PR/CI outcomes belong in the handoff; do not infer a merge.
 
 ### 2026-10-22 — Mark the selected household approach in the world
 

@@ -37,6 +37,7 @@ html,body{width:100%;height:100%;overscroll-behavior:none}#game{position:fixed;i
 @media(max-height:500px){.hud .rail,.touch-mode .hud .rail,.routeStatus,.touch-mode .routeStatus{top:max(12px,env(safe-area-inset-top));left:118px;width:calc(100vw - 236px);max-width:340px}.touch-mode .hud .speedometer{bottom:max(18px,env(safe-area-inset-bottom));right:174px}.touch-mode .touch-stick{width:96px;height:96px}.panel{max-height:92dvh}.cityMenuGrid button{min-height:44px}}
 .cameraDistances{grid-template-columns:repeat(3,1fr)}.cameraDistances .choice{min-height:44px;text-align:center;padding:10px}
 .housePlan{display:block;width:100%;max-width:400px;height:auto;margin:14px auto;background:#20332b;border:1px solid #ffffff26;border-radius:12px}.actions button[aria-pressed="true"]{border-color:var(--mint);background:#b7dfc422}
+.homeSwatches{display:flex;gap:5px;margin:0 0 10px}.homeSwatches i{display:block;flex:1;height:38px;border-radius:6px;border:1px solid #ffffff40}.choice:has(.homeSwatches)[aria-pressed="true"]{border-color:var(--mint);background:#487c5f55}
 </style></head><body>
 <button class="hudMenuButton" id="hudMenuButton" onclick="openCityMenu()" aria-label="Open city menu">☰ &nbsp; Menu</button><div id="game"></div><div class="fade"></div>
 <div class="hud"><div class="top"><div class="brand">✦ &nbsp; MAPLE STREET <span>· <b id="playerDisplay">PLAYER</b> · CHAPTER 01</span></div><button class="wallet" onclick="openCityMenu()" aria-label="Wallet, savings and city menu"><small>Cash in wallet</small><b id="cash">$0.00</b><small id="savings">Saved: $0.00</small><small id="goalText">Choose a savings goal</small><small id="planStatus"></small><div class="goalProgress"><i id="goalFill"></i></div></button></div>
@@ -100,7 +101,7 @@ import {cameraArchitectureBoxes} from "./assets/camera-geometry.js";
 import {createCommunityPlaza,plazaGroundHeight} from "./assets/community-plaza.js";
 import {createLandmarkHouse} from "./assets/landmark-house.js";
 import {MODEL_HOME,houseObstacleBlocks,houseInside} from "./assets/house-rules.js";
-import {HOME_PROJECTS,freshHomeLife,restoreHomeLife,homeAccess,homeProjectQuote,installHomeProject,homeUpcoming,settlingCue,advanceSettling} from "./assets/home-life.js";
+import {HOME_PROJECTS,TEXTILE_STYLES,textileStyle,restyleHome,freshHomeLife,restoreHomeLife,homeAccess,homeProjectQuote,installHomeProject,homeUpcoming,settlingCue,advanceSettling} from "./assets/home-life.js";
 import {HOUSE_ROOMS,houseGuideFloor,houseGuideEntries,restoreHouseGuide,houseRoomAt,houseGuideCue,renderHousePlan} from "./assets/house-guide.js";
 import {sampleHouseAudio} from "./assets/house-audio.js";
 import {createHouseTargetVisuals} from "./assets/house-target-visuals.js";
@@ -690,7 +691,18 @@ window.openHomeProjects=function(message=''){
  const active=homeAccess(homeLife,marketDay);
  let h='<div class="label">Home improvements · '+MODEL_HOME.address+'</div><h2>Make room for your plans</h2><p>Improvements change the actual furnished house and stay in your save. They do not earn money or replace your business upgrades. Goal savings stay separate.</p>'+(message?'<div class="carNote" role="status">'+hudText(message)+'</div>':'')+(!active?'<p>Tour for free; rent or buy before installing projects. Renew an expired rental to continue.</p>':'')+'<div class="choices">';
  for(const project of HOME_PROJECTS){const installed=homeLife.improvements.includes(project.id),ready=active&&stage==='done'&&!driving&&!riding&&cash*100>=project.cost;h+='<button class="choice" '+(installed||!ready?'disabled':'')+' onclick="quoteHomeProject(\''+project.id+'\')"><strong>'+hudText(project.name)+' · '+(installed?'Installed':storyMoney(project.cost))+'</strong><small>'+hudText(project.detail)+'</small></button>';}
+ h+='</div><h3>Find your home’s colors</h3><p>Install Ocean blue textiles once for '+storyMoney(100)+', then switch between all three styles for free. Choose a look below to update the living-room rug, sofa and both beds. No furniture moves.</p>';
+ const unlocked=homeLife.improvements.includes('textiles'),canStyle=unlocked&&active&&stage==='done'&&!driving&&!riding;
+ if(unlocked)h+='<p role="status">Current style: <strong>'+hudText(textileStyle(homeLife.textileStyle).name)+'</strong> · Free restyle</p>';
+ h+='<div class="choices">';
+ for(const style of TEXTILE_STYLES){const selected=unlocked&&textileStyle(homeLife.textileStyle).id===style.id;h+='<button class="choice'+(selected?' selected':'')+'" aria-pressed="'+selected+'" '+(!canStyle?'disabled':'')+' onclick="chooseHomeStyle(\''+style.id+'\')"><span class="homeSwatches" aria-hidden="true">'+[style.rug,style.fabric,style.guest].map(color=>'<i style="background:#'+color.toString(16).padStart(6,'0')+'"></i>').join('')+'</span><strong>'+hudText(style.name)+(selected?' · Selected':'')+'</strong><small>'+hudText(style.detail)+(unlocked?' · Free restyle':' · Included with textiles')+'</small></button>';}
  show(h+'</div><div class="actions"><button onclick="openHomeLife()">Home & daily life</button><button onclick="closeGamePanel()">Keep exploring</button></div>');
+};
+window.chooseHomeStyle=function(id){
+ if(stage!=='done'||driving||riding)return;
+ const result=restyleHome(homeLife,id,marketDay);if(!result.ok){openHomeProjects(result.reason);return;}
+ if(result.state!==homeLife){homeLife=result.state;syncHomeLife();saveGame();}
+ openHomeProjects(result.style.name+' is ready at home. Your wallet and goal savings are unchanged.');
 };
 let homeProjectTicket=null;
 window.quoteHomeProject=function(id){

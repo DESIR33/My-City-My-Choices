@@ -1,5 +1,7 @@
 # My City, My Choices
 
+**Home & daily life → Make it your own** now offers Ocean blue, Garden sage and Warm clay textile styles. The existing $1 textile improvement unlocks all three; later restyles are free and saved with your home. Swatches match the actual rug, sofa and bedding materials. Existing purchases keep their original look. Renew an expired rental before editing; installed decor stays visible. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for compatibility and testing limits.
+
 Select an object under **Menu → House rooms & objects** to show a small mint marker at its approach point when nearby. It respects floors, doors, walls, furniture, camera visibility and Focus view, and disappears when guidance is canceled or the object is used. It adds two small meshes with no lights or shadows. GPU appearance and phone performance still need device acceptance; see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
 
 The furnished Maple House now responds with door, switch, appliance, fabric, TV and bathroom sounds. Running water and the washer fade with distance, floors and closed room doors. **Settings → Sound → Household sounds** toggles the feature; Effects volume adjusts it. Sounds start after interaction and respect mute/app switching. The audio is original synthesized texture; physical-device listening and volume tuning remain open.
