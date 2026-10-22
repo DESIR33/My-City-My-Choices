@@ -1,3 +1,4 @@
+import { addFoliageWind } from './foliage-wind.js';
 import { createShrubField } from './shrubs.js';
 import * as THREE from 'three';
 import {MAPLE_GROVE,COMMUNITY_HOMES,COMMUNITY_ROADS,communityRoadRect,mapleOnRoad,communityDriveway,communityReserved,withinRect} from './world-rules.js';
@@ -98,6 +99,8 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     mat.name = 'Leaf sprays ' + species;
     return mat;
   });
+  // Canopy leaves move in the shared wind (foliage-wind.js).
+  foliageMaterials.forEach(m => addFoliageWind(m, { amplitude: .07 }));
   const branchGeometry = new THREE.CylinderGeometry(.63, 1, 1, 8);
   const [barkImage, bq] = canvas(256), barkRng = randomSequence(102);
   bq.fillStyle = '#514335'; bq.fillRect(0, 0, 256, 256);
