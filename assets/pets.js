@@ -46,7 +46,7 @@ export function advancePet(s,dt){
 
 // Where neighborhood pets live: dogs in every third fenced backyard, cats on the
 // front lawn of a few homes without a dog (clear of the driveway), and one dog on the Maple Commons lawn.
-export function neighborhoodPetSpots(homes,{commons={x:101.5,z:-20.5}}={}){
+export function neighborhoodPetSpots(homes,{commons={x:89,z:-22}}={}){
  const spots=[],fenced=homes.filter(h=>h.fenced);
  fenced.forEach((home,i)=>{if(i%3)return;const back=Math.abs(home.z-home.rearZ)-home.d/2,p=communityPoint(home,0,-(home.d/2+back/2));spots.push({kind:'dog',home:home.id,x:p.x,z:p.z,radius:Math.max(.8,Math.min(4,back/2-1.2,home.lotWidth/2-1.2)),seed:spots.length+11});});
  homes.filter(h=>!h.fenced&&h.id!=='maple-grove-1').forEach((home,i)=>{if(i%2)return;const drive=communityDriveway(home),p=[-.36,.36].map(f=>communityPoint(home,home.w*f,home.d/2+5)).find(c=>!withinRect(c.x,c.z,drive,2.5));if(p)spots.push({kind:'cat',home:home.id,x:p.x,z:p.z,radius:1.1,seed:spots.length+11});});

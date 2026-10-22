@@ -6,6 +6,7 @@ import {footContactLift} from './character-grounding.js';
 import { characterFacingYaw } from './character-controls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { MODELS, crowdModel } from './character-roster.js';
+import { AMBIENT_MOTIONS, PHONE_MOTIONS, ambientMotion } from './crowd-life.js';
 export { MODELS, CROWD_ADULTS, CROWD_CHILDREN, crowdModel } from './character-roster.js';
 
 
@@ -123,12 +124,15 @@ export function retargetMotion(clip, source, target) {
   return new THREE.AnimationClip(clip.name,clip.duration,tracks);
 }
 
-export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError = console.warn, baseURL = new URL('./characters/',import.meta.url).href } = {}) {
+export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError = console.warn, baseURL = new URL('./characters/',import.meta.url).href, crowdLimit = {} } = {}) {
   const loader = new GLTFLoader();
   const templates = new Map(), animations = new Map(), actors = [];
   const masks = { head: maskTexture(true), body: maskTexture(false) };
   const pending = new Set();
-  let crowdCount=0;
+  let crowdCount=0;const ambientClips=new Map();
+  // Ambient clips download per animation set, only once someone needs them.
+  function ambientMotions(set){if(!ambientClips.has(set))ambientClips.set(set,Promise.all(Object.entries(AMBIENT_MOTIONS).map(async ([name,file])=>({name,gltf:await load(set+'_'+file+'.glb')}))));return ambientClips.get(set);}
+  function phoneProp(){const phone=new THREE.Mesh(new THREE.BoxGeometry(.072,.145,.011),new THREE.MeshStandardMaterial({color:0x15181c,roughness:.35,metalness:.4}));phone.name='Phone';phone.castShadow=true;phone.visible=false;return phone;}
   function load(file) { return loader.loadAsync(new URL(file,baseURL).href); }
   function template(key) {
     if (!templates.has(key)) templates.set(key,load(MODELS[key].file));
@@ -204,13 +208,16 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     if(data.accessories.rideHelmet){data.accessories.rideHelmet.visible=!!data.riding;data.accessories.cycleHelmet.visible=data.riding?.kind==='bicycle';data.accessories.motorHelmet.visible=data.riding?.kind==='motorcycle';if(data.riding){data.accessories.hair.curls.visible=false;data.accessories.hair.bun.visible=false;}}
     data.accessories.hat.visible=!!a.wardrobe?.hat&&!data.riding;data.accessories.backpack.visible=!!a.wardrobe?.backpack;
   }
-  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false,police=false,firefighter=false,seed }) {
+  function create({ x,z,model='neighbor',scale=1,shirt=0x6b8077,customizable=false,interactive=false,police=false,firefighter=false,seed,ambient,turn=0,ambientSeed }) {
     // Background townspeople ask for 'crowd' (or 'crowd-child'); outfit masks only fit the original six.
-    if(model==='crowd'||model==='crowd-child')model=customizable||police||firefighter?(model==='crowd'?'neighbor':'boy'):crowdModel(seed??crowdCount++,{child:model==='crowd-child'});
+    const fromCrowd=(model==='crowd'||model==='crowd-child')&&!(customizable||police||firefighter),crowdSeed=seed??crowdCount;
+    if(model==='crowd'||model==='crowd-child'){if(fromCrowd&&seed===undefined)crowdCount++;model=fromCrowd?crowdModel(crowdSeed,{child:model==='crowd-child',limit:model==='crowd-child'?crowdLimit.children:crowdLimit.adults}):(model==='crowd'?'neighbor':'boy');}
+    // Townspeople fill standing time with ambient clips: 'loner' or 'talk' (turn 0/1 between partners).
+    if(ambient===undefined&&fromCrowd)ambient='loner';
     if(!MODELS[model])throw new Error('Unknown character model '+model);
     const actor=new THREE.Group();actor.position.set(x,groundHeight(x,z),z);scene.add(actor);
     const fallback=placeholder(shirt);actor.add(fallback);
-    const data={ model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61 };
+    const data={ model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61,ambient:ambient||null,turn,seed:ambientSeed??(fromCrowd?crowdSeed:actors.length),life:0 };
     if(police)actor.userData.role='police-officer';
     actor.userData.character=data;actors.push(actor);
     const loading=Promise.all([template(model),motions(MODELS[model].set)]).then(([gltf,clips])=>{
@@ -252,6 +259,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
         data.accessories.fireHelmet.visible=data.firefighter;data.accessories.fireStripes.visible=data.firefighter;
       }
       fallback.visible=false;data.ready=true;setMotion(data,'idle');data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
+      if(data.ambient)ambientMotions(MODELS[model].set).then(list=>{for(const {name,gltf:motion} of list){const clip=retargetMotion(motion.animations[0],motion.scene,source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}const hand=source.getObjectByName((MODELS[model].bones||'Bip01')+'_R_Hand');if(hand){data.phone=phoneProp();hand.add(data.phone);const s=hand.getWorldScale(new THREE.Vector3()).x;data.phone.scale.setScalar(.8/Math.max(1e-6,s));data.phone.position.set(.09/s,.015/s,.025/s);data.phone.rotation.set(Math.PI/2,0,Math.PI/2);}data.ambientReady=true;}).catch(error=>onError('Townsperson gestures could not load.',error));
       data.mixer.update(0);actor.updateMatrixWorld(true);if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
       return actor;
     }).catch(error=>{data.failed=true;data.ready=false;fallback.visible=true;if(data.visual)data.visual.visible=false;if(data.accessories){data.accessories.head.visible=false;data.accessories.torso.visible=false}onError('A detailed character could not load; a temporary character is being used.',error);return actor;});
@@ -311,8 +319,10 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       if(!data.riding&&!data.seated&&!data.resting&&displacement>.025&&displacement<1){const heading=characterFacingYaw(dx,dz);if(heading!==null)actor.rotation.y=heading;}
       // Ignore teleports between businesses when selecting a movement animation.
       const speed=dt>0&&displacement<1?displacement/dt:0;data.speed=THREE.MathUtils.damp(data.speed,speed,12,dt);
-      const state=actor.userData.vertical?.grounded===false||data.seated||data.resting||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';setMotion(data,state);
-      data.actions[state].setEffectiveTimeScale(state==='idle'?1:THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9));
+      data.life+=dt;let state=actor.userData.vertical?.grounded===false||data.seated||data.resting||data.riding?'idle':data.speed>.15?(data.speed>3.2?'run':'walk'):'idle';
+      if(state==='idle'&&data.ambientReady&&!data.seated&&!data.resting&&!data.riding&&!(data.activity&&data.activity.type!=='idle')){const pick=ambientMotion(data.ambient,data.life,{seed:data.seed,turn:data.turn});if(data.actions[pick])state=pick;}
+      setMotion(data,state);if(data.phone)data.phone.visible=PHONE_MOTIONS.includes(state);
+      data.actions[state].setEffectiveTimeScale(state==='walk'||state==='run'?THREE.MathUtils.clamp(data.speed/(state==='run'?3.8:1.35),.65,1.9):1);
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
       data.phase+=dt;data.mixer.update(dt);if(data.resting)restingPose(actor,data);else if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
       if(data.riding)ridingPose(actor,data);else if(!data.resting)activityPose(actor,data);
