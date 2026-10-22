@@ -1,3 +1,4 @@
+import { addFoliageWind } from './foliage-wind.js';
 import * as THREE from 'three';
 
 // Leafy shrubs built the way games build foliage: many small leaf-cluster cards on
@@ -58,7 +59,7 @@ export function drawLeafAtlas(size=256){
 
 export function createShrubField(scene,{variants=3,capacity=640,anisotropy=4,mobile=false}={}){
  const map=new THREE.CanvasTexture(drawLeafAtlas(mobile?128:256));map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=anisotropy;
- const material=new THREE.MeshStandardMaterial({name:'Shrub foliage',map,vertexColors:true,alphaTest:.45,side:THREE.DoubleSide,roughness:.78,metalness:0});
+ const material=addFoliageWind(new THREE.MeshStandardMaterial({name:'Shrub foliage',map,vertexColors:true,alphaTest:.45,side:THREE.DoubleSide,roughness:.78,metalness:0}),{rooted:true,amplitude:.06,height:1.6});
  const meshes=Array.from({length:variants},(_,i)=>{const m=new THREE.InstancedMesh(shrubGeometry(11+i*37,{cards:mobile?48:72,coreDetail:mobile?0:1}),material,capacity);m.count=0;m.name='Shrubs '+i;m.castShadow=m.receiveShadow=true;m.frustumCulled=false;m.userData.shrubs=true;scene.add(m);return m;});
  const matrix=new THREE.Matrix4(),q=new THREE.Quaternion(),color=new THREE.Color(),white=new THREE.Color(1,1,1);let placed=0;
  // width/height in metres; tint nudges the hue (the leaves are already green); heading in radians.
