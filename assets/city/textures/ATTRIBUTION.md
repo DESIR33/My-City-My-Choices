@@ -12,3 +12,4 @@ All textures are from [Poly Haven](https://polyhaven.com) under the [CC0 1.0 lic
 | [Grey Roof Tiles 02](https://polyhaven.com/a/grey_roof_tiles_02) | Rob Tuytel | roof | 1.5 m |
 | [White Planks Clean](https://polyhaven.com/a/white_planks_clean) | Rob Tuytel | siding | 1.8 m |
 | [Wood Table 001](https://polyhaven.com/a/wood_table_001) | Dimitrios Savva, Rico Cilliers | wood | 1.5 m |
+| [Leafy Grass](https://polyhaven.com/a/leafy_grass) | Charlotte Baglioni | grass | 2 m |

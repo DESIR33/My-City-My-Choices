@@ -18,7 +18,8 @@ export const CITY_SCANS=Object.freeze({
  stucco:{id:'painted_plaster_wall',tile:2},
  roof:{id:'grey_roof_tiles_02',tile:1.5,roughness:1.6},
  siding:{id:'white_planks_clean',tile:1.8,rotate:true,roughness:1.2},
- wood:{id:'wood_table_001',tile:1.5}
+ wood:{id:'wood_table_001',tile:1.5},
+ grass:{id:'leafy_grass',tile:2}
 });
 // Average sRGB value of every tone map; matches the procedural maps' ~.9.
 export const CITY_TONE_MEAN=.9;

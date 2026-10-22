@@ -26,72 +26,11 @@ function texture(image, anisotropy, color = false) {
 
 export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   const anisotropy = Math.min(mobile ? 2 : 8, renderer.capabilities.getMaxAnisotropy());
-  const cache = new Map(),pbr=createCityMaterials({anisotropy});
+  const pbr=createCityMaterials({anisotropy});
 
-  function surface(kind, hex) {
-    if(kind!=='grass')return pbr.surface(kind,hex);
-    const key = `${kind}:${hex}`;
-    if (cache.has(key)) return cache.get(key);
-    const [image, q] = canvas(mobile ? 256 : 512), [heightImage, h] = canvas(mobile ? 256 : 512);
-    const rng = randomSequence(hex + kind.length * 379);
-    const base = new THREE.Color(hex);
-    q.fillStyle = `#${base.getHexString()}`;
-    q.fillRect(0, 0, 512, 512);
-    h.fillStyle = '#aaa'; h.fillRect(0, 0, 512, 512);
-    if (kind === 'brick' || kind === 'stone') {
-      const bh = kind === 'brick' ? 32 : 64, bw = kind === 'brick' ? 100 : 128;
-      q.fillStyle = kind === 'brick' ? '#b1a28b' : '#8c8a80';
-      q.fillRect(0, 0, 512, 512);
-      h.fillStyle = '#555'; h.fillRect(0, 0, 512, 512);
-      for (let row = 0; row < 512 / bh; row++) {
-        for (let x = -(row % 2) * bw / 2; x < 512; x += bw) {
-          const c = base.clone().multiplyScalar(.79 + rng() * .32);
-          q.fillStyle = `#${c.getHexString()}`;
-          q.fillRect(x + 2, row * bh + 2, bw - 4, bh - 4);
-          h.fillStyle = `rgb(${170 + Math.floor(rng() * 45)},${170},${170})`;
-          h.fillRect(x + 2, row * bh + 2, bw - 4, bh - 4);
-          q.fillStyle = 'rgba(0,0,0,.09)';
-          q.fillRect(x + 2, row * bh + bh - 5, bw - 4, 3);
-        }
-      }
-    } else if (kind === 'siding' || kind === 'roof') {
-      const step = kind === 'roof' ? 32 : 36;
-      for (let y = 0; y < 512; y += step) {
-        q.fillStyle = 'rgba(255,255,255,.12)'; q.fillRect(0, y, 512, 2);
-        q.fillStyle = 'rgba(0,0,0,.2)'; q.fillRect(0, y + step - 3, 512, 3);
-        h.fillStyle = '#555'; h.fillRect(0, y + step - 3, 512, 3);
-        if (kind === 'roof') for (let x = (y / step % 2) * -38; x < 512; x += 76) {
-          q.fillStyle = `rgba(0,0,0,${rng() * .18})`; q.fillRect(x, y + 2, 74, step - 5);
-          h.fillStyle = '#555'; h.fillRect(x, y, 2, step);
-        }
-      }
-    } else if (kind === 'concrete') {
-      q.strokeStyle = 'rgba(55,53,47,.28)'; q.lineWidth = 2;
-      h.strokeStyle = '#555'; h.lineWidth = 2;
-      for (const c of [0, 256, 511]) {
-        for (const ctx of [q, h]) {
-          ctx.beginPath(); ctx.moveTo(c, 0); ctx.lineTo(c, 512);
-          ctx.moveTo(0, c); ctx.lineTo(512, c); ctx.stroke();
-        }
-      }
-    }
-    const count = kind === 'asphalt' ? 18000 : kind === 'grass' ? 13000 : 6500;
-    for (let i = 0; i < count; i++) {
-      const x = rng() * 512, y = rng() * 512, bright = rng() > .5;
-      const size = kind === 'grass' ? 1 + rng() * 6 : .5 + rng() * 1.8;
-      q.fillStyle = bright ? 'rgba(255,255,235,.10)' : 'rgba(10,17,12,.13)';
-      q.fillRect(x, y, size, kind === 'grass' ? size * .38 : size);
-      h.fillStyle = bright ? '#b8b8b8' : '#777'; h.fillRect(x, y, 1.5, 1.5);
-    }
-    const mat = new THREE.MeshStandardMaterial({
-      map: texture(image, anisotropy, true), bumpMap: texture(heightImage, anisotropy),
-      bumpScale: kind === 'brick' ? .045 : kind === 'stone' ? .025 : .018,
-      roughness: kind === 'roof' ? .9 : kind === 'grass' ? 1 : .91,
-    });
-    mat.userData.tileSize = kind === 'concrete' ? 3 : kind === 'grass' ? 6 : kind === 'roof' ? 2.5 : kind === 'brick' ? 1.2 : 2;
-    cache.set(key, mat);
-    return mat;
-  }
+  // Every ground and building surface, grass included, is a shared PBR material
+  // (procedural maps first, scanned maps once assets/city-scans.js upgrades them).
+  function surface(kind, hex) { return pbr.surface(kind,hex); }
 
   const windowMats = [];
   function windowMaterial(index = 0) {
