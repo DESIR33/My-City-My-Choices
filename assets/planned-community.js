@@ -66,7 +66,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   for(const x of [-256,-224,-192])for(const z of [-219,-144,-54,39]){
     surface(null,x,z,2.7,5.8,.055,mulch,'grass',.02);
     const shrubMat=material(0x607553);
-    for(const dz of [-1.8,0,1.8]){const shrub=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,0),shrubMat);shrub.position.set(x,.42,z+dz);shrub.scale.set(1,.7,1);streetRoot.add(shrub);}
+    for(const dz of [-1.8,0,1.8]){if(visualKit.shrub?.(x,.06,z+dz,{width:1.05,height:.78,tint:0x607553}))continue;const shrub=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,0),shrubMat);shrub.position.set(x,.42,z+dz);shrub.scale.set(1,.7,1);streetRoot.add(shrub);}
     landscapePockets.push({x,z});
   }
 
@@ -116,7 +116,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     }
     const patio=surface(home,w*.2,-front-2.3,5.2,4.2,.085,concrete,'concrete',.025);
     if(home.id!=='maple-grove-1'){box(root,-w/2-1.05,.05,-front+1,1.25,.08,1.3,concrete,false);box(root,-w/2-1.05,.13,-front+1,1.05,.92,1.05,metal);for(let y=.23;y<.95;y+=.13)box(root,-w/2-1.05,y,-front+1.53,.96,.035,.025,dark,false);solid(home,-w/2-1.05,-front+1,1.1,1.1,'air-conditioner');
-    const shrubs=material(0x5d7750);for(const x of [-w*.44,w*.46]){box(root,x,.025,front+.8,1.35,.08,.9,mulch,false);for(let i=0;i<2;i++){const shrub=new THREE.Mesh(new THREE.SphereGeometry(.42,10,7),shrubs);shrub.position.set(x+(i-.5)*.5,.44,front+.83);shrub.scale.y=.78;root.add(shrub);}}
+    const shrubs=material(0x5d7750);for(const x of [-w*.44,w*.46]){box(root,x,.025,front+.8,1.35,.08,.9,mulch,false);for(let i=0;i<2;i++){const p=communityPoint(home,x+(i-.5)*.5,front+.83);if(visualKit.shrub?.(p.x,.1,p.z,{width:.86,height:.66,tint:0x5d7750}))continue;const shrub=new THREE.Mesh(new THREE.SphereGeometry(.42,10,7),shrubs);shrub.position.set(x+(i-.5)*.5,.44,front+.83);shrub.scale.y=.78;root.add(shrub);}}
     }
     const mailboxX=home.lotWidth*.39,mailboxZ=Math.abs(home.roadZ-home.z)-11.2;box(root,mailboxX,.025,mailboxZ,.1,1.05,.1,metal);box(root,mailboxX,1.07,mailboxZ,.42,.3,.58,dark);textPlate(root,String(home.address),mailboxX,1.22,mailboxZ+.301,.38,.16,'#344b43');
     addressPlaque(root,home,doorX-1.6,front+.24);

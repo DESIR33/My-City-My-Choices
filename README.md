@@ -409,7 +409,7 @@ Attribution lives in `assets/house/textures/ATTRIBUTION.md` and `assets/house/fu
 
 ### Scanned surfaces across the city
 
-Every community home, road, sidewalk and downtown facade now uses scanned CC0 surfaces (asphalt, concrete, brick, concrete wall panels, plaster, roof tiles, lap siding and wood) once they load. Each building keeps its own paint color because the scans ship as grayscale tone maps. Credits are in `assets/city/textures/ATTRIBUTION.md`; rebuild with `node tools/prepare-city-textures.mjs` after installing the packages listed in its header. Extra download is about 2.5 MB on desktop and 0.75 MB on phones. Lawns use a scanned grass tone map too, with a second, larger sample and gentle green and dry patches so big yards and parks do not show a repeating grid.
+Every community home, road, sidewalk and downtown facade now uses scanned CC0 surfaces (asphalt, concrete, brick, concrete wall panels, plaster, roof tiles, lap siding and wood) once they load. Each building keeps its own paint color because the scans ship as grayscale tone maps. Credits are in `assets/city/textures/ATTRIBUTION.md`; rebuild with `node tools/prepare-city-textures.mjs` after installing the packages listed in its header. Extra download is about 2.5 MB on desktop and 0.75 MB on phones. Lawns use a scanned grass tone map too, with a second, larger sample and gentle green and dry patches so big yards and parks do not show a repeating grid. Front-yard beds, the planted pockets between lots and the Maple Commons planters now have leafy shrubs (overlapping leaf-cluster cards around a dense core, one shared material, drawn instanced) instead of smooth green balls.
 
 ### Townspeople, kids and pets
 

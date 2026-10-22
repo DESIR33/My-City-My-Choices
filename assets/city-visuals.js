@@ -1,3 +1,4 @@
+import { createShrubField } from './shrubs.js';
 import * as THREE from 'three';
 import {MAPLE_GROVE,COMMUNITY_HOMES,COMMUNITY_ROADS,communityRoadRect,mapleOnRoad,communityDriveway,communityReserved,withinRect} from './world-rules.js';
 import { Sky } from 'three/addons/objects/Sky.js';
@@ -27,6 +28,9 @@ function texture(image, anisotropy, color = false) {
 export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   const anisotropy = Math.min(mobile ? 2 : 8, renderer.capabilities.getMaxAnisotropy());
   const pbr=createCityMaterials({anisotropy});
+  let shrubField=null;
+  // Leaf-card shrubs, created on first use and shared by every planting bed.
+  function shrub(x,y,z,options){shrubField??=createShrubField(scene,{anisotropy,mobile});return shrubField.add(x,y,z,options);}
 
   // Every ground and building surface, grass included, is a shared PBR material
   // (procedural maps first, scanned maps once assets/city-scans.js upgrades them).
@@ -359,6 +363,6 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
     asphalt: surface('asphalt', 0x41484c), concrete: surface('concrete', 0x92948f),
     grass: surface('grass', 0x3c6335), masonry: hex => surface('stone', hex),
     brick: hex => surface('brick', hex), siding: hex => surface('siding', hex), roofing: hex => surface('roof', hex),
-    stucco:hex=>surface('stucco',hex),wood:hex=>surface('wood',hex),pbr,windowMaterial, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment, atmosphere,
+    stucco:hex=>surface('stucco',hex),wood:hex=>surface('wood',hex),pbr,windowMaterial, shrub, contactShadow, treeModel, addForest, forestHeight, shopSign, decorateCity, batchArchitecture, updateLighting, captureVehicleEnvironment, atmosphere,
   };
 }
