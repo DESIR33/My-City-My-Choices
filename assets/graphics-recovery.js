@@ -12,10 +12,10 @@ export function showGraphicsUnavailable({document,onReload}){
 }
 // A restored context does not restore GPU-generated environment maps reliably.
 // Keep the world paused until an explicit reload rebuilds all graphics resources.
-export function createGraphicsRecovery({canvas,document,onPause=()=>{},onReload=()=>{}}){
- let blocked=false,panel=null;
+export function createGraphicsRecovery({canvas,document,onPause=()=>{},onReload=()=>{},onRestore=()=>{}}){
+ let blocked=false,panel=null,recoveryRequested=false;
  function lost(event){event.preventDefault();if(blocked)return;blocked=true;try{onPause();}finally{panel=notice(document,'Graphics paused','Your device interrupted the picture. Reload with lighter graphics to return to your story.',onReload);}}
- function restored(){if(panel)panel.description.textContent='Graphics are available again. Reload with lighter graphics to return to your story.';}
+ function restored(){if(!panel)return;panel.description.textContent='Graphics are available again. Reloading with lighter graphics to return to your story.';if(recoveryRequested)return;recoveryRequested=true;if(onRestore()===false)panel.description.textContent='Graphics are available again. Tap below to reload with lighter graphics and return to your story.';}
  canvas.addEventListener('webglcontextlost',lost);canvas.addEventListener('webglcontextrestored',restored);
  return {get blocked(){return blocked;},dispose(){canvas.removeEventListener('webglcontextlost',lost);canvas.removeEventListener('webglcontextrestored',restored);panel?.remove();}};
 }
