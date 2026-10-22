@@ -14,6 +14,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
+- Learning layer (proposed in PR `learning-design`, not merged or published): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
 - Multiplayer, server-assigned properties, cloud save synchronization and a production real-estate economy are not built.
 
 ### Evidence and confidence
@@ -154,13 +155,26 @@ Shared subdivision layout defines the same driveways/roads used by physics/navig
 
 ### Businesses, plans and earning
 
-Four businesses: Saturday market, small restaurant, neighborhood store and neighborhood-help/service business. Each has a location, startup/supply plans and customer task. Market activity teaches bills/coins and change; other activities use order/product/route reading. Customer templates safely cycle over longer queues. Each completed order pays once, including zero-change sales.
+Four businesses: Saturday market, small restaurant, neighborhood store and neighborhood-help/service business. Each has a location, startup/supply plans and customer task. Market activity teaches bills/coins and change; restaurant, store and service customers ask generated learning questions (see Learning layer below). Customer templates safely cycle over longer queues. Each completed order pays once, including zero-change sales.
 
 Business days continue beyond the tutorial. Morning stories cycle through a street fair, supplier prices, equipment repairs, rain and new neighbors. Quotes show costs, sale price, customers, revenue and profit before paying. Upgrades add two customers; repairs can add one and change later repair stories. Chosen plans do not reroll just by reopening menus. The latest 20 day results are kept. Garden returns mature when the promised business day starts, not on a menu preview. A day off records zero sales/costs.
 
 My city plan reserves wallet money for supplies, home/bills, car care, treats and unexpected needs. Reservations are labels over existing wallet cash, not extra balances. Matching expenses reduce their own reservation first. If a purchase leaves other plans short, the player can wait or deliberately accept the shortfall; the journal records the choice. Goal changes preserve savings. Startup grants are one-time; startup supplies use actual available cash. Optional neighbor work offers a $2 recovery path after a completed day; first-shift clothing/job-board work also exists. Preserve each job's eligibility and one-time protections rather than treating every $2 reward as interchangeable.
 
 Courier contracts are nearby on-foot pickup and explicit handoff: Maple Bakery → Cafe ($1.25), Cafe → Northstar Motors ($3.25), Bakery → Flamingo ($3.75). One active contract, free cancellation, no deposit/deadline/penalty, one reward per contract per business day. Parcel, phase, receipts and side-job earnings persist. Choosing another route does not cancel the job. Rewards enter wallet cash, not goal savings or business sales.
+
+### Learning layer: adaptive skills, Garden Club and Parents page
+
+Status: implemented on the `learning-design` branch and proposed for merge; not published to the private Site. Owner-approved design: a living design doc ("My City, My Choices: Learning Design") covering an adaptive 6 to 12 age band, a skills map, a mastery model, the Garden Club redo and a parent progress view.
+
+- **Skills.** `assets/learning/` defines 12 skills (coin values, counting money, making change, adding prices, affordability, business profit, saving for a goal, budgeting, risk, borrowing cost, reading for detail, time and order), each with five levels. Generators are pure and seeded by the save's `childId`, so reloads do not reroll a question. Options are shuffled with distractors from common mistakes; hint 1 never states the answer. All learning strings live in `content.en.js` so a Spanish file can follow.
+- **Tiers.** Sprout 6 to 7, Builder 8 to 9, Planner 10 to 12, chosen from the child's age on the welcome screen (grown-up section with optional 4-digit PIN). Planner types numeric answers; younger tiers choose. Saves without learning data default to Builder.
+- **Placement.** On first launch Mom's wallet lesson becomes three warm-up questions (coins, change, prices). Results nudge starting levels and may suggest a tier on the Parents page; the tier changes only when a parent switches it (owner decision).
+- **Mastery.** Three first-try answers raise a skill's level; two misses lower it and show a worked example next time. Mastered = 4 of the last 5 first-try correct at the tier target level (Sprout 2, Builder 3, Planner 4). Mastered skills return to Needs review after two misses or seven in-game days; two first-try answers restore them. Hint ladder: strategy hint, partial work, then the worked solution which the child enters. Mistakes never block story progress.
+- **Customers.** Restaurant/store/service customers ask a question picked from that business's skill pool, weakest skill first (about 70% practice, 30% review). The market stall keeps the coin tray; the customer's payment scales with the change level (from the next quarter up to a $20 bill), and $5/$10 bills joined the tray. Story price, earnings and costs are unchanged.
+- **Garden Club.** Replaces the one-coin-flip investment with three pretend plans: Seed Jar (+2% always), Steady Garden (70%: +6%, 30%: −3%) and Weather Garden (50%: +30%, 50%: −20%). Kids run 20-season test charts before choosing, answer a `risk.choose` question (Builder+), commit $1 for five seasons that settle when the next business day starts, then answer a reflection question. Legacy `patient`/`weather` investments still settle with their original payouts.
+- **Parents page.** City menu → Parents, behind the PIN when set (SHA-256 with the child id). Shows tier, questions answered, first-try rate, each skill's status/level, stuck skills with the missed question and a try-at-home prompt, money choices and settings (age, tier, skill reset, PIN, progress export via the existing save download).
+- **Not done.** The story economy is not tier-scaled ($5 wallet and $1 prices for all ages). No Spanish file, read-aloud, play-time tracking or cloud/parent account sync yet.
 
 ### Shops, food and cars
 
@@ -258,6 +272,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 | `city-camera.js`, `camera-geometry.js` | Collision-aware camera, comfort settings and architecture snapshots; city-camera and native interior tests |
 | `city-audio.js` | Procedural audio/mix/settings/voices; city-audio/story-flow tests |
 | `touch-controls.js`, `session-lifecycle.js` | Pointer ownership/contextual controls, pause/background/resume; touch-controls/session-lifecycle tests |
+| `learning/` (`skills.js`, `generators/*`, `mastery.js`, `session.js`, `garden-sim.js`, `parent-view.js`, `tiers.js`, `content.en.js`) | Seeded skill generators, tiers, mastery/placement, hint ladder, Garden Club simulation/chart and Parents page; learning-generators/learning-mastery/learning-garden-parent/story-flow tests |
 | `save-backups.js` | Bounded import/export, primary/checkpoint/recovery writes and validation; save-backups/story-flow tests |
 
 `scripts/check-source-parity.mjs` compares complete shipped inventories/hashes across the two layouts; `tests/source-parity.test.mjs` covers equal/missing/extra/changed files, binaries, invalid entry points, symlinks and CLI usage. `.github/workflows/game-tests.yml` runs the full Node suite on PRs and main pushes. It does not access the private Site or establish remote runtime parity automatically.
@@ -266,7 +281,7 @@ No backend database, account service, authoritative multiplayer server, cloud ec
 
 ## State, saves and compatibility
 
-Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
+Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. The proposed learning layer adds `learning` (version 1: `childId`, `tier`, `age`, `placementDone`, `parentPinHash`, `tierSuggestion`, Garden reflections and per-skill level/status/streaks/last 8 attempts) and `gardenReflectionDue`; `restoreLearning` validates both, and saves without them load as Builder with every skill New. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
 
 Optional `houseGuide: {targetId}` stores only a whitelisted furnished-object ID, independently from city navigation and settling progress. Old saves default to no target; invalid/removed/door IDs are dropped. The existing portable backup format carries it without a version change. Selecting, canceling and successfully using the target use normal story saves, and New story clears it. Tours and guidance are free; no ownership, wallet, savings or business-day change occurs.
 
@@ -339,6 +354,8 @@ For a requested runtime update, use the supported Sites source opening/credentia
 | Premium visuals | Procedural materials/assets are an improvement; scanned materials, GTA-level fidelity, ray tracing, destruction and production streaming are not implemented |
 | Physics/camera | Assisted kinematic simulation and conservative architecture bounds; not full rigid-body realism or automatic safety around all dynamic vehicles |
 | Persistence | Browser-local plus manual backups; no multiplayer authoritative state or cross-device automatic sync |
+| Learning layer playtest | Proposed PR only. Simulated-DOM story flow and generator/mastery tests pass; needs a real playthrough at Sprout and Planner tiers, mobile layout checks of question/Garden/Parents panels, and tuning of level thresholds and hint wording |
+| Learning economy scale | Tiers scale questions and the market payment, not wallet size or prices; rescaling the story economy by tier is a separate decision |
 | Documentation gate | Checks that the context actually changes per commit; cannot judge semantic completeness. Merge blocking requires the repository owner to mark the workflow check required in branch protection/rulesets |
 
 ### Regression checklist for the next runtime edit
@@ -349,10 +366,11 @@ Run targeted tests first, then the appropriate full suite once inputs settle. Va
 
 ### Immediate, grounded in owner feedback
 
-1. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
-2. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
-3. Keep runtime parity verified as each destination changes; audit older lost/stale PR #8 expansion work before planning on top of those historical claims.
-4. Complete device playtesting for startup/crash recovery, house entry/stairs/bed exits, mobile control visibility and scene performance.
+1. If the learning-layer PR merges: playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds and hints. Its runtime changes make the private Site differ until it is deliberately published; rerun parity before publishing.
+2. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
+3. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
+4. Keep runtime parity verified as each destination changes; audit older lost/stale PR #8 expansion work before planning on top of those historical claims.
+5. Complete device playtesting for startup/crash recovery, house entry/stairs/bed exits, mobile control visibility and scene performance.
 
 ### Next product work already requested or implied
 
@@ -390,6 +408,14 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-22 — Adaptive learning layer (skills, mastery, Garden Club, Parents page)
+
+- Request / reason: owner asked to improve the game's learning design, chose an adaptive 6 to 12 band with skills map + mastery, Garden Club redo and a parent progress view, approved the design doc, and asked for the code as a PR to main.
+- Result and status: implemented on branch `learning-design` and proposed for merge. Not merged or published. Placement only suggests a tier (owner decision in the design doc).
+- Affected files / systems: new `assets/learning/` modules and three `tests/learning-*.test.mjs` files; `index.html` (welcome-screen grown-up setup, wallet warm-up, generated customer questions, market payment scaling and $5/$10 bills, Garden Club, Parents menu entry, styles, save fields); `tests/story-flow.test.mjs` (wrong-then-right task answers, placement, Garden settle/reflection, Parents page, serializer); README section.
+- State/save/migration: adds `learning` and `gardenReflectionDue` to the story save; older saves default to Builder with skills New; legacy Garden investments settle with their original payouts. The fixed `businessTasks` lists are removed. Economy prices/earnings unchanged.
+- Validation actually run: `npm test` 86/86 across 54 files on this branch from main `72ed6aa`; generator checks cover all 12 skills × 5 levels × 1,000 seeds; inline module syntax checked. Earlier on the previous base the game loaded in headless Chromium with software WebGL with no page errors and the learning panels were screenshot-checked at desktop and phone widths in a harness. No GPU, physical-device or audio check. Site parity not checked (Site checkout unavailable); this runtime change intentionally diverges from the published Site until deployed.
+- Remaining work: child playtest and tuning; Spanish strings and read-aloud; optional tier-scaled economy; play-time tracking.
 ### 2026-10-22 — Give household actions responsive sound
 
 - Request / reason: continue the next useful improvement to the furnished landmark. Household interactions changed visuals but had no specific audio feedback.
