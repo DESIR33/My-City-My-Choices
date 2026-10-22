@@ -25,9 +25,13 @@ export const MODELS=Object.freeze({
  fc02:{file:'crowd/female-child-02.glb',set:'f',height:1.34,source:'Children/Female_Child_02',bones:'Bip02',crowd:true,child:true},
  mc02:{file:'crowd/male-child-02.glb',set:'m',height:1.36,source:'Children/Male_Child_02',bones:'Bip02',crowd:true,child:true}
 });
-export const CROWD_ADULTS=Object.freeze(Object.keys(MODELS).filter(k=>MODELS[k].crowd&&!MODELS[k].child));
-export const CROWD_CHILDREN=Object.freeze(Object.keys(MODELS).filter(k=>MODELS[k].crowd&&MODELS[k].child));
+// Women and men alternate so any prefix of the pool (a phone's smaller crowd) stays mixed.
+const interleave=(a,b)=>Array.from({length:Math.max(a.length,b.length)},(_,i)=>[a[i],b[i]]).flat().filter(Boolean);
+const crowdOf=(set,child)=>Object.keys(MODELS).filter(k=>MODELS[k].crowd&&!!MODELS[k].child===child&&MODELS[k].set===set);
+export const CROWD_ADULTS=Object.freeze(interleave(crowdOf('f',false),crowdOf('m',false)));
+export const CROWD_CHILDREN=Object.freeze(interleave(crowdOf('f',true),crowdOf('m',true)));
 // Deterministic pick so the same street always has the same faces after a reload.
-export function crowdModel(seed,{child=false}={}){const pool=child?CROWD_CHILDREN:CROWD_ADULTS,n=Math.abs(Math.floor(seed))||0;return pool[n%pool.length];}
+// `limit` caps how many distinct models a device uses (phones load fewer).
+export function crowdModel(seed,{child=false,limit=Infinity}={}){const all=child?CROWD_CHILDREN:CROWD_ADULTS,pool=all.slice(0,Math.max(1,Math.min(all.length,limit))),n=Math.abs(Math.floor(seed))||0;return pool[n%pool.length];}
 // Specular intensity scans → glTF roughness (0.98 − √s, kept between .2 and .95).
 export function roughnessFromSpecular(s){return Math.min(.95,Math.max(.2,.98-Math.sqrt(Math.max(0,s))));}
