@@ -1,8 +1,12 @@
-# Playtest source
+# Playtest source and project context
 
-Repository: https://github.com/DESIR33/My-City-My-Choices
-Current work: city navigation and courier deliveries, based on the merged cinematic-architecture update.
+Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the current implementation, roadmap, evidence and known differences between GitHub and the private playtest. Update it in every change commit, following [AGENTS.md](AGENTS.md).
 
-The private playtest includes connected road/sidewalk navigation, map route lines, turn guidance, parking-to-walking transitions and three saved courier contracts with exact-cent wallet payments, receipts and duplicate-payment protection. It retains the coastal/northern cities, café, wardrobe, rideable bikes, collision recovery, Flamingo interiors and cinematic materials/rendering.
+- Repository: https://github.com/DESIR33/My-City-My-Choices
+- Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site
+- Audited repository baseline: `1daa06fee727895b3ab422df3b972aa90d4adb62`, through merged PR #41 (home settling guide).
+- GitHub serves root `index.html` / `assets/`; the separate hosted source uses `dist/index.html` / `dist/assets/`.
+- PR #41 reports publishing the home ownership/improvement and settling work while preserving hosted weather/sirens. The audited GitHub tree lacks the dedicated weather/siren modules. Do not assume identical source or blindly overwrite either entry point.
+- Documentation-only changes do not imply a new deployed game version. Use exact commit/archive/deployment evidence for future publication claims.
 
-Validation: all 32 Node test files pass. Navigation routes are checked against native district geometry; courier UI handlers exercise pickup, explicit handoff, saves, exact payouts, cancellation and business-day resets. Actual generated map and dispatch panels were reviewed in browser layout fixtures. Full WebGL scene/device playtesting remains unverified.
+Earlier navigation/courier validation notes described a historical snapshot. Current gameplay and verification limits are maintained in the context document.

@@ -2,6 +2,6 @@
   "name": "my-city-my-choices",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test tests/*.test.mjs"},
+  "scripts": {"test": "node --test tests/*.test.mjs", "check:context": "node scripts/check-context.mjs", "test:context": "node --test tests/context-policy.test.mjs"},
   "devDependencies": {"three": "0.180.0"}
 }
