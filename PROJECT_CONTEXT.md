@@ -10,17 +10,17 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `1daa06fee727895b3ab422df3b972aa90d4adb62`, including merged work through [PR #41](https://github.com/DESIR33/My-City-My-Choices/pull/41). This document's initialization changes only documentation and maintenance tooling.
+- Audited GitHub baseline: `c8794ba454f06291ae5cf9e07407bd3a1a21eadd`, including merged work through [PR #42](https://github.com/DESIR33/My-City-My-Choices/pull/42). Current change builds on the merged context-maintenance work in PR #42 and brings neighborhood entry/address work into the repository.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
-- Highest-priority follow-up: interaction discoverability and actual-device stability. Related project feedback says doors do not open or explain interaction, and asks for beautiful house-number displays on every front exterior. Only the first Maple Grove home is furnished/interactive in this baseline; the others remain shells.
+- Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
 - Multiplayer, server-assigned properties, cloud save synchronization and a production real-estate economy are not built.
 
 ### Evidence and confidence
 
 The current source tree, runtime imports, module code, README and all 41 PR records were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Known source divergence:** current GitHub main has 45 `tests/*.test.mjs` files and does not contain or import `assets/city-weather.js` or `assets/emergency-audio.js`. PRs #33–35 describe rain, wet-weather traffic and spatial emergency sirens, and PR #41 reports preserving them in the hosted playtest. The hosted suite was reported at 47 passing test files. Do not claim these two layouts are identical or that the weather/siren modules currently exist on GitHub main. Reconcile with a focused diff before synchronizing; never overwrite either index wholesale. This documentation task does not repair that divergence or independently verify the live game's runtime.
+**Known source divergence:** the audited pre-entry GitHub main has 46 `tests/*.test.mjs` files (45 gameplay files plus the context-policy file) and does not contain or import `assets/city-weather.js` or `assets/emergency-audio.js`. PRs #33–35 describe rain, wet-weather traffic and spatial emergency sirens, and PR #41 reports preserving them in the hosted playtest. The hosted suite was reported at 47 passing test files. Do not claim these two layouts are identical or that the weather/siren modules currently exist on GitHub main. Reconcile with a focused diff before synchronizing; never overwrite either index wholesale. This documentation task does not repair that divergence or independently verify the live game's runtime.
 
 ## Contents
 
@@ -53,7 +53,7 @@ The current source tree, runtime imports, module code, README and all 41 PR reco
 | Less screen clutter on phones and desktop | Preserve the central view; contextual actions; consolidated menu | Compact HUD, Focus view, one objective/route line, context-sensitive controls |
 | Jump, correct foot placement and different footsteps by surface | Physical height and grounding must agree with animation and sound | Jump integration, calibrated foot contact and surface sound profiles |
 | Congestion, horns and other city activity | City time affects bounded traffic demand and queues | Rush/quiet modes, queue horns, pedestrian yielding, manual horns/bells |
-| Door interaction feedback and attractive front-wall addresses on every house | Players must recognize an interactive entrance and identify properties from the street | Open follow-up; mailboxes have numbers, first house has plaques; no all-home front-wall address pass verified |
+| Door interaction feedback and attractive front-wall addresses on every house | Players must recognize an interactive entrance and identify properties from the street | 27 shared-atlas front-wall plaques, addressed Open/Close prompts and an address directory; physical-device visual acceptance remains open |
 | Keep full project context updated after every change | Future people and agents should not repeat research or lose decisions | This document, root AGENTS instructions, PR checklist and CI policy |
 
 The design references are inspiration, not a claim of affiliation or a licensed recreation. The 18 uploaded images (`IMG_5227` through `IMG_5247`, selected filenames) and `IMG_5260.jpeg` informed prior discussions. They are user-provided reference material, not guaranteed repository assets or a reusable production asset license. Temporary `/workspace/scratch/...` paths are not durable project references. If a source image is missing, recover or request the relevant reference; do not invent visual details or block unrelated code work.
@@ -119,7 +119,7 @@ World units are approximately meters; X is east/west, north is negative Z, south
 | Sunshore Motors | `(-15,1114)` | Physical fuel/service access using the existing owned-car/wallet systems |
 | The Flamingo | Tall 45 m coastal hotel, street approach near `(-30,1987)` | Automatic entrance, lobby, elevator, Sky Lounge and Guest Suites; only the tall hotel with this name is enterable |
 
-Most city exteriors are scenery; do not promise every tower/home can be entered. The bridge, coastal roads and sidewalks are continuous. Northstar travel is intentionally a drive or a long walk, not an automatic teleport. The beach is walkable; swimming and driving into the sea are not enabled. Guardrails have actual beach-access gaps. Sunshore includes lifeguard towers, umbrellas/loungers, six usable ocean-facing benches, palms and residents.
+Most city exteriors are scenery. All 27 community homes now allow ground-floor entry; only the first has a furnished second floor. Do not promise full interiors in every tower/home. The bridge, coastal roads and sidewalks are continuous. Northstar travel is intentionally a drive or a long walk, not an automatic teleport. The beach is walkable; swimming and driving into the sea are not enabled. Guardrails have actual beach-access gaps. Sunshore includes lifeguard towers, umbrellas/loungers, six usable ocean-facing benches, palms and residents.
 
 ### The first furnished house
 
@@ -127,9 +127,16 @@ Ground floor: entrance/gallery, living room with sectional/coffee table/media co
 
 Six animated physical doors cover front, patio, utility room, two bedrooms and bathroom. Collision follows each leaf's current angle; closing refuses an occupied sweep. Stair geometry has 18 real treads and a true upper-floor opening. Ground level is 0.30 m, upper floor 3.45 m; floor selection uses current height rather than taking the highest surface at the same X/Z. Furniture obstacles have vertical intervals so a downstairs table cannot block upstairs walking. Indoor camera limits and stair headroom are separate from exterior roof height.
 
-Seating and beds have clear stand-up points; beds pose the real character horizontally. TV cycles three original drawn channels/off; taps, shower, lights, washer, drawers, curtains and appliance fronts have state/visual responses. Some household interactions are text feedback, not a detailed appliance simulation. The overhead garage facade is not a drive-through furnished garage feature. Wardrobe reuses owned clothes; it does not grant paid items.
+Seating and beds have clear stand-up points; beds pose the real character horizontally. TV cycles three original drawn channels/off; taps, shower, lights, washer, drawers, curtains and appliance fronts have state/visual responses. Some household interactions are text feedback, not a detailed appliance simulation. The model-home overhead garage now opens using the shared neighborhood door system; its utility-room furniture remains in place, and vehicle collision still excludes driving through houses. Wardrobe reuses owned clothes; it does not grant paid items.
 
 The latest home-life work adds a personalized plaque and three visual projects without new collision boxes or lights. Earlier first-house-only geometry measurements (87 meshes / 11,130 triangles) are historical; PR #40 reported 99 meshes / 11,850 triangles after home-life additions. None of these numbers measure total game GPU memory or real frame rate.
+
+
+### Neighborhood entry and finding addresses
+
+Every neighboring front/patio/garage door now has an animated shared-instance leaf, live height-aware collision, nearby addressed Open/Close labels and player sweep protection. The model-home garage uses the same system; its original six household doors remain separate. Mobile prompts are visible above the controls and the contextual button says Open/Close door or garage. The other homes have unfurnished ground-floor shells, registered wood floors and indoor camera limits; upper floors remain closed. Neighborhood door positions are session-local and reset closed on reload; furnished-home state retains its existing save contract.
+
+All 27 front-wall plaques use one 1024-pixel number/street atlas with brass/dark backing and a night glow. Rendering, labels and the new **World map → Maple Grove · Find an address** directory share `COMMUNITY_HOMES`. The directory groups all addresses by street, routes on foot to exterior front walks and by vehicle to the spare driveway bay, and preserves selected address IDs through the existing navigation save. It adds no permanent HUD controls, charges or ownership changes.
 
 ### Street and landscape rules
 
@@ -214,7 +221,7 @@ Spatial response sirens were added in PR #35 and reported preserved on the hoste
 | --- | --- |
 | `world-rules.js` | District bounds, bridge/coast heights, roads, community lots and shared playable constraints; world/navigation/community tests |
 | `north-world.js`, `coast-world.js`, `flamingo-hotel.js` | Northern/coastal construction, interiors, elevator and surface contracts; north/coast/bridge tests |
-| `planned-community.js`, `community-plaza.js` | Lots, fences, landscaping, plaza/playground geometry and colliders; planned-community/community-plaza tests |
+| `planned-community.js`, `residential-doors.js`, `community-addresses.js`, `community-plaza.js` | Lots, plaques, dynamic doors, address destinations, landscaping and plaza/playground; community/address/door tests |
 | `house-rules.js`, `landmark-house.js`, `home-life.js` | Stable property state, multi-level geometry, household actions, tenure/projects/guide; landmark-house/home-life/story-flow tests |
 | `city-rules.js`, `civic-world.js`, `cafe-activity.js`, `interior-visits.js` | Café/bakery/services, food tickets, NPC service/visitors and seats; city-life/cafe-service/local-life tests |
 | `business-days.js`, `money-planner.js`, `city-errands.js` | Morning quotes/results, reservations/transfers and work steps; business-days/money-planner/local-life/story-flow tests |
@@ -294,12 +301,12 @@ For a requested runtime update, use the supported Sites source opening/credentia
 
 | Item | Status and next action |
 | --- | --- |
-| Doors do not open / no interaction guidance reported in a related project chat | Reproduce on the current published device build; distinguish first interactive home from decorative shells; inspect prompt visibility, targeting/LOS, input and animation/collision together |
-| Attractive addresses on every home's front wall | Requested; current mailbox numbers and first-house plaques do not fulfill a complete front-wall pass |
+| Doors do not open / no interaction guidance reported in a related project chat | Neighborhood front/patio/garage doors now animate with collision and addressed prompts; mobile CSS no longer hides the prompt. Native/UI checks pass; reproduce/confirm on the reporting device before claiming device-specific resolution |
+| Attractive addresses on every home's front wall | Implemented for all 27 homes with shared illuminated number/street atlas; native identity/orientation checks pass; physical-device readability remains unverified |
 | Weather/siren source divergence | Compare hosted source and current main before integration; restore corresponding imports/tests deliberately, not by overwriting unrelated work |
 | PR #8 school/grocery/bus/Hudson/riverfront expansion | Historical merged PR describes these, but current main lacks its dedicated city-next test/module and several runtime identifiers; do not present the full package as currently playable without reconciliation |
 | Full GPU/mobile acceptance | Still needed on actual iPhone/Safari and desktop; test first load, doors, stairs, shadows, frame stability, audio, touch, app switching and save recovery |
-| Remaining homes/towers | Most remain exterior scenery; do not imply complete interiors or private ownership for all 27 |
+| Remaining homes/towers | Other community homes now have unfurnished ground-floor shells and front/patio/garage access; upper floors and most towers remain scenery |
 | Premium visuals | Procedural materials/assets are an improvement; scanned materials, GTA-level fidelity, ray tracing, destruction and production streaming are not implemented |
 | Physics/camera | Assisted kinematic simulation and conservative architecture bounds; not full rigid-body realism or automatic safety around all dynamic vehicles |
 | Persistence | Browser-local plus manual backups; no multiplayer authoritative state or cross-device automatic sync |
@@ -313,8 +320,8 @@ Run targeted tests first, then the appropriate full suite once inputs settle. Va
 
 ### Immediate, grounded in owner feedback
 
-1. Reproduce and resolve the reported door/prompt problem on the exact current build; add visible, contextual entry guidance and clearly distinguish decorative doors. Do not declare all doors fixed based only on a pure rules test.
-2. Give every community home a durable address and a deliberate, readable exterior front-wall number treatment; preserve its mailbox, lighting and walkway access. Keep layout data as the address source.
+1. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
+2. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
 3. Reconcile hosted weather/siren code with GitHub main and check older lost/stale expansion work before planning on top of it.
 4. Complete device playtesting for startup/crash recovery, house entry/stairs/bed exits, mobile control visibility and scene performance.
 
@@ -354,14 +361,24 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-21 — Neighborhood entry, plaques and address directory
+
+- Request/reason: continue the next useful work, prioritizing reported unusable doors and exterior house identities.
+- Result: recovered the already-published Site version 62 door/plaque work (source `26ecf86fb50c60bf0421516f83de7ce5260b6d68`) into a focused GitHub change, then added a street-grouped address directory with 27 walking/parking destinations. Source implementation is complete; PR/publication outcomes are reported in the handoff. Existing hosted weather/sirens and unrelated graphics recovery are preserved; weather/siren reconciliation remains separate.
+- Affected: `residential-doors.js`, `planned-community.js`, `landmark-house.js`, `touch-controls.js`, `city-navigation.js`, new `community-addresses.js`, entry-point UI and door/address/home/story tests. Other homes now have hollow ground-floor shells rather than solid blockers. The first house remains the only two-floor furnished property.
+- Compatibility: no economy or ownership schema changes; saved navigation accepts stable community IDs, old destinations remain available, protected money is unchanged. Shared neighborhood door states reset on reload, whereas the furnished home's saved household state persists.
+- Validation: the full Site suite passed 49 tests; the repository suite passed 58 cases across 48 test files (including 11 context-policy cases). Both inline runtime modules parse, staged context policy and whitespace checks pass. The door fixture checks 79 leaves, closing clearance, both orientations, real collision/navigation gaps and 27 illuminated unique plaques. Address checks cover exterior approaches, full car footprints in spare bays and actual menu buttons; story integration covers all 27 selections and route save/restore without money changes. The home-life fixture no longer assumes a particular first destination property. Browser preview reaches the graphics-recovery screen because WebGL cannot initialize, so the 3D scene remains unverified there.
+- Limits/remaining: GPU appearance, audible balance and physical-device acceptance remain unverified. Other homes are unfurnished downstairs with inaccessible upper floors. Follow-up should confirm the original device report and reconcile remaining hosted/GitHub divergence.
+
+
 ### 2026-10-21 — Initialize maintained project context and update policy
 
 - Request: make the repository understandable to any reader and keep context current after every change.
-- Result: consolidated current product/architecture/state/UX/roadmap and all PR milestones in this document; added agent instructions, README/preview-source entry points, PR checklist, per-commit CI policy and focused policy tests. This is proposed repository work until its PR is merged.
+- Result: consolidated current product/architecture/state/UX/roadmap and all PR milestones in this document; added agent instructions, README/preview-source entry points, PR checklist, per-commit CI policy and focused policy tests. This maintenance policy was merged in PR #42.
 - Evidence: audited main `1daa06fee727895b3ab422df3b972aa90d4adb62`, current imports/tree, README, home-life rules, asset provenance and PRs #1–41. Discovered GitHub/hosted weather/siren divergence and historical PR #8 features that cannot be assumed present.
 - Affected systems: documentation and contributor/CI workflow only; no game, economy, asset, save or deployment behavior changed.
 - Validation: `node --test tests/context-policy.test.mjs` passed all 11 cases against temporary Git histories, including staged edits, missing/empty/whitespace-only context, multiple commits, merged side branches, advanced main and invalid ranges. Both maintenance JavaScript files pass `node --check`. No new full gameplay-suite or physical-device claim.
-- Remaining: merge this PR, make `Project context / context-current` required if merge blocking is desired, then update this document in every subsequent commit. Existing older commits are not retroactively rewritten.
+- Remaining: make `Project context / context-current` required if merge blocking is desired, then update this document in every subsequent commit. Existing older commits are not retroactively rewritten.
 
 ### Historical milestones
 
@@ -410,3 +427,4 @@ The table below is generated from the repository's PR records reviewed on 2026-1
 | [#39](https://github.com/DESIR33/My-City-My-Choices/pull/39) | Make the first Maple Grove house a furnished, interactive landmark | 2026-10-21 |
 | [#40](https://github.com/DESIR33/My-City-My-Choices/pull/40) | Connect Maple House ownership, improvements and daily life | 2026-10-21 |
 | [#41](https://github.com/DESIR33/My-City-My-Choices/pull/41) | Guide players through settling into their furnished home | 2026-10-21 |
+| [#42](https://github.com/DESIR33/My-City-My-Choices/pull/42) | Document project context and require updates in each change commit | 2026-10-22 |

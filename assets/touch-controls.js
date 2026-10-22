@@ -64,7 +64,8 @@ export function createTouchControls({canvas, isBlocked, onLook, onInteract, onVe
     action.hidden = !near || driving || ['car','ride'].includes(near?.kind);
     vehicle.hidden = vehicle.disabled;
     vehicle.textContent = rideKind ? 'Dismount' : near?.kind==='ride' ? 'Ride' : driving ? 'Exit car' : 'Enter car';
-    action.textContent = near?.kind==='courier'?(near.phase==='pickup'?'Collect parcel':'Deliver parcel'):near?.kind === 'stand' ? 'Stand up' : near?.kind === 'seat' ? 'Sit' : near?.kind === 'ride' ? 'Ride' : near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact';
+    action.textContent = near?.actionLabel|| (near?.kind==='courier'?(near.phase==='pickup'?'Collect parcel':'Deliver parcel'):near?.kind === 'stand' ? 'Stand up' : near?.kind === 'seat' ? 'Sit' : near?.kind === 'ride' ? 'Ride' : near?.kind === 'car' ? 'Enter car' : near?.kind === 'parent' || near?.kind === 'maya' ? 'Talk' : 'Interact');
+    action.setAttribute('aria-label',near?.name||'Interact with nearby object');
     const mode = driving ? 'drive' : 'walk';
     if (mode !== lastMode) {clear(); lastMode = mode;}
     signalKind=driving?(rideKind||'car'):null;jump.hidden=!driving&&!canJump;jump.textContent=signalKind==='bicycle'?'Bell':signalKind?'Horn':'Jump';jump.setAttribute('aria-label',signalKind==='bicycle'?'Ring bicycle bell':signalKind?'Sound vehicle horn':'Jump');

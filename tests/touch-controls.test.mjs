@@ -34,6 +34,8 @@ function setup(touch = true) {
   t.el('#moveStick').emit('lostpointercapture'); assert.equal(c.state.forward, 0); assert.equal(c.state.x, 0);
   t.el('#touchInteract').emit('click'); assert.equal(t.counts().interactions, 1);
   c.update({driving:false,near:{kind:'courier',phase:'pickup'}});assert.equal(t.el('#touchInteract').textContent,'Collect parcel');c.update({driving:false,near:{kind:'courier',phase:'delivery'}});assert.equal(t.el('#touchInteract').textContent,'Deliver parcel');
+  c.update({driving:false,near:{kind:'communityDoor',name:'Open front door · 103 Maple Grove Lane',actionLabel:'Open door'}});assert.equal(t.el('#touchInteract').textContent,'Open door');assert.match(t.el('#touchInteract')['aria-label'],/103 Maple Grove Lane/);
+  c.update({driving:false,near:{kind:'houseObject',name:'Close patio door',actionLabel:'Close door'}});assert.equal(t.el('#touchInteract').textContent,'Close door');assert.equal(t.el('#touchInteract').hidden,false);
   c.update({driving: true, near: null}); assert.equal(t.el('#touchRun').hidden, true); assert.equal(t.el('#touchBrake').hidden, false);
   assert.equal(t.el('#touchVehicle').textContent, 'Exit car'); assert.equal(t.el('#touchVehicle').disabled, false);
   t.el('#touchBrake').emit('pointerdown', {pointerId: 4}); assert.ok(c.state.brake);

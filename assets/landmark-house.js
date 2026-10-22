@@ -30,7 +30,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
   solid(axis==='x'?center:fixed,axis==='x'?fixed:center,axis==='x'?width:.16,axis==='x'?.16:width,y,y+height,'window');
  }
  const windows={front:[{a:4.2,b:5.7,bottom:1.1,top:2.6},...[-3.7,0,3.7].map(x=>({a:x-.8,b:x+.8,bottom:4.3,top:5.8}))],rear:[...[-3.3,.4,4.8].flatMap(x=>[0,1].map(f=>({a:x-.75,b:x+.75,bottom:(f?H.upper:H.ground)+.85,top:(f?H.upper:H.ground)+2.3})))],side:[-3.4,2.9].flatMap(z=>[0,1].map(f=>({a:z-.75,b:z+.75,bottom:(f?H.upper:H.ground)+.85,top:(f?H.upper:H.ground)+2.3})))};
- wall('x',5.9,-6.7,6.7,.3,6.45,[{a:1.83,b:3.53,bottom:.3,top:2.85},...windows.front]);
+ wall('x',5.9,-6.7,6.7,.3,6.45,[{a:-6.08,b:-.08,bottom:.3,top:2.85},{a:1.83,b:3.53,bottom:.3,top:2.85},...windows.front]);
  wall('x',-5.9,-6.7,6.7,.3,6.45,[{a:-6.15,b:-4.45,bottom:.3,top:2.85},...windows.rear]);
  for(const x of [-6.7,6.7])wall('z',x,-5.9,5.9,.3,6.45,windows.side);
  for(const o of windows.front)window('x',5.9,(o.a+o.b)/2,o.bottom,o.b-o.a,o.top-o.bottom);
@@ -40,8 +40,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  box(root,0,.06,0,13.65,.24,12.05,stone);floor(0,0,13.15,11.55,.3);
  for(const y of [3.22,6.36])box(root,0,y,5.99,13.55,.12,.16,trim);
  for(const x of [-6.72,6.72])box(root,x,.3,5.94,.16,6.12,.18,trim);
- box(root,-3.08,.36,6.04,6,2.3,.1,mat(0xc5c5ba));for(let y=.65;y<2.6;y+=.38)box(root,-3.08,y,6.1,5.9,.025,.03,metal);
- for(const x of [-5.1,-3.75,-2.4,-1.05])box(root,x,2.13,6.11,1.05,.3,.035,glass);
+ for(const x of [-6.16,0])box(root,x,.3,6.04,.16,2.55,.18,trim);box(root,-3.08,2.85,6.04,6.32,.15,.18,trim);
  for(const side of [-1,1]){const p=box(root,side*3.55,7.49,0,7.45,.18,12.8,roofMat);p.rotation.z=-side*.31;box(root,side*7.05,6.38,0,.14,.2,12.8,trim);}
  const roofShape=new THREE.Shape();roofShape.moveTo(-7.05,0);roofShape.lineTo(7.05,0);roofShape.lineTo(0,2.26);roofShape.closePath();const roofFace=new THREE.ShapeGeometry(roofShape);
  for(const z of [-6.2,6.2]){const face=new THREE.Mesh(roofFace,siding);face.position.set(0,6.45,z);if(z<0)face.rotation.y=Math.PI;root.add(face);}
@@ -69,7 +68,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
   for(const h of [.2,1.3])box(g,axis==='x'?w/2:.055,h,axis==='z'?direction*w/2:.055,axis==='x'?1.3:.035,.8,axis==='x'?.035:1.3,oak);
   shape(g,sphere,axis==='x'?1.45:.09,1.12,axis==='z'?direction*1.45:.09,.045,.045,.045,brass);
   const collider=solid(x+(axis==='x'?w/2:0),z+(axis==='z'?direction*w/2:0),axis==='x'?w:.1,axis==='z'?w:.1,y,y+2.5,id);
-  const d={id,g,leaf,collider,x,z,y,w,axis,sign,direction,angle:0};doors.push(d);action(id,title,x+(axis==='x'?w/2:0),z+(axis==='z'?direction*w/2:0),floor,'door',{door:d,radius:2.5});
+  const d={id,g,leaf,collider,x,z,y,w,axis,sign,direction,angle:0};doors.push(d);action(id,title,x+(axis==='x'?w/2:0),z+(axis==='z'?direction*w/2:0),floor,'door',{door:d,radius:['front','rear'].includes(id)?3.2:2.5});
  }
  door('front','Open / close the front door','x',1.83,5.9,0,1);door('rear','Open / close the patio door','x',-6.15,-5.9,0,-1);door('garage','Open / close the utility-room door','z',-.8,1.95,0,-1);
  door('bedroom1','Open / close the main bedroom','z',-.6,1.85,1,1);door('bedroom2','Open / close the second bedroom','z',-.6,-.25,1,1,-1);door('bathroom','Open / close the bathroom','x',-.25,-2.4,1,1);
@@ -105,7 +104,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
  chair('dining-front','dining chair',1.3,1.8,0,Math.PI,.65,[1.3,2.9]);chair('dining-back','dining chair',1.3,-1.05,0,0,.65,[2.9,-1.1]);chair('dining-side','dining chair',3.05,.4,0,-Math.PI/2,.65,[3.05,1.55]);
  // Utility garage: laundry drum, shelving, a workbench and household supplies.
  furnishing(-5.65,.3,4.6,1.05,.95,.9,ceramic,'washer');const drum=shape(root,torus,-5.65,.85,5.08,.3,.3,.3,metal);drum.userData.dynamicHouse=true;action('washer','Start / stop the washing machine',-5.65,3.55);
- furnishing(-3.9,.3,4.65,1.7,.95,.7,oak,'workbench');box(root,-3.9,1.25,4.65,1.85,.08,.8,stone);action('workbench','Inspect the household tool kit',-3.9,3.6,0,'read',{message:'A tool kit, spare bulbs and a tape measure. This home is ready for future improvements.'});
+ furnishing(-3.9,.3,4.1,1.7,.95,.7,oak,'workbench');box(root,-3.9,1.25,4.1,1.85,.08,.8,stone);action('workbench','Inspect the household tool kit',-3.9,3.05,0,'read',{message:'A tool kit, spare bulbs and a tape measure. This home is ready for future improvements.'});
  for(const y of [.6,1.2,1.8])box(root,-5.9,y,1.5,.75,.06,1.2,oak);action('supplies','Inspect laundry and storage',-4.85,1.5,0,'read',{message:'Laundry supplies and labeled storage boxes keep this utility room organized.'});
  function bed(id,x,z,heading=0){const g=new THREE.Group();g.position.set(x,H.upper,z);g.rotation.y=heading;root.add(g);box(g,0,.1,0,2.15,.25,2.45,walnut);box(g,0,.35,0,2.05,.2,2.35,linen);const duvet=box(g,0,.55,.2,2.05,.08,1.9,id==='bed1'?fabric:mat(0x9f8b76,.98));duvet.userData.dynamicHouse=true;box(g,0,.1,-1.23,2.2,1.1,.12,oak);for(const side of [-1,1])box(g,side*.5,.56,-.8,.8,.16,.45,trim);solid(x,z,2.2,2.5,H.upper,H.upper+.7,id);
   const stand=world(x+1.85,z),seat={id,type:'bed',...world(x-Math.sin(heading)*.0,z+Math.cos(heading)*.9),floor:H.upper,height:.64,heading,rest:true,stand};beds.push({id,duvet,seat});action(id,'Rest / make the '+(id==='bed1'?'main bed':'second bed'),x+1.85,z,1,'bed',{seat});
@@ -150,7 +149,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces}){
   tvClock+=dt;if(!dt||state.tv&&position&&houseInside(position)&&tvClock>.5){tvClock=0;tvPicture();}
  }
  function blocked(x,z,y=.3,ignore=null){return colliders.some(o=>o.fixtureId!==ignore&&houseObstacleBlocks(o,x,z,y));}
- function nearest(p){const level=(p.y||0)>H.upper-.65?1:0;const near=actions.filter(a=>a.floor===level&&Math.hypot(a.x-p.x,a.z-p.z)<(a.radius||1.65)&&Math.abs(a.y-(p.y||0))<1.35&&clear(p,a,a.kind==='door'?a.id:null));return near.sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0]||null;}
+ function nearest(p){const level=(p.y||0)>H.upper-.65?1:0;const near=actions.filter(a=>a.floor===level&&Math.hypot(a.x-p.x,a.z-p.z)<(a.radius||1.65)&&Math.abs(a.y-(p.y||0))<1.35&&clear(p,a,a.kind==='door'?a.id:null));const item=near.sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0];return item?.kind==='door'?{...item,title:(state[item.id]?'Close ':'Open ')+item.title.replace(/^Open \/ close (the )?/, '')+' · '+H.address,actionLabel:state[item.id]?'Close door':'Open door'}:item||null;}
  function clear(a,b,ignore=null){const distance=Math.hypot(b.x-a.x,b.z-a.z),n=Math.max(1,Math.ceil(distance/.2));for(let i=0;i<=n;i++)if(blocked(a.x+(b.x-a.x)*i/n,a.z+(b.z-a.z)*i/n,a.y||.3,ignore))return false;return true;}
  function act(id,p){const a=actions.find(a=>a.id===id);if(!a||!p||Math.hypot(a.x-p.x,a.z-p.z)>(a.radius||1.65)||Math.abs(a.y-(p.y||0))>1.35||!clear(p,a,a.kind==='door'?id:null))return {ok:false,message:'Move closer to this object.'};
   if(a.kind==='home')return {ok:true,action:a};if(a.kind==='seat'||a.kind==='bed')return {ok:true,seat:a.seat,bed:a.kind==='bed',action:a};if(a.kind==='wardrobe')return {ok:true,wardrobe:true};if(a.kind==='read')return {ok:true,message:a.message};
