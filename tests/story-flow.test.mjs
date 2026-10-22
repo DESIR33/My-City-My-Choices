@@ -42,6 +42,7 @@ run(html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('sessionLifecyc
 assert.equal(typeof c.closeGamePanel,'function');assert.equal(typeof c.newStory,'function');assert.equal(typeof c.launchNextBusinessDay,'function');
 // Play through the story using the same public handlers as its buttons.
 // The main playthrough is a 6-year-old's Sprout story: the original story money.
+doc.querySelector('#onboardingGoal').value='0';doc.querySelector('#replaceStory').checked=true;
 run('goal=0');doc.querySelector('#childAge').value='6';doc.querySelector('#begin').onclick();assert.equal(run('economyTier()'),'sprout');assert.equal(run('stage'),'parent');run('player.position.set(-83,0,-22);near=null');run('interactNow()');assert.equal(doc.querySelector('#panel').innerHTML.includes('At home · Your wallet'),true,'Mom interaction is available from the initial spawn and opens her lesson');c.closeGamePanel();c.walletQuiz(true);assert.equal(run('stage'),'maya');assert.equal(run('cash'),5);c.closeGamePanel();assert.equal(doc.querySelector('#modal').classList.contains('show'),false);
 c.transferGoal(100,'save');assert.equal(run('cash'),4);c.walletQuiz(true);assert.equal(run('cash'),4,'The lesson cannot award startup cash twice');c.chooseBusiness(0);c.buyKit(false);assert.equal(run('cash'),1,'Supplies use actual wallet cash after savings');assert.equal(run('saved'),1);c.transferGoal(100,'withdraw');assert.equal(run('cash'),2);
 function finishDay(){while(run('customers<salesTarget')){run('customerPanel()');if(run('businessType>0&&!completedOrder')){const wrong=run('(learnSession.p.correctIndex+1)%learnSession.p.options.length');c.chooseBusinessTask(wrong);assert.equal(run('completedOrder'),false,'A wrong answer gives a hint, not progress');c.chooseBusinessTask(run('learnSession.p.correctIndex'));assert.equal(run('completedOrder'),true)}const due=run('currentChangeDue()');assert.ok(due>=0);run('changePieces=['+due+']');c.serve();const paid=run('cash');c.serve();assert.equal(run('cash'),paid,'Serving a stale customer cannot pay twice');const feedback=doc.querySelector('#feedback');feedback.children.at(-1).onclick();}}
@@ -277,11 +278,11 @@ c.openNeighborhoodAddresses();assert.ok(doc.querySelector('#panel').innerHTML.in
 for(const address of communityAddresses.COMMUNITY_ADDRESSES){c.setCityDestination(address.id);assert.equal(run('navigationTarget.name'),address.address);assert.equal(JSON.parse(run('serializeGame()')).navigation.targetId,address.id);}
 run('saveGame();applyNavigationTarget(null);restoreGame()');assert.equal(run('navigationTarget.name'),communityAddresses.COMMUNITY_ADDRESSES.at(-1).address);assert.equal(run('cash'),directoryWallet);assert.equal(run('saved'),directorySavings);
 console.log('Directory handlers preserve all 27 addressed route choices through save/restore without changing wallet or savings.');
-run('houseGuide={targetId:"tv"};goal=0');doc.querySelector('#begin').onclick();assert.equal(run('houseGuide.targetId'),null,'A fresh story clears old house guidance');
+run('houseGuide={targetId:"tv"};goal=0;stage="goal"');doc.querySelector('#begin').onclick();assert.equal(run('houseGuide.targetId'),null,'A fresh story clears old house guidance');
 
 // Tier-scaled story money. The same public handlers run with an 11-year-old's
 // Planner money: bigger amounts, payday with taxes, loans with interest and bills.
-run('hide();driving=null;riding=null;seatedAt=null;goal=0');doc.querySelector('#childAge').value='11';doc.querySelector('#begin').onclick();
+run('hide();driving=null;riding=null;seatedAt=null;goal=0;stage="goal"');doc.querySelector('#childAge').value='11';doc.querySelector('#begin').onclick();
 assert.equal(run('learning.tier'),'planner');assert.equal(run('economyTier()'),'planner');assert.equal(run('openingCash'),500);assert.equal(run('sellPrice'),100);
 c.walletQuiz(true);assert.equal(run('cash'),500,'Mom gives a Planner $500');
 run('stage="maya";businessType=0');c.prepPanel();let tierPanel=doc.querySelector('#panel').innerHTML;
@@ -321,7 +322,7 @@ run('saveGame();const s=JSON.parse(localStorage.getItem(SAVE_KEY));delete s.econ
 assert.equal(run('economyTier()'),'builder');assert.equal(run('cash'),50);assert.equal(run('saved'),20);
 console.log('Tier money passed: Planner wallet, supplies, change tray, restock, rent/buy loan, weekly interest and bills, payday tax, financed car, parent conversion and legacy save migration.');
 // Builder: bigger numbers plus weekly savings interest; no payday, taxes, loans or bills.
-run('hide();driving=null;riding=null;seatedAt=null;goal=0');doc.querySelector('#childAge').value='8';doc.querySelector('#begin').onclick();
+run('hide();driving=null;riding=null;seatedAt=null;goal=0;stage="goal"');doc.querySelector('#childAge').value='8';doc.querySelector('#begin').onclick();
 assert.equal(run('economyTier()'),'builder');c.walletQuiz(true);assert.equal(run('cash'),50);
 run('stage="done";marketDay=1;business=0;moneyPlan=freshMoneyPlan();cash=25');run('launchNextBusinessDay(0,true)');assert.equal(run('cash'),5,'Builder restock costs $20');
 run('saved=100;housingLoanBalance=0;marketDay=8;moneyLife={...moneyLife,lastWeek:0}');assert.match(run('runMoneyWeek()'),/interest to your savings/);assert.equal(run('saved'),102);assert.equal(run('moneyLife.bills.length'),0);
@@ -329,3 +330,13 @@ run('hide();courier=freshCourier();stage="parent";player.position.set(-83,0,-22)
 const builderCash=run('cash');run('hide();player.position.set(-30,0,-25);driving=null;findNear();interactNow()');assert.equal(run('cash'),builderCash+12.5,'Builder deliveries pay right away');
 run('stage="done";marketDay=8;cash=100;carLife=freshCarOwnership();player.position.set(-90,0,105)');c.quoteCar('used');assert.doesNotMatch(doc.querySelector('#panel').innerHTML,/borrow the rest/);assert.match(doc.querySelector('#panel').innerHTML,/\$40\.00/);
 console.log('Builder money passed: $50 start, $20 restock, weekly savings interest, immediate delivery pay and no car loans.');
+// The shipped start handler reads the early, renderer-independent goal draft.
+const priorStory=run('serializeGame()');storage.set('mapleStreetChapter1',priorStory);run('stage="goal"');doc.querySelector('#replaceStory').checked=false;doc.querySelector('#onboardingGoal').value='2';
+doc.querySelector('#begin').onclick();assert.equal(run('stage'),'goal');assert.equal(storage.get('mapleStreetChapter1'),priorStory,'Unconfirmed replacement preserves the old story');
+doc.querySelector('#replaceStory').checked=true;doc.querySelector('#onboardingGoal').value='-1';doc.querySelector('#begin').onclick();assert.equal(run('stage'),'goal','No goal cannot start');
+doc.querySelector('#onboardingGoal').value='2';doc.querySelector('#parentPinSetup').value='abc';doc.querySelector('#begin').onclick();assert.equal(storage.get('mapleStreetChapter1'),priorStory);doc.querySelector('#parentPinSetup').value='';
+const writeProgress=c.localStorage.setItem;c.localStorage.setItem=(key,value)=>{if(key===backups.RECOVERY_KEY)throw Error('quota');writeProgress(key,value);};doc.querySelector('#begin').onclick();assert.equal(run('stage'),'goal');assert.equal(storage.get('mapleStreetChapter1'),priorStory,'Failed recovery protection blocks replacement');c.localStorage.setItem=writeProgress;
+doc.querySelector('#avatarName').value='New Player';doc.querySelector('#skinChoices .selected').dataset={value:'75452f'};doc.querySelector('#hairChoices .selected').dataset={value:'bun'};
+doc.querySelector('#begin').onclick();assert.equal(run('goal'),2);assert.equal(run('stage'),'parent');assert.equal(run('avatarSkin'),0x75452f);assert.equal(run('avatarStyle'),'bun');assert.equal(JSON.parse(storage.get('mapleStreetChapter1')).goal,2);assert.equal(storage.get(backups.RECOVERY_KEY),priorStory,'An explicit new story keeps the prior story for recovery');
+run('cash=123');doc.querySelector('#begin').onclick();assert.equal(run('cash'),123,'Duplicate start cannot reset active progress');
+console.log('Onboarding start passes: chosen draft/appearance, no-goal and PIN refusal, explicit replacement, recovery-write failure, old-story preservation and duplicate-start rejection.');

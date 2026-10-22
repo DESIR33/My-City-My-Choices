@@ -4,10 +4,10 @@ Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the current implementation, ro
 
 - Repository: https://github.com/DESIR33/My-City-My-Choices
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site
-- Audited repository baseline: `9164760108e6bcc5c5c592f4f92b30c461078d38`, through merged PR #59. This fix moves the menu to P, leaves Escape for cursor release/panel closing, furnishes 139 Willow Way downstairs and removes coplanar neighboring floor/foundation faces.
-- Previous private Site: version 68/source `7c02849485203d6588f04611e6c3b32091fc042a`, behind main. This candidate reconciles main's merged learning, tier economy, realism and crowd work into the hosted layout before applying the fix. Exact new source/deployment/PR outcomes belong in the handoff.
+- Audited repository baseline: `ab5efb1ac5439356244e92ba4341feed86952bee`, through merged PR #60. Current private Site version 69/source `c1bf138d390ad6fa8c664ba6415233d036af8add` includes the cursor/menu, 139 floor/furnishing fix and all prior merged runtime work.
+- This candidate adds a three-step renderer-independent onboarding, static goal cards with age-adjusted amounts, visible navigation, saved-story confirmation/recovery and explicit city readiness/failure. Exact new source/deployment/PR outcomes belong in the handoff.
 - GitHub serves root `index.html` / `assets/`; the separate hosted source uses `dist/index.html` / `dist/assets/`.
-- Both runtime layouts contain 243 shipped files, including original binary models and compressed textures. Native geometry, floor, route, keyboard and save tests do not establish rendered GPU appearance, pointer-lock behavior on the player's desktop or physical-device performance. This QA browser cannot initialize WebGL or acquire pointer capture; isolated DOM shortcut/panel checks work.
+- Both candidate runtime layouts contain 245 shipped files, including original binary models and compressed textures. Native and browser onboarding checks cover setup UI; they do not establish rendered GPU appearance or physical-device performance. This QA browser cannot initialize WebGL. The standalone setup works through that failure and explains why play cannot start.
 - Run `npm run check:parity -- /absolute/path/to/site-checkout` to compare the complete runtime inventory and hashes, including binary assets. It is read-only and does not copy, authenticate or deploy. Non-runtime docs/tests differ intentionally. Full game CI runs native regressions and checker unit cases, not a private-Site comparison.
 - Documentation-only changes do not imply a new deployed game version. Use exact commit/archive/deployment evidence for future publication claims.
 
