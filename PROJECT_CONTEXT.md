@@ -10,7 +10,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `59bc1871349d67d6bdcc82a11602d29ad2d28d4a`, through merged [PR #43](https://github.com/DESIR33/My-City-My-Choices/pull/43). The current reconciliation candidate restores hosted weather, wet-traffic, siren and mobile-recovery work to that baseline; it is not yet a claim that this candidate has merged.
+- Audited GitHub baseline: `888e7d933072d35d5ff228f307eb06b71af225f8`, through merged [PR #46](https://github.com/DESIR33/My-City-My-Choices/pull/46). The two-floor house guide is merged and published in private Site version 65 (source `256ba374e13a4c855c05a36ce3de6e07bc05887b`). The current change adds responsive household sound; its PR/publication outcomes are recorded in the handoff.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. Other homes now have walk-in unfurnished ground floors; only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
@@ -19,9 +19,9 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 ### Evidence and confidence
 
-The current source tree, runtime imports, module code, README and PR history through #43 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
+The current source tree, runtime imports, module code, README and PR history through #46 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Runtime reconciliation:** main at the audited baseline omitted dedicated weather/siren modules and hosted mobile-budget/recovery improvements. This candidate reconciles those differences with the hosted checkout at `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`, preserving PR #43's home/address work. A reviewed entry-point patch plus eight synchronized assets makes all 80 shipped files byte-identical across the two layouts, including binary assets. Tests/docs remain layout-specific. This is a local source comparison, not a fresh live-browser acceptance test or a new Site deployment. Run the parity command again whenever either source changes.
+**Runtime reconciliation:** merged PR #44 restored dedicated weather/siren modules and mobile-budget/recovery improvements from hosted source `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`, preserving PR #43's home/address work. All 80 shipped files matched across layouts, including binaries. The house guide added one module; the current household-audio change adds another and makes all 82 runtime files match across the candidate layouts. Tests/docs remain layout-specific. Source parity does not establish live-browser or physical-device acceptance; rerun the comparison whenever either source changes.
 
 ## Contents
 
@@ -98,6 +98,10 @@ The design references are inspiration, not a claim of affiliation or a licensed 
 
 Default play HUD has Menu, a compact cash badge and one objective or route cue. Focus view hides cash and cues but retains Menu/essential controls. Dialogs pause gameplay, hide the play HUD, clear held inputs, support Escape and contain keyboard focus. The complete planner, map, journal, wardrobe, home and settings remain in City menu. Mobile layouts account for safe areas and landscape; contextual controls should not occupy the center of view.
 
+In the furnished house, E / the touch action opens a compact chooser when multiple household objects are reachable. The prompt gives the nearby object count and the touch action says Choose object. An isolated object still acts directly, and doors retain direct Open/Close actions. The chooser uses the existing paused dialog, gives current appliance/light/curtain/TV/bed states and revalidates floor, distance and clear approach on every selection. Toggling refreshes the choices; sitting closes the dialog, while beds, wardrobe and home plans open their existing flows. It adds no permanent HUD button.
+
+**City menu → House rooms & objects** opens the paused house guide; the nearby-object chooser links to it too. Switch Downstairs/Upstairs to inspect walls, furniture, the six household door leaves, stairs and room names. Gold marks the player's position on its actual floor; a teal star marks the selected object's approach point. The room directory lists all 25 furnished non-door interactions. Selecting one closes the panel and shows a location cue in the existing route line while inside: use the east-side stairs, open a room door, or interact nearby. A city destination stays selected and its cue returns outside. Focus view retains its existing hiding behavior. Successful interaction with the selected object clears the guidance; Stop house guidance cancels it. Outside, use the explicit Directions to the house button for city navigation.
+
 ## World and landmarks
 
 World units are approximately meters; X is east/west, north is negative Z, south positive Z. This is a continuous fictional world, not a georeferenced real city.
@@ -130,7 +134,11 @@ Six animated physical doors cover front, patio, utility room, two bedrooms and b
 
 Seating and beds have clear stand-up points; beds pose the real character horizontally. TV cycles three original drawn channels/off; taps, shower, lights, washer, drawers, curtains and appliance fronts have state/visual responses. Some household interactions are text feedback, not a detailed appliance simulation. The model-home overhead garage now opens using the shared neighborhood door system; its utility-room furniture remains in place, and vehicle collision still excludes driving through houses. Wardrobe reuses owned clothes; it does not grant paid items.
 
+The main bed and bedroom curtains share the same approach point. A nearest-object-only prompt previously selected the bed every time at that point. `nearby(position)` now exposes every reachable interaction and the chooser makes each independently available, including tightly grouped kitchen and bathroom fixtures. Discovery and execution share the same reachability check, including finite coordinates, real floor and closed-door obstruction. The existing household flags/save version are reused; this is an interaction improvement with no new geometry, lights or render targets.
+
 The latest home-life work adds a personalized plaque and three visual projects without new collision boxes or lights. Earlier first-house-only geometry measurements (87 meshes / 11,130 triangles) are historical; PR #40 reported 99 meshes / 11,850 triangles after home-life additions. None of these numbers measure total game GPU memory or real frame rate.
+
+House-guide plans are SVG built on demand from the actual house collision boxes, live household door bounds and action approach points. `HOUSE_ROOMS` groups actions and identifies the utility/main/second-bedroom/bathroom doors; update this metadata and its tests when changing the architecture. Plans are location diagrams, not computed walking routes. They do not draw a line through walls, move players, open doors or activate furniture. The shared neighborhood overhead garage door is outside the six household leaves shown. Closed exit-door hints take precedence before changing floors. No new scene meshes, lights, textures or render targets are allocated.
 
 
 ### Neighborhood entry and finding addresses
@@ -227,7 +235,13 @@ Character assets are six self-hosted textured Microsoft Rocketbox variants and c
 
 `city-audio.js` synthesizes original engine/RPM, rolling, bicycle chain, footsteps, surf, wind, café/crockery, pickup/collision and traffic/horn layers. Surface footsteps distinguish asphalt/concrete/grass/stone/sand/wood; airborne/seated/teleported/mounted movement does not emit walking steps. Web Audio initializes on user gesture, has saved master/category/mute settings, bounded continuous/one-shot allocations and graceful silent fallback. Menus/background pause world audio. No microphone, recorded speech or real engine recordings are required.
 
-Spatial response sirens use bounded wail, distance attenuation within 160 meters, stereo/pitch variation, interior/vehicle filtering and a saved toggle. Arrival, return, missing/invalid responder, disabled audio and background pause silence/reset the response. Rain audio and sirens share the existing fixed-budget Web Audio mixer and cleanup; no recordings or new permission are needed. These previously hosted systems are now included in the reconciliation candidate and its native tests; audible balance still needs real-device review.
+Spatial response sirens use bounded wail, distance attenuation within 160 meters, stereo/pitch variation, interior/vehicle filtering and a saved toggle. Arrival, return, missing/invalid responder, disabled audio and background pause silence/reset the response. Rain audio and sirens share the existing fixed-budget Web Audio mixer and cleanup; no recordings or new permission are needed. These systems are present in merged main and the hosted runtime; audible balance still needs real-device review.
+
+The furnished Maple House now requests short original sounds after successful household actions: its six doors, switches/study lamp, fridge/oven/drawers, curtains, wardrobe, TV power/channel changes, tap/shower controls, washer, toilet/basin, seating, resting and making beds. Opening a bed/planning menu and rejected/remote actions remain silent. Explicit object-chooser actions may play feedback while the world is paused. A 120 ms audio-clock cooldown works independently of paused simulation time and shares the global eight-voice cap.
+
+Running tap/shower water shares one fixed filtered-noise layer; the washer uses one fixed low triangle layer. `sampleHouseAudio` reads existing saved appliance flags and actual action positions, caches their source metadata per house, attenuates with distance/floor/closed room doors and computes stereo direction from camera yaw. The layers silence outside the house, in vehicles, in paused world updates, on background/mute, with Effects at zero or when Household sounds is off. They use the Effects bus. Short household voices are stopped/disconnected when disabled or backgrounded so returning does not replay an old click or flush. Restoring active appliances resumes their continuous state without replaying action sounds.
+
+**Settings → Sound → Household sounds** is a saved boolean in the existing audio preference, defaulting on for older preferences while preserving master/category/mute levels. The mixer now has twelve fixed sources (ten prior city layers plus two household layers), reuses the existing noise buffer, and creates no per-frame audio nodes. Tests bound fixed nodes at 48 with stereo support; transient sounds still share eight voices. No recordings, speech, permissions, downloads, new scene geometry or new GPU targets are added. The synthesized textures and volume balance still require listening on physical devices.
 
 ## Architecture and source map
 
@@ -238,7 +252,9 @@ Spatial response sirens use bounded wail, distance attenuation within 160 meters
 | `world-rules.js` | District bounds, bridge/coast heights, roads, community lots and shared playable constraints; world/navigation/community tests |
 | `north-world.js`, `coast-world.js`, `flamingo-hotel.js` | Northern/coastal construction, interiors, elevator and surface contracts; north/coast/bridge tests |
 | `planned-community.js`, `residential-doors.js`, `community-addresses.js`, `community-plaza.js` | Lots, plaques, dynamic doors, address destinations, landscaping and plaza/playground; community/address/door tests |
-| `house-rules.js`, `landmark-house.js`, `home-life.js` | Stable property state, multi-level geometry, household actions, tenure/projects/guide; landmark-house/home-life/story-flow tests |
+| `house-rules.js`, `landmark-house.js`, `home-life.js` | Stable property state, multi-level geometry, reachable-object choices/state labels, household actions, tenure/projects/guide; landmark-house/house-interactions/home-life/story-flow tests |
+| `house-guide.js` | Room/action directory, floor classification, location cues and SVG plans from actual household bounds; house-guide/story-flow tests |
+| `house-audio.js` | Original action sound profiles and cached, position/floor/door-aware sampling of saved household sources; house-audio/city-audio/story-flow tests |
 | `city-rules.js`, `civic-world.js`, `cafe-activity.js`, `interior-visits.js` | Café/bakery/services, food tickets, NPC service/visitors and seats; city-life/cafe-service/local-life tests |
 | `business-days.js`, `money-planner.js`, `city-errands.js` | Morning quotes/results, reservations/transfers and work steps; business-days/money-planner/local-life/story-flow tests |
 | `wardrobe.js`, `clothing-world.js` | Paid catalogue, owned outfits/avatar changes and store; wardrobe/story-flow tests |
@@ -267,6 +283,8 @@ No backend database, account service, authoritative multiplayer server, cloud ec
 
 Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. The proposed learning layer adds `learning` (version 1: `childId`, `tier`, `age`, `placementDone`, `parentPinHash`, `tierSuggestion`, Garden reflections and per-skill level/status/streaks/last 8 attempts) and `gardenReflectionDue`; `restoreLearning` validates both, and saves without them load as Builder with every skill New. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
 
+Optional `houseGuide: {targetId}` stores only a whitelisted furnished-object ID, independently from city navigation and settling progress. Old saves default to no target; invalid/removed/door IDs are dropped. The existing portable backup format carries it without a version change. Selecting, canceling and successfully using the target use normal story saves, and New story clears it. Tours and guidance are free; no ownership, wallet, savings or business-day change occurs.
+
 | Local key | Purpose |
 | --- | --- |
 | `mapleStreetChapter1` | Story progress |
@@ -274,7 +292,7 @@ Primary local story key: `mapleStreetChapter1`. Story serialization includes sta
 | `mapleStreetRecoveryV1` | Story before an import/reset |
 | `mapleStreetCityLight` | Clock/light preference |
 | `mapleStreetGraphicsV1` | Picture/road conditions |
-| `mapleStreetAudioV1` | Volume/mute options |
+| `mapleStreetAudioV1` | Volume/mute, siren and household-sound options |
 | `mapleStreetCameraV1` | Camera comfort/distance |
 | `mapleStreetTrafficV1` | Demand/horn preference |
 | `mapleStreetWeatherV1` | Weather mode and rain-streak preference |
@@ -313,7 +331,10 @@ For a requested runtime update, use the supported Sites source opening/credentia
 
 ### What the existing evidence establishes
 
-- Current reconciliation candidate: all 66 Node test cases pass across 51 test files, including context policy and six source-parity cases. All 80 shipped runtime files match the hosted source checkout at `d79f280a4fd3fa50aae6eb9b57e0a03ee4245059`. Inline entry-module syntax is also checked; these are source/native checks, not GPU acceptance.
+- The household-audio candidate passes all 69 Node cases across 54 repository test files and all 52 hosted-layout cases. PR #46 previously passed 68/68 and both GitHub workflows. Native house checks retain 98 meshes / 11,742 triangles / 46,190 measured geometry/instance bytes; these figures exclude full-game GPU memory.
+- Browser Web Audio QA used a temporary page importing the shipped mixer: offline rendering produced a finite, nonzero door waveform; live context unlock accepted switch feedback after a click; disabling Household sounds refused it. The temporary page was removed before packaging. This establishes browser API/gesture/mute operation, not listening quality, spatial realism or physical-device sound balance.
+- House-guide browser QA used a temporary isolated page with actual house data, guide handlers and shipped CSS: both floor plans, floor switching, selected marker, object selection and refreshed target rendered correctly at desktop and 390-pixel iframe widths. Temporary QA pages are removed before packaging. The known full-game WebGL limitation and physical-device acceptance remain unresolved.
+- Browser QA used a temporary isolated page with the actual shipped house scene data, chooser handlers and CSS: curtain selection/state refresh rendered correctly at desktop and 390-pixel iframe widths. That page was removed before packaging. Full game startup still reaches the graphics-recovery dialog because this QA browser cannot initialize WebGL. This verifies the chooser layout/interaction, not a rendered walk through the house or physical touch hardware.
 - PR #41 reported all 47 hosted-layout test files passing with original binary assets. Earlier counts were snapshots at their respective PRs, not a count to reuse forever.
 - Native Three tests construct actual meshes, inspect finite geometry/budgets, check paths, camera bounds, collision footprints and surfaces. Character tests load real rigs/clips with bitmap decoding mocked where appropriate.
 - Story-flow fixtures execute actual handlers with a simulated DOM: business, money, ownership, stale/duplicate actions, saves and newer home guide hooks. A passing simulated panel is not a rendered 3D playthrough.
@@ -326,7 +347,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 | --- | --- |
 | Doors do not open / no interaction guidance reported in a related project chat | Neighborhood front/patio/garage doors now animate with collision and addressed prompts; mobile CSS no longer hides the prompt. Native/UI checks pass; reproduce/confirm on the reporting device before claiming device-specific resolution |
 | Attractive addresses on every home's front wall | Implemented for all 27 homes with shared illuminated number/street atlas; native identity/orientation checks pass; physical-device readability remains unverified |
-| Future runtime source drift | Current candidate resolves the observed weather/siren/mobile gap; rerun the read-only parity command against an available current Site checkout before future handoffs |
+| Future runtime source drift | PR #44 resolved the observed weather/siren/mobile gap; rerun the read-only parity command against an available current Site checkout before future handoffs |
 | PR #8 school/grocery/bus/Hudson/riverfront expansion | Historical merged PR describes these, but current main lacks its dedicated city-next test/module and several runtime identifiers; do not present the full package as currently playable without reconciliation |
 | Full GPU/mobile acceptance | Still needed on actual iPhone/Safari and desktop; test first load, doors, stairs, shadows, frame stability, audio, touch, app switching and save recovery |
 | Remaining homes/towers | Other community homes now have unfurnished ground-floor shells and front/patio/garage access; upper floors and most towers remain scenery |
@@ -395,6 +416,33 @@ This requirement comes directly from the owner: the context must be updated afte
 - State/save/migration: adds `learning` and `gardenReflectionDue` to the story save; older saves default to Builder with skills New; legacy Garden investments settle with their original payouts. The fixed `businessTasks` lists are removed. Economy prices/earnings unchanged.
 - Validation actually run: `npm test` 86/86 across 54 files on this branch from main `72ed6aa`; generator checks cover all 12 skills × 5 levels × 1,000 seeds; inline module syntax checked. Earlier on the previous base the game loaded in headless Chromium with software WebGL with no page errors and the learning panels were screenshot-checked at desktop and phone widths in a harness. No GPU, physical-device or audio check. Site parity not checked (Site checkout unavailable); this runtime change intentionally diverges from the published Site until deployed.
 - Remaining work: child playtest and tuning; Spanish strings and read-aloud; optional tier-scaled economy; play-time tracking.
+### 2026-10-22 — Give household actions responsive sound
+
+- Request / reason: continue the next useful improvement to the furnished landmark. Household interactions changed visuals but had no specific audio feedback.
+- Result: short door/latch, switch, appliance, fabric, TV, basin and flush textures follow successful actions. Running water and the washer use two reusable spatial layers from actual saved state. Added a saved Household sounds switch under Sound settings, using Effects volume. World pause/background/vehicle/category gates silence the continuous layers; disabled/backgrounded short household sounds stop without replay on return.
+- Affected: new `house-audio.js`, `city-audio.js`, validated object/rest/bed handlers and animation sampling, new house-audio tests, existing mixer/story tests, current README/source/context. Source sampling reuses house room metadata and actual action positions; no sound is triggered by viewing menus or restoring flags.
+- Compatibility / budgets: no story save, price, ownership or household-flag schema changes. Existing `mapleStreetAudioV1` gains `household`, default true; existing volume/mute preferences remain. Twelve fixed sources reuse the original noise buffer; global short-voice cap stays eight. No per-frame node creation, graphics allocation, external audio assets or permissions.
+- Validation: 69/69 repository cases across 54 files, 52/52 hosted cases, syntax/context/whitespace checks and all 82 shipped files matching. Tests cover real source positions, saved state, floors/doors/distance/stereo, every sound profile, gesture/mute/category/background gates, paused-chooser audio-clock cooldown, node/voice budgets, cleanup and actual successful/rejected interaction dispatch. Browser offline/live Web Audio render, gesture unlock and household mute passed using a removed temporary QA page.
+- Limits / delivery: physical listening/volume tuning and full GPU/mobile acceptance remain open. Publish through the existing owner-private Site and open the corresponding GitHub PR; exact source/deployment/CI outcomes belong in the final handoff, not an assumed merge.
+
+### 2026-10-22 — Map both floors and find household objects
+
+- Request / reason: continue useful development of the flagship house. The existing settling guide gives tasks, but players need a way to understand rooms, stairs and object locations.
+- Result: implemented City menu / nearby chooser → House rooms & objects, with separate floor plans, actual player/target positions, nine room groups and all 25 furnished interactions. A selected object gives a compact indoor location cue, including stairs and closed room doors. It clears after successful interaction or explicit cancellation. Existing city routes and settling progress remain independent.
+- Affected: new `house-guide.js`, runtime UI/save integration, `house-guide.test.mjs`, actual-scene story-flow checks, current README/source/context. Plans use actual collision/door/action data and group metadata; this is location guidance with normal walking, not automatic travel or an obstacle-aware path solver.
+- Compatibility: optional whitelisted `houseGuide.targetId` defaults to null in old saves and survives existing export/import; no new backup version. Existing economy, ownership, household flags and scene geometry stay intact. Guidance is free for visitors. Vehicle mode hides the indoor cue and outside resumes the selected city route.
+- Validation: 68/68 repository cases across 53 files and 51/51 hosted cases; focused guide/UI checks after layout polish; all 81 runtime files match across layouts. Coverage includes every real approach, room/floor classification, closed exit doors, stairs, markers, invalid targets, portable saves, real modal handlers, selection/restore/completion/cancel and city/HUD coexistence. Desktop and phone-width isolated browser UI passed; full 3D/physical-device testing is still outstanding.
+- Delivery: include this context in both source commits, publish to the existing private playtest and open a GitHub PR with full game/context CI. Exact source/deployment/PR results belong in the final handoff; this entry does not claim an unobserved merge.
+
+### 2026-10-22 — Select every reachable furnished-house object
+
+- Request / reason: continue the next useful work on the flagship house. Source inspection found that the main bed and curtains share an approach point, leaving the curtains hidden behind nearest-object selection; nearby kitchen/bathroom fixtures also compete for the prompt.
+- Result: added a paused nearby-object chooser when several household items are reachable, current state/action labels and a contextual Choose object touch prompt. Doors remain direct; isolated objects preserve one-action interaction. Toggling refreshes the panel, and seating, beds, wardrobe and home plans retain their existing flows.
+- Affected: `landmark-house.js`, runtime entry point, new `house-interactions.test.mjs`, actual-scene story-flow integration and current README/source/context. Both source layouts receive the same runtime. PR/publication results are in the handoff; no unobserved merge is claimed.
+- Compatibility: existing house flags and save format, wallet/savings, home ownership and geometry budgets remain unchanged. Discovery and execution now share floor, distance, finite-position and obstacle checks; stale or remote chooser calls cannot activate objects.
+- Validation: repository suite 67/67 across 52 files; tests cover every actual furniture approach, bed/curtain overlap, all TV channel states, bathroom choices, closed doors, different floors, invalid positions, persistence, prompt dispatch, paused panels, resting/seating and direct doors. Isolated browser chooser/CSS verified at desktop and 390-pixel widths; WebGL startup remains unavailable in this browser, and physical iPhone/Safari acceptance remains outstanding. Temporary QA files are removed before source packaging.
+- Source checks: the hosted-layout suite also passes 50/50 cases; all 80 shipped runtime files match the GitHub candidate. Inline module syntax, staged context-policy and whitespace checks pass. These checks ran after the temporary QA files were removed.
+- Delivery: package and publish through the existing owner-private Site, keep all 80 shipped runtime files aligned with the GitHub candidate, and include context in both source commits. Full game CI and context CI run on the PR.
 
 ### 2026-10-21 — Reconcile playtest runtime and guard against source drift
 
@@ -425,7 +473,7 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ### Historical milestones
 
-The table below records reviewed merged PR milestones through #43. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
+The table below records reviewed merged PR milestones through #46. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
 
 | PR | Milestone | Merged (UTC date) |
 | --- | --- | --- |
@@ -472,4 +520,6 @@ The table below records reviewed merged PR milestones through #43. Current-sourc
 | [#41](https://github.com/DESIR33/My-City-My-Choices/pull/41) | Guide players through settling into their furnished home | 2026-10-21 |
 | [#42](https://github.com/DESIR33/My-City-My-Choices/pull/42) | Add maintained project context and per-change documentation policy | 2026-10-22 |
 | [#43](https://github.com/DESIR33/My-City-My-Choices/pull/43) | Connect neighborhood doors, address plaques and saved house guidance | 2026-10-22 |
-| [#42](https://github.com/DESIR33/My-City-My-Choices/pull/42) | Document project context and require updates in each change commit | 2026-10-22 |
+| [#44](https://github.com/DESIR33/My-City-My-Choices/pull/44) | Reconcile playtest weather, sirens and mobile recovery with GitHub | 2026-10-22 |
+| [#45](https://github.com/DESIR33/My-City-My-Choices/pull/45) | Make every nearby household object selectable in the Maple House | 2026-10-22 |
+| [#46](https://github.com/DESIR33/My-City-My-Choices/pull/46) | Add a two-floor house map and saved furniture guidance | 2026-10-22 |

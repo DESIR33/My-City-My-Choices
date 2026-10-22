@@ -1,5 +1,11 @@
 # My City, My Choices
 
+The furnished Maple House now responds with door, switch, appliance, fabric, TV and bathroom sounds. Running water and the washer fade with distance, floors and closed room doors. **Settings → Sound → Household sounds** toggles the feature; Effects volume adjusts it. Sounds start after interaction and respect mute/app switching. The audio is original synthesized texture; physical-device listening and volume tuning remain open.
+
+**City menu → House rooms & objects** now maps both floors of the furnished Maple House. Browse 25 objects by room, see stairs and your position, then select an object for a saved location cue while walking. Closed room doors and floor changes get explicit hints. Using the selected object completes the guidance; city routes resume outside. The guide is free for visitors. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for source, saves and verification limits.
+
+Inside the furnished Maple House, overlapping household objects now offer a nearby-object chooser through E / Choose object. Select the bed or curtains independently, use kitchen/bathroom fixtures and see current on/off, open/closed and TV channel states. Doors still act directly. Choices respect real floors, distance and closed doors, and use existing saved household settings. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for verification and device limits.
+
 Neighborhood entry: **World map → Maple Grove · Find an address** lists all 27 homes with front-walk and spare-driveway guidance. Each has an illuminated front-wall number/street plaque and working front/patio/garage doors; nearby keyboard/touch prompts say Open or Close. The Maple House has two furnished floors, while other homes offer unfurnished ground-floor entry. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for current scope and verification limits.
 
 Start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the current game, architecture, decisions, source/deployment status, known issues and roadmap. Contributors must read [AGENTS.md](AGENTS.md) and update the context in every change commit. The **Project context / context-current** CI check validates this policy; configure it as required in repository rules to block merges. The feature notes below preserve chronological implementation history and can predate later updates.
