@@ -4,9 +4,9 @@ Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the current implementation, ro
 
 - Repository: https://github.com/DESIR33/My-City-My-Choices
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site
-- Audited repository baseline: `888e7d933072d35d5ff228f307eb06b71af225f8`, through merged PR #46 (two-floor house guide), published in private Site version 65 from `256ba374e13a4c855c05a36ce3de6e07bc05887b`.
+- Audited repository baseline: `998c7523c36e45e65dbb8a732785f99d4de3b400`, through merged PR #47 (household sound), published in private Site version 66 from `700d75eb2fd4fa72f7771866a33471ee52c14acc`.
 - GitHub serves root `index.html` / `assets/`; the separate hosted source uses `dist/index.html` / `dist/assets/`.
-- PR #44 merged the weather, wet traffic, sirens and mobile memory/recovery work. The current household-audio change adds a source/profile module and aligns all 82 shipped files across candidate layouts. Publication/PR outcomes belong in the handoff. Native tests and isolated browser Web Audio checks do not establish physical-device listening quality or full GPU acceptance.
+- PR #44 merged the weather, wet traffic, sirens and mobile memory/recovery work. The current house-guide marker adds one module and aligns all 83 shipped files across candidate layouts. Publication/PR outcomes belong in the handoff. Browser startup still cannot create WebGL here; native visibility/geometry/projection tests do not establish rendered GPU appearance or physical-device performance.
 - Run `npm run check:parity -- /absolute/path/to/site-checkout` to compare the complete runtime inventory and hashes, including binary assets. It is read-only and does not copy, authenticate or deploy. Non-runtime docs/tests differ intentionally. Full game CI runs native regressions and checker unit cases, not a private-Site comparison.
 - Documentation-only changes do not imply a new deployed game version. Use exact commit/archive/deployment evidence for future publication claims.
 

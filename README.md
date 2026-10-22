@@ -1,5 +1,7 @@
 # My City, My Choices
 
+Select an object under **Menu → House rooms & objects** to show a small mint marker at its approach point when nearby. It respects floors, doors, walls, furniture, camera visibility and Focus view, and disappears when guidance is canceled or the object is used. It adds two small meshes with no lights or shadows. GPU appearance and phone performance still need device acceptance; see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
+
 The furnished Maple House now responds with door, switch, appliance, fabric, TV and bathroom sounds. Running water and the washer fade with distance, floors and closed room doors. **Settings → Sound → Household sounds** toggles the feature; Effects volume adjusts it. Sounds start after interaction and respect mute/app switching. The audio is original synthesized texture; physical-device listening and volume tuning remain open.
 
 **City menu → House rooms & objects** now maps both floors of the furnished Maple House. Browse 25 objects by room, see stairs and your position, then select an object for a saved location cue while walking. Closed room doors and floor changes get explicit hints. Using the selected object completes the guidance; city routes resume outside. The guide is free for visitors. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for source, saves and verification limits.
