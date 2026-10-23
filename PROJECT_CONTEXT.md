@@ -490,6 +490,16 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-22 — Fix startup crash that locked Start and Continue
+
+- Request / reason: owner reported that "Continue saved story" and "Start exploring" could not be clicked after filling out setup.
+- Root cause: PR #55 added `conversation(x,z)`, which placed each partner with `blocked()`. It runs while the world is built, before `const player` exists, and `blocked()` reads `player.position.y` for house floors, so the main module threw `ReferenceError: Cannot access 'player' before initialization`. Everything after that line never ran, including the final `cityReady` flag the onboarding (PR #61) waits for, so both buttons stayed disabled. The crash existed since PR #55 merged; `npm test` missed it because no test executes that part of the inline module.
+- Result and status: fixed on branch `fix-startup-player` and proposed for merge. `conversation()` now uses `openGround(x,z)` (world walkability plus static obstacle boxes, no player). Step 3 of onboarding now states why Start is locked: city still loading, load failed, no goal, invalid PIN, or a saved story that needs "Start a new story" ticked.
+- Affected files / systems: `index.html`, `assets/onboarding.js`, `tests/onboarding.test.mjs`.
+- State/save/migration: none. Saved stories were never touched; they load again.
+- Validation actually run: `npm test` 117/117; inline module `node --check`; full game loaded in headless Chromium with software WebGL: city ready in about 32 s with no page errors; new story starts; after reload Continue resumes the save; with a save present Start stays locked with the explanation until "Start a new story" is ticked. No GPU or physical-device check.
+- Remaining work: the inline module still has no end-to-end load test in CI; the headless browser check above was run manually.
+
 ### 2026-10-22 — Make goal selection reliable and rebuild onboarding
 
 - Request / cause: no way to choose a goal at startup; review the whole onboarding. Goal buttons were created deep in the main world module, so an earlier 3D/startup failure left the goal container empty. The long combined form also buried goals under customization and parent settings.

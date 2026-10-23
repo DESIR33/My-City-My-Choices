@@ -32,8 +32,10 @@ f.get('avatarName').value='<Player>';f.get('avatarName').emit('input');f.get('ch
 f.get('setupNext').emit('click');assert.equal(f.control.step,1);assert.equal(f.get('setupNext').disabled,true);f.get('setupNext').emit('click');assert.equal(f.control.step,1,'Cannot skip goal selection');
 f.goals[1].emit('click');assert.equal(f.get('onboardingGoal').value,'1');assert.equal(f.goals[1].attrs['aria-pressed'],'true');assert.equal(f.get('setupNext').disabled,false);
 f.get('setupNext').emit('click');assert.equal(f.control.step,2);assert.equal(f.get('setupName').textContent,'<Player>');assert.equal(f.get('setupGoalName').textContent,'Get an art set');assert.equal(f.get('setupTarget').textContent,'$500.00');assert.equal(f.get('begin').hidden,false);assert.equal(f.get('begin').disabled,true,'Setup cannot start an uninitialized city');
+assert.match(f.get('setupActionHint').textContent,/still loading/,'Step 3 says Start waits for the city');
 f.root.dataset.cityReady='true';doc.emit('city:ready');assert.equal(f.get('begin').disabled,false);
-f.get('parentPinSetup').value='abc';f.get('parentPinSetup').emit('input');assert.equal(f.get('begin').disabled,true);assert.match(f.get('setupPinError').textContent,/four digits/);
+assert.match(f.get('setupActionHint').textContent,/Start when you’re ready/);
+f.get('parentPinSetup').value='abc';f.get('parentPinSetup').emit('input');assert.equal(f.get('begin').disabled,true);assert.match(f.get('setupActionHint').textContent,/Fix the PIN/);assert.match(f.get('setupPinError').textContent,/four digits/);
 f.get('parentPinSetup').value='1234';f.get('parentPinSetup').emit('input');assert.equal(f.get('begin').disabled,false);
 f.get('setupBack').emit('click');assert.equal(f.control.step,1);assert.equal(f.goals[1].attrs['aria-pressed'],'true');assert.equal(f.writes,0,'Editing setup never writes or replaces progress');
 let prevented=false;doc.activeElement=f.get('setupNext');f.root.emit('keydown',{code:'Tab',preventDefault(){prevented=true;}});assert.ok(prevented);assert.equal(doc.activeElement,f.get('avatarName'));
@@ -41,4 +43,12 @@ assert.equal(mountOnboarding(doc,f.win),null,'Mounting twice does not attach dup
 f=fixture(JSON.stringify(saved));assert.equal(f.get('setupResume').hidden,false);assert.equal(f.get('savedStorySummary').textContent,'Existing · Business day 1');f.goals[0].emit('click');f.root.dataset.cityReady='true';doc.emit('city:ready');assert.equal(f.get('continueStory').disabled,false);assert.equal(f.get('begin').disabled,true,'An existing story needs explicit replacement consent');f.get('replaceStory').checked=true;f.get('replaceStory').emit('change');assert.equal(f.get('begin').disabled,false);assert.equal(f.writes,0);
 f=fixture();f.goals[2].emit('click');f.win.emit('error');assert.match(f.get('citySetupStatus').textContent,/couldn’t finish loading/);assert.equal(f.get('setupRetry').hidden,false);assert.equal(f.get('onboardingGoal').value,'2');f.get('setupRetry').emit('click');assert.equal(f.reloads,1);
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');for(const g of STARTER_GOALS)assert.ok(html.includes('id="startupGoal'+g.id+'"'),'Goal '+g.id+' exists before any runtime JS');assert.match(html,/<script type="module" src="\.\/assets\/onboarding.js"><\/script>/);assert.ok(!html.includes('goalNames.forEach((n,i)=>{let b=document.createElement'));
-console.log('Onboarding passed: static goals, all age-tier targets, real setup-controller steps, loading/failure states, PIN and saved-story guards, safe text, focus containment and no premature save writes.');
+// A saved story locks Start until the player chooses to replace it, and step 3 says so.
+f=fixture(JSON.stringify(saved));f.root.dataset.cityReady='true';doc.emit('city:ready');f.get('setupNext').emit('click');f.goals[0].emit('click');f.get('setupNext').emit('click');
+assert.equal(f.get('begin').disabled,true);assert.match(f.get('setupActionHint').textContent,/saved story.*Continue it above.*Start a new story/);
+f.get('replaceStory').checked=true;f.get('replaceStory').emit('change');assert.equal(f.get('begin').disabled,false);assert.match(f.get('setupActionHint').textContent,/Start when you’re ready/);
+// Startup regression: world setup runs before the player exists, so conversation placement must not call blocked() (it reads player height).
+const conversationSource=html.match(/function conversation\(x,z\)\{[^\n]*/)?.[0]||'',openGroundSource=html.match(/function openGround\(x,z\)\{[^\n]*/)?.[0]||'';
+assert.ok(conversationSource.includes('openGround(')&&!conversationSource.includes('blocked('),'conversation pairs use the setup-safe ground check');assert.ok(openGroundSource&&!/player/.test(openGroundSource));
+assert.ok(html.indexOf('function conversation(x,z)')<html.indexOf('const player=person('),'conversation() is defined before the player, so it must stay player-free');
+console.log('Onboarding passed: static goals, all age-tier targets, real setup-controller steps, loading/failure states, PIN and saved-story guards with step-3 reasons, startup-safe conversation placement, safe text, focus containment and no premature save writes.');

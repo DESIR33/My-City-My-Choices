@@ -36,6 +36,8 @@ export function mountOnboarding(doc,win){
     get('begin').disabled=!ready()||id===null||!setupPinValid(pin)||!!story&&!get('replaceStory').checked;
     get('continueStory').disabled=!ready();get('introBackups').disabled=!ready();
     get('citySetupStatus').textContent=root.dataset.cityError|| (ready()?'Your city is ready. Let’s meet Mom.':'Getting your city ready. You can choose your player and goal while it loads.');
+    // On the last step, say exactly why Start is not available yet.
+    if(step===2)get('setupActionHint').textContent=root.dataset.cityError?'Step 3 of 3 · The city didn’t load. Reload to try again.':!ready()?'Step 3 of 3 · Your city is still loading. Start unlocks when it’s ready.':id===null?'Step 3 of 3 · Go back and choose a goal first.':!setupPinValid(pin)?'Step 3 of 3 · Fix the PIN under Grown-up controls, or leave it blank.':story&&!get('replaceStory').checked?'Step 3 of 3 · You have a saved story. Continue it above, or tick “Start a new story” below to replace it.':'Step 3 of 3 · Start when you’re ready.';
     get('setupRetry').hidden=!root.dataset.cityError;get('setupRetry').textContent=root.dataset.lighterGraphics==='true'?'Try lighter graphics':'Reload city';
   }
   function render(focus=false){
