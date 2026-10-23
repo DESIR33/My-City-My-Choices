@@ -10,11 +10,11 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `9164760108e6bcc5c5c592f4f92b30c461078d38`, through merged PR #59 (foliage wind), including learning/tier money, house/city realism, people/pets and seated life. The private Site was still version 68 at source `7c02849485203d6588f04611e6c3b32091fc042a` before this fix. This candidate preserves merged main while reconciling both runtime layouts; exact publication/PR outcomes belong in the handoff. Older ledger entries record status when written and do not override this snapshot.
+- Audited GitHub baseline: `ab5efb1ac5439356244e92ba4341feed86952bee`, through merged PR #60 (cursor/menu and house 139), preserving learning, tier money, realism, crowd and foliage work. That complete runtime is published in private Site version 69, source `c1bf138d390ad6fa8c664ba6415233d036af8add`. The current candidate rebuilds onboarding; exact new publication/PR outcomes belong in the handoff. Older ledger entries record status when written and do not override this snapshot.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
 - Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. 139 Willow Way now has a furnished, partitioned ground floor; other neighboring homes have empty walk-in shells. Only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
-- Learning layer (merged in PR #50; not verified as published to the Site): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
+- Learning layer (merged in PR #50; published in Site version 69): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
 - Tier-scaled story money (merged in PR #51; included in this reconciled candidate): the age tier now also sets the money scale. Sprout keeps today's coin economy; Builder uses ×10 amounts plus weekly savings interest; Planner uses realistic amounts with a weekly paycheck and taxes, loans with interest and monthly bills. See [Tier-scaled story money](#tier-scaled-story-money).
 - Multiplayer, server-assigned properties, cloud save synchronization and a production real-estate economy are not built.
 
@@ -22,7 +22,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 The current source tree, runtime imports, module code, README and PR history through #50 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Runtime reconciliation:** PR #44 closed an earlier weather/siren gap. Before this fix, Site version 68 retained the PR #49 era runtime while main had merged through #59. The candidate updates the Site from current main, preserving existing source behavior, and adds the controls/139 fix to both layouts. All 243 runtime files, including binary models, baked lighting and compressed textures, are compared by inventory/hash before publication. Docs/tests retain their layout-specific paths. Parity does not establish browser/GPU/device acceptance.
+**Runtime reconciliation:** PR #60 reconciled the private Site to main through #59 and fixed controls/139, with all 243 shipped runtime files matching. Onboarding adds two local assets (controller and CSS), making 245 files in both candidate layouts. The full inventory/hash comparison includes binary models, baked light and compressed textures. Docs/tests retain their layout-specific paths. Parity does not establish browser/GPU/device acceptance.
 
 ## Contents
 
@@ -86,7 +86,17 @@ The design references are inspiration, not a claim of affiliation or a licensed 
 6. After business day two, compare housing and car choices. Renting/buying connects the player to the furnished Maple House. Tour it freely before committing.
 7. Optionally follow Help me settle in: arrive home → enter → upstairs wardrobe → rest → stand → daily review. The guide never gives money, charges bills or advances time automatically.
 
-### Controls and UI
+### Starting and continuing a story
+
+The welcome experience is now three steps: Your player → Your goal → Ready to play. Step one offers a name (blank uses Player), optional age 6–12 and collapsed appearance choices. Step two prominently shows the bike, art-set and cozy-home goal cards, their descriptions and savings targets. No goal is preselected. Step three reviews name/goal/target/question tier, explains meeting Mom at the front door and the current desktop/touch controls, and offers optional parent PIN setup. Next cannot skip goal selection; Back preserves the draft, and the fixed panel footer keeps navigation visible while content scrolls. Focus moves to each step heading, Tab stays in the active setup controls, and selected options expose `aria-pressed`.
+
+`onboarding.js` runs as a separate local module with no Three.js dependency, and the goal buttons are shipped HTML rather than created after world construction. Setup works while the world is loading or when it fails. `onboarding.css` provides responsive phone/landscape layouts and a non-tiling market-art backdrop. Goal previews use the actual economy conversion and age tiers; no age defaults to Builder, matching start behavior. Setup changes do not spend money, write a story or change active progress. The draft lives in form controls only; the real start handler validates/reads the selected goal and appearance before normal initialization.
+
+World initialization marks `data-city-ready` only after the first animation call succeeds. Until then Start, Continue and backup tools remain disabled. A startup graphics failure produces an inline explanation and Try lighter graphics action rather than an overlay obscuring setup; other unhandled boot errors offer reload. Goal selection and back/next still work. The retry uses the existing Basic-mode reload path when available. This does not make unsupported graphics hardware playable.
+
+A validated existing primary save gets a prominent Continue card, revalidated on use. New story creation requires explicit replacement consent; the existing `resetSave` path must keep the old valid story in `mapleStreetRecoveryV1` before replacement. If that recovery write fails, starting is blocked and the old primary stays intact. Duplicate Start calls cannot reset a running story. The parent PIN must be blank or exactly four digits. Existing story/save identities, prices, goals, wardrobe, learning, ownership and household state formats remain unchanged; normal Continue restoration is reused. Corrupt primary data is not offered as a valid Continue choice; existing backup/recovery tools remain available after the world loads.
+
+### Gameplay controls
 
 | Situation | Desktop | Touch |
 | --- | --- | --- |
@@ -296,6 +306,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 
 | Files under `assets/` | Responsibility / related tests |
 | --- | --- |
+| `onboarding.js`, `onboarding.css` | Renderer-independent setup steps, goal catalogue/amount previews, validated saved-story discovery, readiness/failure and responsive/focus behavior; onboarding/story-flow tests |
 | `world-rules.js` | District bounds, bridge/coast heights, roads, community lots and shared playable constraints; world/navigation/community tests |
 | `north-world.js`, `coast-world.js`, `flamingo-hotel.js` | Northern/coastal construction, interiors, elevator and surface contracts; north/coast/bridge tests |
 | `planned-community.js`, `residential-doors.js`, `community-addresses.js`, `community-plaza.js` | Lots, plaques, dynamic doors, address destinations, landscaping and plaza/playground; community/address/door tests |
@@ -478,6 +489,14 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-22 — Make goal selection reliable and rebuild onboarding
+
+- Request / cause: no way to choose a goal at startup; review the whole onboarding. Goal buttons were created deep in the main world module, so an earlier 3D/startup failure left the goal container empty. The long combined form also buried goals under customization and parent settings.
+- Result: three focused screens with static goal cards, age-scaled targets, optional appearance/PIN, summary/first objective/controls, fixed Next/Back/Start footer, keyboard focus containment and phone/landscape styles. A renderer-independent module owns setup; world readiness/failure is explicit. Valid saves have a Continue card. Confirmed replacement keeps recovery first; failed recovery and duplicate Start are guarded.
+- Affected: `index.html`, new `onboarding.js` / `onboarding.css`, new `onboarding.test.mjs`, actual start/continue/new-story story-flow coverage, README/source notes and this context. No new media, graphics allocations, saved schema, goal IDs or economy changes. Main baseline is merged PR #60 at `ab5efb1ac5439356244e92ba4341feed86952bee`; previous private Site version 69 is source `c1bf138d390ad6fa8c664ba6415233d036af8add`.
+- Validation: repository 117/117 cases across 71 test files and hosted layout 100/100 cases pass, including real setup-controller navigation/loading/failure/PIN/save/focus behavior and actual game handlers for every prior story/economy path. New start checks cover selected draft/appearance, no-goal/invalid-PIN refusal, confirmed replacement, failed recovery preservation and duplicate calls. Browser checks on the actual startup page confirm goals remain selectable despite unavailable WebGL. A removed isolated ready-state page using shipped HTML/CSS/controller checks desktop and 390×844 phone steps, scaled amounts, selection, summary and enabled/reachable Start; this does not prove a rendered game start. Inline/module syntax, staged context-policy and whitespace checks pass; all 245 runtime files match across layouts.
+- Delivery / limits: synchronize both runtime layouts, run hosted/syntax/context/whitespace/parity checks and publish to the existing owner-private Site. Final source/deployment/CI outcomes are in the handoff. GPU rendering, physical touch/keyboard and a real-device first-Mom playthrough remain acceptance items; this browser cannot initialize WebGL. Temporary QA pages are removed before packaging.
 
 ### 2026-10-22 — Separate cursor release from the menu and repair 139 Willow Way
 

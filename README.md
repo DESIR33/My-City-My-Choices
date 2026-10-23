@@ -1,5 +1,7 @@
 # My City, My Choices
 
+Onboarding now has three clear steps: **Your player → Your goal → Ready to play**. Goal cards load independently of the 3D city and show age-adjusted savings targets. Appearance and parent PIN settings are optional; Next/Back/Start stay visible on phones. Continue a valid saved story directly, or explicitly confirm a new story with recovery protection. Loading/graphics failures show a retry instead of an empty goal area. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for behavior and verification limits.
+
 **Keyboard:** press **P** for the city menu. **Escape** releases the mouse or closes a panel without recapturing it; click the game view to resume mouse look. The Menu button remains available for touch. House **139 Willow Way** now has a furnished ground floor with plaster room walls, living room, kitchen/dining area, guest bedroom and a separate garage. Neighboring house foundations sit below their finished floors to remove overlapping faces and flicker. Its upper floor remains closed; 101 Maple Grove is still the fully interactive two-floor home.
 
 **Home & daily life → Make it your own** now offers Ocean blue, Garden sage and Warm clay textile styles. The existing $1 textile improvement unlocks all three; later restyles are free and saved with your home. Swatches match the actual rug, sofa and bedding materials. Existing purchases keep their original look. Renew an expired rental before editing; installed decor stays visible. See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for compatibility and testing limits.
