@@ -7,7 +7,7 @@ import {MODEL_HOME as H,freshHouse,restoreHouse,houseLocal,houseInside,onHouseSt
 
 // One persistent property, built at world scale. Moving leaves stay outside the
 // static batches; all collision volumes carry their real vertical interval.
-export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,surfaces=createHouseSurfaces()}){
+export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,surfaces=createHouseSurfaces(),mobile=false}){
  const root=new THREE.Group();root.name='101 Maple Grove Lane · walk-in landmark';root.position.set(H.x,0,H.z);scene.add(root);
  const unit=new THREE.BoxGeometry(1,1,1),cylinder=new THREE.CylinderGeometry(1,1,1,12),sphere=new THREE.SphereGeometry(1,10,7),torus=new THREE.TorusGeometry(1,.12,6,18);
  // House-owned scanned materials (house-surfaces.js); city materials stay untouched.
@@ -156,11 +156,14 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  function slideMirror(){const m=new THREE.MeshPhysicalMaterial({color:0xb6c5bd,metalness:.9,roughness:.13,envMapIntensity:.8});m.onBeforeCompile=addHouseBake;m.customProgramCacheKey=()=>'maple-house-mirror';return m;}
  function syncDoor(d){d.g.rotation.y=d.angle;root.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(d.leaf,true);Object.assign(d.collider,{minX:bounds.min.x,maxX:bounds.max.x,minZ:bounds.min.z,maxZ:bounds.max.z});}
  function inSwing(d,p){if(Math.abs((p.y||0)-d.y)>1.7)return false;const q=houseLocal(p),dx=d.axis==='x'?d.w:0,dz=d.axis==='z'?d.direction*d.w:0,angle=d.sign*Math.PI/2,ox=dx*Math.cos(angle)+dz*Math.sin(angle),oz=-dx*Math.sin(angle)+dz*Math.cos(angle);return q.x>d.x+Math.min(0,dx,ox)-.5&&q.x<d.x+Math.max(0,dx,ox)+.5&&q.z>d.z+Math.min(0,dz,oz)-.5&&q.z<d.z+Math.max(0,dz,oz)+.5;}
- function update(dt=0,position=null,instant=false){tvTime+=Math.max(0,dt);for(const d of doors){if(!state[d.id]&&Math.abs(d.angle)>.02&&position&&inSwing(d,position))state[d.id]=true;const goal=state[d.id]?d.sign*Math.PI/2:0;d.angle=instant?goal:dt?THREE.MathUtils.damp(d.angle,goal,9,dt):d.angle;syncDoor(d);}
+ function update(dt=0,position=null,instant=false){tvTime+=Math.max(0,dt);for(const d of doors){if(!state[d.id]&&Math.abs(d.angle)>.02&&position&&inSwing(d,position))state[d.id]=true;const goal=state[d.id]?d.sign*Math.PI/2:0,previous=d.angle;d.angle=instant?goal:dt?THREE.MathUtils.damp(d.angle,goal,9,dt):d.angle;if(Math.abs(d.angle-goal)<.0001)d.angle=goal;if(instant||d.angle!==previous)syncDoor(d);}
   for(const m of moving){if(m.rotation)m.mesh.rotation.y=state[m.key]?m.base+m.delta:m.base;else m.mesh.position[m.axis]=m.base+(state[m.key]?m.delta:0);}
   stream.visible=state.tap;shower.visible=state.shower;if(state.washer)drum.rotation.z+=dt*3;
   for(const b of beds){b.duvet.rotation.z=state[b.id]?0:.09;b.duvet.position.z=state[b.id]?.2:.5;}for(const c of curtains)c.scale.x=state.curtains?.45:1.1;
-  deskGlow.visible=state.desk;for(const [i,l] of lights.entries()){lightMats[i].color.setHex(state['lights'+i]?0xffe4a9:0x5d6257);l.visible=!!position&&houseInside(position)&&Math.abs((position.y||0)-(i?H.upper:.3))<1.8&&state['lights'+i];}
+  // Changing the visible light count recompiles lit materials across the city.
+  // Phones use baked/ambient light; desktop keeps a fixed two-light layout and
+  // changes only intensity as the player enters, switches floors or flips a switch.
+  deskGlow.visible=state.desk;for(const [i,l] of lights.entries()){lightMats[i].color.setHex(state['lights'+i]?0xffe4a9:0x5d6257);l.visible=!mobile;l.intensity=!mobile&&!!position&&houseInside(position)&&Math.abs((position.y||0)-(i?H.upper:.3))<1.8&&state['lights'+i]?12:0;}
   tvClock+=dt;if(!dt||state.tv&&position&&houseInside(position)&&tvClock>.5){tvClock=0;tvPicture();}
  }
  function blocked(x,z,y=.3,ignore=null){return colliders.some(o=>o.fixtureId!==ignore&&houseObstacleBlocks(o,x,z,y));}
