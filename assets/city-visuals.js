@@ -200,7 +200,7 @@ export function createCityVisuals(renderer, scene, {mobile = false} = {}) {
   const lightDirection = new THREE.Vector3(-75, 100, -55).normalize();
   uniforms.sunPosition.value.copy(lightDirection); scene.add(sky);
   scene.background = new THREE.Color(0x8aafc3);
-  scene.fog = new THREE.FogExp2(0x8aafc3, .00036);
+  scene.fog = new THREE.FogExp2(0x8aafc3, mobile?.0017:.00036);
   const environmentScene = new THREE.Scene(); environmentScene.add(sky.clone());
   const pmrem = new THREE.PMREMGenerator(renderer);
   const environment = pmrem.fromScene(environmentScene, .06, .1, 10000);

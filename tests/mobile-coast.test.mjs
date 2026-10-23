@@ -10,9 +10,10 @@ function build(mobile){const scene=new THREE.Scene(),obstacles=[],surfaces=[],tr
 after(()=>{globalThis.document=oldDocument;});
  test('Mobile coastal approaches keep the hotel light program stable and palm submissions bounded',()=>{
   const {scene,coast}=build(true),hotel=COAST_BUILDINGS.find(b=>b.name==='THE FLAMINGO'&&b.height>30),lights=WebGLLights({has:()=>false});let version,peak=0;
+  const hotelInterior=scene.getObjectByName('Flamingo modern interior');
   const pointers=new Set(coast.palmGrove.meshes.map(m=>m.instanceMatrix));
   for(let pass=0;pass<3;pass++)for(const z of [0,400,850,1050,1200,hotel.z,hotel.z+60,hotel.z,1800,2070,400,0]){
-   coast.update(.04,new THREE.Vector3(0,0,z));scene.updateMatrixWorld(true);const visible=[];scene.traverseVisible(o=>{if(o.isLight)visible.push(o);});lights.setup(visible);version??=lights.state.version;
+   coast.update(.04,new THREE.Vector3(0,0,z));assert.equal(hotelInterior.visible,Math.hypot(hotel.x,hotel.z-z)<70,'Hotel furniture only renders near the hotel on phones');scene.updateMatrixWorld(true);const visible=[];scene.traverseVisible(o=>{if(o.isLight)visible.push(o);});lights.setup(visible);version??=lights.state.version;
    assert.equal(lights.state.version,version);assert.equal(lights.state.spot.length,0);assert.equal(lights.state.point.length,0);
    const near=coast.palmGrove.meshes.filter(m=>m.userData.palmDetail==='near'&&m.name.includes('crowns')).reduce((n,m)=>n+m.count,0);assert.ok(near<=4,'Four rich palm crowns globally, across all tiles');
    const triangles=coast.palmGrove.meshes.reduce((n,m)=>n+(m.geometry.index.count/3)*m.count,0);peak=Math.max(peak,triangles);assert.ok(triangles<210000,'Actual submitted palm triangle budget');
