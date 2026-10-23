@@ -15,6 +15,15 @@ export function existingSetupStory(raw){try{return parseSaveFile(raw).save;}catc
 
 // This module deliberately has no 3D dependencies. The HTML goal cards and the
 // entire setup flow work even if the separate world module fails to initialize.
+export const LOAD_ERROR='The city couldn’t finish loading. Your saved story has not been replaced. Reload to try again.',LOAD_GRACE_MS=20000;
+// True for an uncaught error thrown by this page's own code (inline module or a
+// same-origin script). Cross-origin scripts report a bare "Script error." with no
+// file; rejections and resource events are never treated as fatal on their own.
+export function ownScriptError(event,win){
+  if(!event||event.type==='unhandledrejection'||!event.message||/^Script error\.?$/i.test(event.message))return false;
+  const file=event.filename||'';if(!file)return false;
+  try{return new URL(file,win.location?.href).origin===new URL(win.location?.href).origin;}catch{return false;}
+}
 export function mountOnboarding(doc,win){
   const root=doc.querySelector('#intro');if(!root||root.dataset.setupMounted)return null;root.dataset.setupMounted='true';
   const get=id=>doc.querySelector('#'+id),panels=[...root.querySelectorAll('[data-setup-panel]')],steps=[...root.querySelectorAll('[data-setup-step]')],goals=[...root.querySelectorAll('[data-goal]')];
@@ -57,7 +66,14 @@ export function mountOnboarding(doc,win){
   get('setupRetry').addEventListener('click',()=>{if(typeof win.retryCitySetup==='function')win.retryCitySetup();else win.location.reload();});
   root.addEventListener('keydown',event=>{if(event.code!=='Tab'||!root.classList.contains('show'))return;const nodes=[...root.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),summary')].filter(el=>el.getClientRects().length);if(!nodes.length)return;const first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&(doc.activeElement===first||!nodes.includes(doc.activeElement))){event.preventDefault();last.focus();}else if(!event.shiftKey&&(doc.activeElement===last||!nodes.includes(doc.activeElement))){event.preventDefault();first.focus();}});
   doc.addEventListener('city:ready',refresh);doc.addEventListener('city:setup-error',refresh);
-  const fail=()=>{if(!ready()){root.dataset.cityError||='The city couldn’t finish loading. Your saved story has not been replaced. Reload to try again.';refresh();}};
+  // A crash in the game's own scripts before the city is ready stops setup at once.
+  // Anything else (a browser add-on or host overlay, a late asset that failed to
+  // stream) only counts if the city is still not ready LOAD_GRACE_MS later, and a
+  // city that does become ready clears that generic message.
+  let graceTimer=null;
+  const showLoadError=()=>{graceTimer=null;if(ready())return;if(!root.dataset.cityError){root.dataset.cityError=LOAD_ERROR;root.dataset.cityErrorGeneric='true';}refresh();};
+  const fail=event=>{if(ready())return;if(ownScriptError(event,win))showLoadError();else if(graceTimer===null)graceTimer=(win.setTimeout?win:globalThis).setTimeout(showLoadError,LOAD_GRACE_MS);};
+  doc.addEventListener('city:ready',()=>{if(graceTimer!==null){(win.clearTimeout?win:globalThis).clearTimeout(graceTimer);graceTimer=null;}if(root.dataset.cityErrorGeneric==='true'&&root.dataset.cityReady==='true'){delete root.dataset.cityError;delete root.dataset.cityErrorGeneric;refresh();}});
   win.addEventListener('error',fail);win.addEventListener('unhandledrejection',fail);
   if(win.matchMedia?.('(any-pointer: coarse)').matches)get('setupControls').textContent='Left stick to move · Drag the city to look · Tap Interact near Mom · Menu opens your city options';
   render();const heading=root.querySelector('h1');if(heading){heading.tabIndex=-1;heading.focus();}return {refresh,get step(){return step;}};

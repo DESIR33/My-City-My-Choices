@@ -92,7 +92,7 @@ The welcome experience is now three steps: Your player → Your goal → Ready t
 
 `onboarding.js` runs as a separate local module with no Three.js dependency, and the goal buttons are shipped HTML rather than created after world construction. Setup works while the world is loading or when it fails. `onboarding.css` provides responsive phone/landscape layouts and a non-tiling market-art backdrop. Goal previews use the actual economy conversion and age tiers; no age defaults to Builder, matching start behavior. Setup changes do not spend money, write a story or change active progress. The draft lives in form controls only; the real start handler validates/reads the selected goal and appearance before normal initialization.
 
-World initialization marks `data-city-ready` only after the first animation call succeeds. Until then Start, Continue and backup tools remain disabled. A startup graphics failure produces an inline explanation and Try lighter graphics action rather than an overlay obscuring setup; other unhandled boot errors offer reload. Goal selection and back/next still work. The retry uses the existing Basic-mode reload path when available. This does not make unsupported graphics hardware playable.
+World initialization marks `data-city-ready` only after the first animation call succeeds. Until then Start, Continue and backup tools remain disabled. A startup graphics failure produces an inline explanation and Try lighter graphics action rather than an overlay obscuring setup; an uncaught error from the game's own scripts (same-origin file) before the city is ready offers reload at once. Errors that are not the game's own (a cross-origin "Script error." from a host overlay or browser add-on, a stray promise rejection from a streamed asset) only show the reload message if the city is still not ready 20 s later, and a city that then becomes ready clears that generic message; specific messages such as the graphics failure are never cleared. Goal selection and back/next still work. The retry uses the existing Basic-mode reload path when available. This does not make unsupported graphics hardware playable.
 
 A validated existing primary save gets a prominent Continue card, revalidated on use. New story creation requires explicit replacement consent; the existing `resetSave` path must keep the old valid story in `mapleStreetRecoveryV1` before replacement. If that recovery write fails, starting is blocked and the old primary stays intact. Duplicate Start calls cannot reset a running story. The parent PIN must be blank or exactly four digits. Existing story/save identities, prices, goals, wardrobe, learning, ownership and household state formats remain unchanged; normal Continue restoration is reused. Corrupt primary data is not offered as a valid Continue choice; existing backup/recovery tools remain available after the world loads.
 
@@ -497,6 +497,16 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-23 — Setup no longer fails on errors that are not the game's
+
+- Request / reason: owner hit "The city couldn’t finish loading" on step 3 of onboarding in the hosted playtest (the page shows an "Edit site" overlay), with a saved story waiting, so neither Continue nor Start could be used.
+- Cause: `assets/onboarding.js` marked the city failed on any window `error` or `unhandledrejection` before ready, including errors from scripts that are not part of the game (the host's editing overlay, browser add-ons) and stray async rejections, and a later successful load never cleared it. The exact error on the owner's page was not available; GitHub main (with PRs #64 and #65) loads in headless Chromium with no page errors, both fresh and after reload with a saved story.
+- Result and status: proposed on branch `city-load-errors`. New `ownScriptError(event,win)`: only an uncaught same-origin script error fails setup immediately. Other errors start a 20 s grace timer; the generic message appears only if the city is still not ready, and a later `city:ready` clears it. Specific setup errors stay.
+- Affected files / systems: `assets/onboarding.js`, `tests/onboarding.test.mjs`.
+- State/save/migration: none. Saved stories were never touched.
+- Validation actually run: `npm test`; new onboarding cases for own vs foreign errors, rejections, the grace timer, ready cancelling it, late ready clearing the generic message and specific errors persisting. GitHub main (PRs #64 and #65) in headless Chromium with software WebGL: city ready in 62 s on a fresh load and 39 s after reloading with a saved story, with no page errors or unhandled rejections. No GPU, device or hosted Site check.
+- Remaining work: if the hosted page still fails, the browser console's first error is needed; the hosted Site was not inspected or redeployed from here (parity unverified).
 
 ### 2026-10-23 — Fire extinguishers where they belong
 
