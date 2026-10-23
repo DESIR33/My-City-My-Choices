@@ -28,7 +28,8 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
   }
   // The earlier southern grass plane ends at z=1000. Mainland stays inland,
   // leaving the actual ocean open rather than hiding water below green land.
-  cube(scene,-434,-.42,1800,932,.35,1600,C.grass,false);
+  // West of x=-300 the ground belongs to Ronda's plateau (ronda-world.js).
+  cube(scene,-134,-.42,1800,332,.35,1600,C.grass,false);
   cube(scene,0,.01,622.5,15,.05,915,C.road,false);
   for(const side of [-1,1])cube(scene,side*9.3,.07,602.5,3,.14,875,C.walk,false);
   for(const x of COAST_CITY.avenues)cube(scene,x,.01,1560,15,.05,1040,C.road,false);

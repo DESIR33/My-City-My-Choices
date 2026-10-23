@@ -223,6 +223,19 @@ The waterfront includes a raised promenade, six usable ocean-facing benches, umb
 
 All 17 test files pass. `tests/coast-world.test.mjs` constructs the actual Three.js scene and checks road and footpath continuity, a 1.9 km drive using vehicle physics, road/building clearance, physical rail gaps, dry-beach/ocean boundaries, sand heights, clear entrances, palm and lighting geometry, coastal traffic signals, residents, seats, police routes, and saved car poses. Story tests exercise the actual fuel, refusal, save/restore, information-board, world-map, and destination handlers; fleet tests now check all 50 civilian slots. Browser rendering and physical-device performance remain unverified because the managed preview supervisor is unavailable.
 
+## Ronda: a cliff town beside Sunshore
+
+Open **World map → Ronda · Puente Nuevo**. From Sunshore's west avenue, the middle street (`z=1400`) continues west on a short link road into Ronda, a district inspired by Ronda in Málaga, Spain. It is a fictional game version, not a survey of the real town.
+
+- A limestone plateau with a high western escarpment over a 4 km farmland valley, olive trees, cypresses and distant mountains.
+- The El Tajo gorge splits the town. The river drops in an animated waterfall under the **Puente Nuevo**, a three-arch stone bridge with the chamber window above its central arch. The smaller **Puente Viejo** is for walking.
+- More than 1,300 whitewashed houses with terracotta hip roofs, green shutters and iron balconies line narrow lanes. Houses hang over the gorge rims as in the photos. A cream parador with arcades, Plaza de España, a round historic arena (a history museum in the game), a church with a bell tower, the Alameda gardens and a cliff-top gazebo complete the town.
+- Darker setts mark the shared streets cars may use. Railings line every open rim; the gorge and the cliff edge are never walkable.
+- Stand on the bridge, at the arena gate or at the Alameda viewpoint and press the action key for a short fact and a maths question with a hidden answer.
+- Cliff, bridge stone, roof tiles, cobbles and plaster relief use CC0 Poly Haven scans (`assets/ronda/textures`, made by `tools/prepare-ronda-textures.mjs`). Everything renders with plain colours first; the scans stream through the shared KTX2 loader.
+
+`tests/ronda.test.mjs` builds the district in Node and checks the gorge and escarpment rules, both bridges, clear streets, the scan files and credits, the landmark lessons, driving and walking routes and the game wiring.
+
 ## Maple Cafe service and building interiors
 
 Maple Cafe has eight varied customers and a cashier. Customers pay from separate cent-based wallets, queue at the register, wait while the cashier moves to the espresso machine, receive their order, reserve a chair, eat or drink, and leave. Four patrons start dining indoors and on the terrace; arrivals keep the cafe active. Cash gestures, brewing steam, handover cups, consumption poses, and a live service board make the stages visible. Several cafe seats remain available to the player.
