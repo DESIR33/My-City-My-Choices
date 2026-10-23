@@ -87,11 +87,12 @@ assert.equal(home.installFurniture({dining_chair_02:fake}).installed,0,'installi
 
 // Characters: indoors they ease toward the probe light; outdoors nothing is patched.
 {const kid=new THREE.Group(),coat=new THREE.MeshStandardMaterial();kid.add(new THREE.Mesh(new THREE.BoxGeometry(1,1,1),coat));
- assert.equal(shadeCharacter(kid,1),1);assert.equal(coat.userData.indoorShade,undefined,'outdoors leaves materials alone');
+ assert.equal(shadeCharacter(kid,1),1);assert.equal(coat.userData.indoorShade,true,'indoor shader is prepared on first appearance');const preparedVersion=coat.version,preparedKey=coat.customProgramCacheKey();
  const strength=houseBakeUniforms.houseBakeStrength.value;houseBakeUniforms.houseBakeStrength.value=1;
  const dim=bakeResponse(.02);assert.ok(dim<.25&&dim>=houseBakeUniforms.houseBakeFloor.value);
  let v=1;for(let i=0;i<120;i++)v=shadeCharacter(kid,.02,1/60);assert.ok(Math.abs(v-dim)<.01,'eases to the indoor level');assert.equal(coat.userData.indoorShade,true);
  const shader={uniforms:{},vertexShader:'',fragmentShader:'#include <aomap_fragment>'};coat.onBeforeCompile(shader);assert.match(shader.fragmentShader,/indirectDiffuse\*=characterIndirect/);assert.equal(shader.uniforms.characterIndirect.value,v);
+ for(let i=0;i<1000;i++)shadeCharacter(kid,i%2?.02:1,1/60);assert.equal(coat.version,preparedVersion,'repeated house entry cannot invalidate the material');assert.equal(coat.customProgramCacheKey(),preparedKey);
  houseBakeUniforms.houseBakeStrength.value=strength;}
 
 // Camera collision uses the merged meshes' per-piece boxes, not one house-sized box.

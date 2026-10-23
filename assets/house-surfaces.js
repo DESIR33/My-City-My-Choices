@@ -97,7 +97,8 @@ export function shadeCharacter(root,factor,dt=1/60){
  let entry=shaded.get(root);
  if(!entry){entry={uniform:{value:1},materials:new WeakSet()};shaded.set(root,entry);}
  const target=bakeResponse(factor),u=entry.uniform;
- if(u.value===1&&target===1)return u.value;
+ // Install while the actor first appears, before its first outdoor render.
+ // Walking indoors then changes a uniform, never the material's shader/version.
  root.traverse(m=>{if(!m.isMesh)return;for(const material of [].concat(m.material)){if(!material||entry.materials.has(material)||material.userData.indoorShade)continue;entry.materials.add(material);material.userData.indoorShade=true;const previous=material.onBeforeCompile,key=material.customProgramCacheKey;material.onBeforeCompile=(shader,renderer)=>{previous?.call(material,shader,renderer);shader.uniforms.characterIndirect=u;shader.fragmentShader='uniform float characterIndirect;\n'+shader.fragmentShader.replace('#include <aomap_fragment>','#include <aomap_fragment>\nreflectedLight.indirectDiffuse*=characterIndirect;reflectedLight.indirectSpecular*=characterIndirect;');};material.customProgramCacheKey=()=>(key?.call(material)||'')+':indoor-shade';material.needsUpdate=true;}});
  u.value+=(target-u.value)*(1-Math.exp(-dt*6));if(Math.abs(u.value-target)<.002)u.value=target;
  return u.value;
