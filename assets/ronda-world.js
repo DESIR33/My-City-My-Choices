@@ -202,7 +202,7 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
 
   // ---------- Puente Nuevo ----------
   const B=RONDA_PLACES.bridge,bw=13,bridge=new THREE.Group();bridge.name='Puente Nuevo';root.add(bridge);
-  {const zc=B.z,fy=B.floorY,shape=new THREE.Shape();shape.moveTo(G.minZ-14,fy-4);shape.lineTo(G.maxZ+14,fy-4);shape.lineTo(G.maxZ+14,1.2);shape.lineTo(G.minZ-14,1.2);shape.lineTo(G.minZ-14,fy-4);
+  {const zc=B.z,fy=B.floorY,shape=new THREE.Shape();shape.moveTo(G.minZ-14,fy-4);shape.lineTo(G.maxZ+14,fy-4);shape.lineTo(G.maxZ+14,-.02);shape.lineTo(G.minZ-14,-.02);shape.lineTo(G.minZ-14,fy-4);
     const arch=(z0,z1,yb,ys)=>{const r=(z1-z0)/2,h=new THREE.Path();h.moveTo(z0,yb);h.lineTo(z1,yb);h.lineTo(z1,ys);h.absarc((z0+z1)/2,ys,r,0,Math.PI,false);h.lineTo(z0,yb);shape.holes.push(h);};
     arch(zc-8,zc+8,-52,-22);arch(zc-4.5,zc+4.5,fy-3.5,-66);arch(G.minZ+2,G.minZ+9,-13,-6.5);arch(G.maxZ-9,G.maxZ-2,-13,-6.5);
     const g=new THREE.ExtrudeGeometry(shape,{depth:bw,bevelEnabled:false,curveSegments:16});g.rotateY(-Math.PI/2);g.translate(B.x+bw/2,0,0);
@@ -216,7 +216,7 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
       for(const z of [zc-14,zc-4,zc+6,zc+16]){box(M.iron,B.x+side*(bw/2-.35),1.15,z,.12,3.3,.12);box(M.lamp,B.x+side*(bw/2-.35),4.3,z,.38,.5,.38);}}
   }
   // Puente Viejo: a lower, single-arch stone bridge further up the gorge.
-  {const P=RONDA_PLACES.oldBridge,fy=gorgeFloorY(P.x),shape=new THREE.Shape();shape.moveTo(G.minZ-6,fy-2);shape.lineTo(G.maxZ+6,fy-2);shape.lineTo(G.maxZ+6,1);shape.lineTo(G.minZ-6,1);shape.lineTo(G.minZ-6,fy-2);
+  {const P=RONDA_PLACES.oldBridge,fy=gorgeFloorY(P.x),shape=new THREE.Shape();shape.moveTo(G.minZ-6,fy-2);shape.lineTo(G.maxZ+6,fy-2);shape.lineTo(G.maxZ+6,-.02);shape.lineTo(G.minZ-6,-.02);shape.lineTo(G.minZ-6,fy-2);
     const h=new THREE.Path(),r=11;h.moveTo(P.z-r,fy-1);h.lineTo(P.z+r,fy-1);h.lineTo(P.z+r,-14);h.absarc(P.z,-14,r,0,Math.PI,false);h.lineTo(P.z-r,fy-1);shape.holes.push(h);
     const g=new THREE.ExtrudeGeometry(shape,{depth:5,bevelEnabled:false,curveSegments:14});g.rotateY(-Math.PI/2);g.translate(P.x+2.5,0,0);const mesh=new THREE.Mesh(g,M.sandstone);mesh.castShadow=mesh.receiveShadow=true;root.add(mesh);
     box(M.cobble,P.x,0,P.z,4.4,.04,G.maxZ-G.minZ+12);for(const s of [-1,1])box(M.sandstone,P.x+s*2.35,0,P.z,.45,1,G.maxZ-G.minZ+12);}

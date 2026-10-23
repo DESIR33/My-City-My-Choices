@@ -61,3 +61,6 @@ assert.match(index,/const rondaWorld=createRondaWorld\(\{scene,visualKit,obstacl
 assert.match(index,/loadRondaScans\(globalThis\.rondaWorld,options\)/);assert.match(index,/rondaWorld\.update\(frameTime\)/);
 assert.match(index,/ronda:\{name:'Ronda · Puente Nuevo'/);assert.match(index,/setCityDestination\(\\'ronda\\'\)/);assert.match(index,/near\.kind==="ronda"/);
 console.log('Ronda passed: '+world.houses.length+' houses, gorge and escarpment rules, bridges, clear streets, CC0 scans, landmark lessons, routes and wiring.');
+// Bridge bodies stay under the walkable deck (no hidden step across the road).
+for(const name of ['Puente Nuevo']){const g=scene.getObjectByName(name);g.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(g.children[0]);assert.ok(box.max.y<=.01,name+' body top '+box.max.y);}
+{let top=-Infinity;world.root.traverse(o=>{if(o.isMesh&&o.geometry?.type==='ExtrudeGeometry'){o.geometry.computeBoundingBox();top=Math.max(top,o.geometry.boundingBox.max.y+o.position.y);}});assert.ok(top<=.01,'extruded bridge bodies end at the deck: '+top);}
