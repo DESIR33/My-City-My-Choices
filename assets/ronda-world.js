@@ -58,6 +58,9 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
   const root=new THREE.Group();root.name='Ronda';scene.add(root);
   const R=RONDA,G=R.gorge,X0=R.cliffX,XE=G.eastX,VY=R.valleyY;
   const glow=(m,o)=>visualKit.atmosphere?.registerGlow?.(m,o);
+  // Per-building bounds survive instancing without sealing streets or courtyards.
+  const cameraBoxes=[];root.userData.architectureBoxes=cameraBoxes;
+  function cameraBox(x,y,z,w,h,d){cameraBoxes.push({minX:x-w/2,maxX:x+w/2,minY:y,maxY:y+h,minZ:z-d/2,maxZ:z+d/2});}
 
   // ---------- materials ----------
   const scanned=[];
@@ -113,11 +116,17 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
   // ---------- instanced boxes (one draw per material) ----------
   const batches=new Map(),unit=new THREE.BoxGeometry(1,1,1);
   function box(mat,x,y,z,w,h,d,ry=0){if(!batches.has(mat))batches.set(mat,[]);batches.get(mat).push([x,y+h/2,z,w,h,d,ry]);}
-  const solid=(x,z,w,d,kind='ronda')=>{const o={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,kind,ronda:true};obstacles.push(o);return o;};
+  // Small facade parts draw only near the player; roofs and building bodies
+  // retain the distant skyline. All batches reuse the same geometry/materials.
+  const detailSize=96,detailRange=mobile?180:300,detailBuckets=new Map(),detailCells=[];
+  function detailBox(mat,x,y,z,w,h,d,ry=0){const cx=Math.floor(x/detailSize),cz=Math.floor(z/detailSize),key=cx+','+cz;
+    if(!detailBuckets.has(key))detailBuckets.set(key,{minX:cx*detailSize,maxX:(cx+1)*detailSize,minZ:cz*detailSize,maxZ:(cz+1)*detailSize,batches:new Map()});
+    const cell=detailBuckets.get(key);if(!cell.batches.has(mat))cell.batches.set(mat,[]);cell.batches.get(mat).push([x,y+h/2,z,w,h,d,ry]);}
+  const solid=(x,z,w,d,kind='ronda',height=0)=>{const o={minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2,kind,ronda:true};obstacles.push(o);if(height>0)cameraBox(x,0,z,w,height,d);return o;};
   // Hip roofs: one shared unit geometry, scaled per house.
   const hipGeo=(()=>{const g=new THREE.BufferGeometry(),r=.22,v=[-.5,0,-.5, .5,0,-.5, .5,0,.5, -.5,0,.5, -.5+r,1,0, .5-r,1,0];
     const idx=[0,4,1, 1,4,5, 1,5,2, 2,5,4, 2,4,3, 3,4,0];const pos=[];for(const i of idx)pos.push(v[i*3],v[i*3+1],v[i*3+2]);g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.computeVertexNormals();return g;})();
-  const roofs=[];function roof(x,y,z,w,h,d,ry=0){roofs.push([x,y,z,w,h,d,ry]);}
+  const roofs=[];function roof(x,y,z,w,h,d,ry=0){roofs.push([x,y,z,w,h,d,ry]);cameraBox(x,y,z,w,h,d);}
 
   // ---------- terrain: plateau, escarpment, gorge, valley ----------
   const plateauTop=0;
@@ -202,24 +211,29 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
 
   // ---------- Puente Nuevo ----------
   const B=RONDA_PLACES.bridge,bw=13,bridge=new THREE.Group();bridge.name='Puente Nuevo';root.add(bridge);
-  {const zc=B.z,fy=B.floorY,shape=new THREE.Shape();shape.moveTo(G.minZ-14,fy-4);shape.lineTo(G.maxZ+14,fy-4);shape.lineTo(G.maxZ+14,1.2);shape.lineTo(G.minZ-14,1.2);shape.lineTo(G.minZ-14,fy-4);
+  {const zc=B.z,fy=B.floorY,shape=new THREE.Shape();shape.moveTo(G.minZ-14,fy-4);shape.lineTo(G.maxZ+14,fy-4);shape.lineTo(G.maxZ+14,0);shape.lineTo(G.minZ-14,0);shape.lineTo(G.minZ-14,fy-4);
     const arch=(z0,z1,yb,ys)=>{const r=(z1-z0)/2,h=new THREE.Path();h.moveTo(z0,yb);h.lineTo(z1,yb);h.lineTo(z1,ys);h.absarc((z0+z1)/2,ys,r,0,Math.PI,false);h.lineTo(z0,yb);shape.holes.push(h);};
     arch(zc-8,zc+8,-52,-22);arch(zc-4.5,zc+4.5,fy-3.5,-66);arch(G.minZ+2,G.minZ+9,-13,-6.5);arch(G.maxZ-9,G.maxZ-2,-13,-6.5);
     const g=new THREE.ExtrudeGeometry(shape,{depth:bw,bevelEnabled:false,curveSegments:16});g.rotateY(-Math.PI/2);g.translate(B.x+bw/2,0,0);
-    const mesh=new THREE.Mesh(g,M.sandstone);mesh.castShadow=mesh.receiveShadow=true;bridge.add(mesh);
+    const mesh=new THREE.Mesh(g,M.sandstone);mesh.castShadow=mesh.receiveShadow=true;mesh.userData.cameraIgnore=true;bridge.add(mesh);
+    // The extruded bridge's AABB includes parapet height above the open road.
+    // Register its sub-deck mass and each parapet separately instead.
+    cameraBox(B.x,fy-4,zc,bw,-fy+4,G.maxZ-G.minZ+28);
     // Pilasters, cornices and the chamber window above the central arch on both faces.
     for(const side of [-1,1]){const fx=B.x+side*(bw/2+.35);
       for(const z of [zc-11,zc+11])box(M.sandstone,fx,fy-3,z,.7,fy*-1-6,3.2);for(const y of [-52.5,-21,-1.2])box(M.sandstone,fx,y,zc,1.1,1,G.maxZ-G.minZ+22);
       box(M.sandstone,fx,-9.5,zc,.5,4.2,3);box(M.glass,fx+side*.28,-8.6,zc,.05,2.2,1.1);box(M.sandstone,fx+side*.1,-5.3,zc,.6,.6,3.6);}
     // Deck: road, pavements, parapets and lamps.
     box(M.cobble,B.x,0,zc,bw-1,.04,G.maxZ-G.minZ+28);for(const side of [-1,1]){box(M.sandstone,B.x+side*(bw/2-.35),0,zc,.7,1.15,G.maxZ-G.minZ+28);
+      cameraBox(B.x+side*(bw/2-.35),0,zc,.7,1.15,G.maxZ-G.minZ+28);
       for(const z of [zc-14,zc-4,zc+6,zc+16]){box(M.iron,B.x+side*(bw/2-.35),1.15,z,.12,3.3,.12);box(M.lamp,B.x+side*(bw/2-.35),4.3,z,.38,.5,.38);}}
   }
   // Puente Viejo: a lower, single-arch stone bridge further up the gorge.
-  {const P=RONDA_PLACES.oldBridge,fy=gorgeFloorY(P.x),shape=new THREE.Shape();shape.moveTo(G.minZ-6,fy-2);shape.lineTo(G.maxZ+6,fy-2);shape.lineTo(G.maxZ+6,1);shape.lineTo(G.minZ-6,1);shape.lineTo(G.minZ-6,fy-2);
+  {const P=RONDA_PLACES.oldBridge,fy=gorgeFloorY(P.x),shape=new THREE.Shape();shape.moveTo(G.minZ-6,fy-2);shape.lineTo(G.maxZ+6,fy-2);shape.lineTo(G.maxZ+6,0);shape.lineTo(G.minZ-6,0);shape.lineTo(G.minZ-6,fy-2);
     const h=new THREE.Path(),r=11;h.moveTo(P.z-r,fy-1);h.lineTo(P.z+r,fy-1);h.lineTo(P.z+r,-14);h.absarc(P.z,-14,r,0,Math.PI,false);h.lineTo(P.z-r,fy-1);shape.holes.push(h);
-    const g=new THREE.ExtrudeGeometry(shape,{depth:5,bevelEnabled:false,curveSegments:14});g.rotateY(-Math.PI/2);g.translate(P.x+2.5,0,0);const mesh=new THREE.Mesh(g,M.sandstone);mesh.castShadow=mesh.receiveShadow=true;root.add(mesh);
-    box(M.cobble,P.x,0,P.z,4.4,.04,G.maxZ-G.minZ+12);for(const s of [-1,1])box(M.sandstone,P.x+s*2.35,0,P.z,.45,1,G.maxZ-G.minZ+12);}
+    const g=new THREE.ExtrudeGeometry(shape,{depth:5,bevelEnabled:false,curveSegments:14});g.rotateY(-Math.PI/2);g.translate(P.x+2.5,0,0);const mesh=new THREE.Mesh(g,M.sandstone);mesh.castShadow=mesh.receiveShadow=true;mesh.userData.cameraIgnore=true;root.add(mesh);
+    cameraBox(P.x,fy-2,P.z,5,-fy+2,G.maxZ-G.minZ+12);
+    box(M.cobble,P.x,0,P.z,4.4,.04,G.maxZ-G.minZ+12);for(const s of [-1,1]){box(M.sandstone,P.x+s*2.35,0,P.z,.45,1,G.maxZ-G.minZ+12);cameraBox(P.x+s*2.35,0,P.z,.45,1,G.maxZ-G.minZ+12);}}
 
   // ---------- town ----------
   const places=RONDA_PLACES,houses=[];
@@ -230,14 +244,14 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
     {minX:-330,maxX:-300,minZ:1470,maxZ:1530}];
   const clear=(x0,x1,z0,z1)=>!keepClear.some(k=>x1>k.minX&&x0<k.maxX&&z1>k.minZ&&z0<k.maxZ)&&!(z1>G.minZ-1&&z0<G.maxZ+1&&x0<XE+2)&&x0>X0+1.5&&x1<R.maxX-1&&z0>R.minZ&&z1<R.maxZ;
   const wallMats=[M.white,M.white,M.white,M.cream,M.white,M.ochre,M.white];
-  function house(x,z,w,d,floors,seed,face){const h=floors*3.1+.4,mat=wallMats[Math.floor(hash2(seed,7)*wallMats.length)];box(mat,x,0,z,w,h,d);solid(x,z,w,d,'ronda-house');
-    box(M.trim,x,h-.25,z,w+.18,.25,d+.18);roof(x,h,z,w+.5,1.2+Math.min(w,d)*.12,d+.5,w>=d?0:Math.PI/2);
+  function house(x,z,w,d,floors,seed,face){const h=floors*3.1+.4,mat=wallMats[Math.floor(hash2(seed,7)*wallMats.length)];box(mat,x,0,z,w,h,d);solid(x,z,w,d,'ronda-house',h);
+    detailBox(M.trim,x,h-.25,z,w+.18,.25,d+.18);roof(x,h,z,w+.5,1.2+Math.min(w,d)*.12,d+.5,w>=d?0:Math.PI/2);
     // Windows with green shutters and iron balconies on the two street-facing sides.
     for(const [fx,fz,len,ry] of [[0,d/2,w,0],[0,-d/2,w,Math.PI],[w/2,0,d,Math.PI/2],[-w/2,0,d,-Math.PI/2]]){if(face&&!face.includes(ry))continue;const n=Math.max(1,Math.floor(len/3.2));
       for(let f=0;f<floors;f++)for(let i=0;i<n;i++){const t=(i+.5)/n-.5,ox=Math.cos(ry)*t*len,oz=-Math.sin(ry)*t*len,wx=x+fx+ox+Math.sin(ry)*.03,wz=z+fz+oz+Math.cos(ry)*.03,y=f*3.1+(f===0?.9:1.1);
-        const across=Math.abs(Math.sin(ry))>.5;box(M.glass,wx,y,wz,across?.06:1,1.5,across?1:.06);for(const s of [-1,1]){const sx=across?0:s*.82,sz=across?s*.82:0;box(M.green,wx+sx,y,wz+sz,across?.08:.55,1.55,across?.55:.08);}
-        if(f>0&&hash2(seed,f*7+i)>.45){const bx=wx+Math.sin(ry)*.45,bz=wz+Math.cos(ry)*.45;box(M.iron,bx,y-.12,bz,across?.85:1.3,.06,across?1.3:.85);box(M.iron,bx+Math.sin(ry)*.4,y-.12,bz+Math.cos(ry)*.4,across?.04:1.3,.95,across?1.3:.04);
-          if(hash2(seed,i)>.5)box(M.scrub,bx,y-.06,bz,across?.3:.9,.25,across?.9:.3);}}}
+        const across=Math.abs(Math.sin(ry))>.5;detailBox(M.glass,wx,y,wz,across?.06:1,1.5,across?1:.06);for(const s of [-1,1]){const sx=across?0:s*.82,sz=across?s*.82:0;detailBox(M.green,wx+sx,y,wz+sz,across?.08:.55,1.55,across?.55:.08);}
+        if(f>0&&hash2(seed,f*7+i)>.45){const bx=wx+Math.sin(ry)*.45,bz=wz+Math.cos(ry)*.45;detailBox(M.iron,bx,y-.12,bz,across?.85:1.3,.06,across?1.3:.85);detailBox(M.iron,bx+Math.sin(ry)*.4,y-.12,bz+Math.cos(ry)*.4,across?.04:1.3,.95,across?1.3:.04);
+          if(hash2(seed,i)>.5)detailBox(M.scrub,bx,y-.06,bz,across?.3:.9,.25,across?.9:.3);}}}
     houses.push({x,z,w,d,h});}
   // Dense blocks: back-to-back rows of attached houses (shared side walls), facing
   // narrow lanes, with varied widths, heights and slightly uneven facades.
@@ -254,7 +268,7 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
   for(let z=R.minZ+20;z<R.maxZ-10;z+=12){if(z>1230&&z<1450||z>G.minZ-12&&z<G.maxZ+12)continue;const w=10,cx=X0+7+hash2(z,4)*1.2;if(!houses.some(h=>Math.abs(h.x-cx)<(h.w+w)/2+1&&Math.abs(h.z-z)<(h.d+11)/2+1))house(cx,z,w,11,2+Math.floor(hash2(z,5)*2),z,[-Math.PI/2,0,Math.PI]);}
 
   // Parador: long cream building with ground-floor arcades beside the bridge.
-  {const P=places.parador,h=P.h;box(M.cream,P.x,0,P.z,P.w,h,P.d);solid(P.x,P.z,P.w,P.d,'parador');box(M.trim,P.x,h,P.z,P.w+.4,.5,P.d+.4);roof(P.x,h+.5,P.z,P.w+.8,3,P.d+.8,0);
+  {const P=places.parador,h=P.h;box(M.cream,P.x,0,P.z,P.w,h,P.d);solid(P.x,P.z,P.w,P.d,'parador',h);box(M.trim,P.x,h,P.z,P.w+.4,.5,P.d+.4);roof(P.x,h+.5,P.z,P.w+.8,3,P.d+.8,0);
     for(const side of [-1,1]){const fz=P.z+side*(P.d/2+.02);for(let i=0;i<12;i++){const x=P.x-P.w/2+2+i*(P.w-4)/11;box(M.trim,x,0,fz+side*.25,.9,3.4,.5);box(M.glass,x+2,.2,fz+side*.04,2.4,2.6,.05);for(const y of [5,8.4])box(M.glass,x,y,fz+side*.04,1.2,1.9,.06);for(const y of [5,8.4])box(M.iron,x,y-.15,fz+side*.35,1.6,.9,.04);}}
     for(let i=0;i<9;i++)box(M.lamp,P.x-P.w/2+3+i*5.5,3.6,P.z+P.d/2+.45,.4,.4,.2);}
   // Plaza de España at the bridge's north end, a smaller square to the south.
@@ -269,17 +283,18 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
   // Historic arena: round white wall with arches, two tiers of seating under a tile roof.
   {const A=places.arena,seg=48,outer=A.r,inner=A.r-9;
     const ring=(r0,r1,y0,y1,mat)=>{const g=new THREE.CylinderGeometry(r1,r1,y1-y0,seg,1,true),m=new THREE.Mesh(g,mat);m.position.set(A.x,(y0+y1)/2,A.z);m.castShadow=m.receiveShadow=true;root.add(m);
-      const g2=new THREE.CylinderGeometry(r0,r0,y1-y0,seg,1,true),m2=new THREE.Mesh(g2,mat);m2.material=mat.clone();m2.material.side=THREE.BackSide;m2.position.copy(m.position);root.add(m2);return m;};
+      const g2=new THREE.CylinderGeometry(r0,r0,y1-y0,seg,1,true),m2=new THREE.Mesh(g2,mat);m2.material=mat.clone();m2.material.side=THREE.BackSide;m2.position.copy(m.position);root.add(m2);m.userData.cameraIgnore=true;return m;};
     ring(outer-.6,outer,0,9,M.white);ring(inner,inner+.5,0,2,M.trim);
     const sand=new THREE.Mesh(new THREE.CircleGeometry(inner,seg),M.sand);sand.rotation.x=-Math.PI/2;sand.position.set(A.x,.05,A.z);sand.receiveShadow=true;root.add(sand);
     const seats=new THREE.Mesh(new THREE.CylinderGeometry(outer-1.2,inner+.6,4.5,seg,1,true),M.sandstone);seats.position.set(A.x,4,A.z);seats.material=M.sandstone;root.add(seats);
-    const roofRing=new THREE.Mesh(new THREE.CylinderGeometry(outer-4.5,outer+.6,2,seg,1,true),M.roof);roofRing.position.set(A.x,9.6,A.z);roofRing.castShadow=true;root.add(roofRing);
+    const roofRing=new THREE.Mesh(new THREE.CylinderGeometry(outer-4.5,outer+.6,2,seg,1,true),M.roof);roofRing.position.set(A.x,9.6,A.z);roofRing.castShadow=true;roofRing.userData.cameraIgnore=true;root.add(roofRing);
     for(let i=0;i<seg;i++){const a=i/seg*Math.PI*2,x=A.x+Math.cos(a)*(outer+.05),z=A.z+Math.sin(a)*(outer+.05);box(M.trim,x,0,z,.6,.5,1.2,-a);if(i%2===0)box(M.green,x,1,z,.08,2.2,1.4,-a);box(M.trim,x,5.6,z,.15,1.5,1.2,-a);}
     const gate=Math.PI/2;box(M.sandstone,A.x,0,A.z+outer+.3,6,6.2,1.2);box(M.wood,A.x,0,A.z+outer+.9,3,4.2,.2);
-    for(let k=0;k<seg;k++){const a=k/seg*Math.PI*2;if(Math.abs(a-gate)<.12)continue;solid(A.x+Math.cos(a)*(outer-.3),A.z+Math.sin(a)*(outer-.3),2.6,2.6,'arena');}}
+    cameraBox(A.x,0,A.z+outer+.3,6,6.2,1.2);
+    for(let k=0;k<seg;k++){const a=k/seg*Math.PI*2;if(Math.abs(a-gate)<.12)continue;const x=A.x+Math.cos(a)*(outer-.3),z=A.z+Math.sin(a)*(outer-.3);solid(x,z,2.6,2.6,'arena');cameraBox(x,0,z,Math.abs(Math.sin(a))*4.5+Math.abs(Math.cos(a))*1.2,10.6,Math.abs(Math.cos(a))*4.5+Math.abs(Math.sin(a))*1.2);}}
 
   // Santa María la Mayor: church with a square bell tower in the old town.
-  {const C=places.church;box(M.cream,C.x,0,C.z,34,13,20);solid(C.x,C.z,34,20,'church');roof(C.x,13,C.z,35,4,21,0);box(M.cream,C.x+19,0,C.z-6,8,26,8);solid(C.x+19,C.z-6,8,8,'church');box(M.trim,C.x+19,22,C.z-6,8.6,.6,8.6);
+  {const C=places.church;box(M.cream,C.x,0,C.z,34,13,20);solid(C.x,C.z,34,20,'church',13);roof(C.x,13,C.z,35,4,21,0);box(M.cream,C.x+19,0,C.z-6,8,26,8);solid(C.x+19,C.z-6,8,8,'church',26);box(M.trim,C.x+19,22,C.z-6,8.6,.6,8.6);
     for(const [dx,dz] of [[0,4.05],[0,-4.05],[4.05,0],[-4.05,0]])box(M.glass,C.x+19+dx,19,C.z-6+dz,Math.abs(dx)>0?.1:2,3.4,Math.abs(dz)>0?.1:2);roof(C.x+19,26,C.z-6,9,4,9,0);
     box(M.wood,C.x,0,C.z+10.05,3,5,.1);box(M.sandstone,C.x,0,C.z+10.1,6,7.5,.3);}
   // Alameda del Tajo: gardens with paths, trees and the cliff-top viewpoint gazebo.
@@ -305,10 +320,35 @@ export function createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobil
     mesh.castShadow=!mobile;mesh.receiveShadow=true;mesh.computeBoundingSphere();root.add(mesh);meshes.push(mesh);}
   {const mesh=new THREE.InstancedMesh(hipGeo,M.roof,roofs.length);roofs.forEach(([x,y,z,w,h,d,ry],i)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,ry,0);dummy.scale.set(ry?d:w,h,ry?w:d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});mesh.castShadow=!mobile;mesh.receiveShadow=true;mesh.computeBoundingSphere();root.add(mesh);meshes.push(mesh);}
 
+  // Pack visible cells into one fixed-capacity buffer per material. This keeps
+  // draw calls bounded instead of adding a draw for every visible cell.
+  const detailBatches=new Map(),detailMeshes=[];
+  for(const cell of detailBuckets.values()){
+    const chunks=[];
+    for(const [mat,list] of cell.batches){
+      if(!detailBatches.has(mat))detailBatches.set(mat,{mat,capacity:0,mesh:null,offset:0});const batch=detailBatches.get(mat),matrices=new Float32Array(list.length*16);batch.capacity+=list.length;
+      list.forEach(([x,y,z,w,h,d,ry],i)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,ry,0);dummy.scale.set(w,h,d);dummy.updateMatrix();dummy.matrix.toArray(matrices,i*16);});chunks.push({batch,matrices});
+    }
+    detailCells.push({minX:cell.minX,maxX:cell.maxX,minZ:cell.minZ,maxZ:cell.maxZ,visible:false,chunks});
+  }
+  detailBuckets.clear();
+  for(const batch of detailBatches.values()){
+    const mesh=new THREE.InstancedMesh(unit,batch.mat,batch.capacity);batch.mesh=mesh;
+    for(const cell of detailCells)for(const chunk of cell.chunks)if(chunk.batch===batch){mesh.instanceMatrix.array.set(chunk.matrices,batch.offset*16);batch.offset+=chunk.matrices.length/16;}
+    // Retain conservative full-town bounds; no geometry walk on cell changes.
+    mesh.computeBoundingSphere();mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.count=0;mesh.receiveShadow=true;mesh.userData.cameraIgnore=true;mesh.name='Ronda nearby facades';root.add(mesh);detailMeshes.push(mesh);
+  }
+
   let time=0;
   return {
-    root,houses,places:RONDA_PLACES,materials:M,scanned,cliffMeshes,batches:meshes,
-    update(dt){time+=Math.min(.1,dt||0);if(fallTexture)fallTexture.offset.y=-time*1.4;foam.material.opacity=.6+Math.sin(time*3)*.12;},
+    root,houses,places:RONDA_PLACES,materials:M,scanned,cliffMeshes,batches:meshes,detailCells,detailMeshes,detailRange,
+    update(dt,position){time+=Math.min(.1,Math.max(0,Number.isFinite(dt)?dt:0));if(fallTexture)fallTexture.offset.y=-time*1.4;foam.material.opacity=.6+Math.sin(time*3)*.12;
+      const valid=Number.isFinite(position?.x)&&Number.isFinite(position?.z);let changed=false;
+      for(const cell of detailCells){const dx=valid?Math.max(cell.minX-position.x,0,position.x-cell.maxX):Infinity,dz=valid?Math.max(cell.minZ-position.z,0,position.z-cell.maxZ):Infinity,range=detailRange+(cell.visible?24:0),visible=dx*dx+dz*dz<=range*range;if(visible!==cell.visible){cell.visible=visible;changed=true;}}
+      if(changed){for(const batch of detailBatches.values())batch.offset=0;
+        for(const cell of detailCells)if(cell.visible)for(const chunk of cell.chunks){const batch=chunk.batch;batch.mesh.instanceMatrix.array.set(chunk.matrices,batch.offset*16);batch.offset+=chunk.matrices.length/16;}
+        for(const batch of detailBatches.values()){batch.mesh.count=batch.offset;batch.mesh.instanceMatrix.needsUpdate=true;}}
+    },
     nearestLandmark(p,radius=7){const spots=[['bridge',RONDA_PLACES.bridge.x,RONDA_PLACES.bridge.z,9],['arena',RONDA_PLACES.arena.x,RONDA_PLACES.arena.z+RONDA_PLACES.arena.r+3,radius],['town',RONDA_PLACES.mirador.x+6,RONDA_PLACES.mirador.z,radius]];
       let best=null,dist=Infinity;for(const [id,x,z,r] of spots){const d=Math.hypot(p.x-x,p.z-z);if(d<r&&d<dist){dist=d;best={id,x,z,fact:RONDA_FACTS[id],name:id==='bridge'?'Puente Nuevo':id==='arena'?'Historic arena':'Alameda viewpoint'};}}return best;},
     walkable:rondaWalkable

@@ -58,6 +58,6 @@ const cross=planCityRoute({x:nuevo.x,z:1440},{x:nuevo.x,z:1580},{mode:'walk',wal
 // Game wiring.
 const index=await readFile(file('index.html'),'utf8');
 assert.match(index,/const rondaWorld=createRondaWorld\(\{scene,visualKit,obstacles,groundSurfaces,mobile:mobileGraphics\}\);globalThis\.rondaWorld=rondaWorld;/);
-assert.match(index,/loadRondaScans\(globalThis\.rondaWorld,options\)/);assert.match(index,/rondaWorld\.update\(frameTime\)/);
+assert.match(index,/loadRondaScans\(globalThis\.rondaWorld,options\)/);assert.match(index,/rondaWorld\.update\(frameTime,player\.position\)/);
 assert.match(index,/ronda:\{name:'Ronda · Puente Nuevo'/);assert.match(index,/setCityDestination\(\\'ronda\\'\)/);assert.match(index,/near\.kind==="ronda"/);
 console.log('Ronda passed: '+world.houses.length+' houses, gorge and escarpment rules, bridges, clear streets, CC0 scans, landmark lessons, routes and wiring.');
