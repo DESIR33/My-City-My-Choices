@@ -94,6 +94,11 @@ The graphics pass also corrects the tower floor stack, porch supports, roof fasc
 The game remains a browser prototype with procedural architecture and textured rigged characters. Full WebGL visual QA requires a working browser preview; syntax and scene-geometry checks do not establish final visual quality or a frame-rate target.
 
 
+## Living rooms in the neighborhood
+
+Every other neighborhood home (13 houses, not 101 or 139) has a furnished living room from the owner-supplied "Full set rosa" model: an L-shaped sectional with cushions and a blanket, an armchair, a marble coffee table with decor, an end table with a lamp, a side table and a patterned rug. Each piece blocks movement like other furniture. The model (`assets/sofa-set/rosa-living.glb`, 2.4 MB) streams in after the city is ready and is drawn only near the player. Rebuild it from the source FBX with `node tools/prepare-sofa-set.mjs --fbx /path/to/Full_set_rosa.fbx`.
+
+
 ## Human characters
 
 The former cylinder people are replaced by six self-hosted, textured Microsoft Rocketbox character assets and compatible idle, walking, and running clips (MIT; notices in `assets/characters/`). The playable avatar uses a child mesh, while residents include varied adult and child models with independent skeletons. Skin, hair, shirt, and shoe customization preserves the underlying texture detail; curls, a bun, or the model's ponytail can be selected. Purchased hats and backpacks follow the animated head and torso. Motion retargeting keeps a child's native bone lengths, drops horizontal root motion, and blends movement states. Walking pace and the on-foot camera are adjusted for the child avatar.
