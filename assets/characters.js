@@ -124,12 +124,12 @@ export function retargetMotion(clip, source, target) {
   return new THREE.AnimationClip(clip.name,clip.duration,tracks);
 }
 
-export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError = console.warn, baseURL = new URL('./characters/',import.meta.url).href, crowdLimit = {} } = {}) {
+export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError = console.warn, baseURL = new URL('./characters/',import.meta.url).href, crowdLimit = {}, detailRadius=Infinity, detailConcurrency=Infinity } = {}) {
   const loader = new GLTFLoader();
   const templates = new Map(), animations = new Map(), actors = [];
   const masks = { head: maskTexture(true), body: maskTexture(false) };
   const pending = new Set();
-  let crowdCount=0;const ambientClips=new Map();
+  let crowdCount=0,detailActive=0;const ambientClips=new Map();
   // Ambient clips download per animation set, only once someone needs them.
   const seatedClips=new Map();
   function seatedMotions(set){if(!seatedClips.has(set))seatedClips.set(set,Promise.all(Object.entries(SEATED_MOTIONS).map(async ([name,file])=>({name,gltf:await load(set+'_'+file+'.glb')}))));return seatedClips.get(set);}
@@ -224,6 +224,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     const data={ model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61,ambient:ambient||null,turn,seed:ambientSeed??(fromCrowd?crowdSeed:actors.length),life:0 };
     if(police)actor.userData.role='police-officer';
     actor.userData.character=data;actors.push(actor);
+    const hydrate=()=>{delete data.loadDetail;detailActive++;
     const loading=Promise.all([template(model),motions(MODELS[model].set)]).then(([gltf,clips])=>{
       const source=cloneSkeleton(gltf.scene),visual=new THREE.Group();
       source.updateMatrixWorld(true);
@@ -267,7 +268,9 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       data.mixer.update(0);actor.updateMatrixWorld(true);if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
       return actor;
     }).catch(error=>{data.failed=true;data.ready=false;fallback.visible=true;if(data.visual)data.visual.visible=false;if(data.accessories){data.accessories.head.visible=false;data.accessories.torso.visible=false}onError('A detailed character could not load; a temporary character is being used.',error);return actor;});
-    pending.add(loading);loading.finally(()=>pending.delete(loading));data.loading=loading;
+    pending.add(loading);loading.finally(()=>{pending.delete(loading);detailActive--;});data.loading=loading;return loading;
+    };
+    if(detailRadius===Infinity&&detailConcurrency===Infinity)hydrate();else data.loadDetail=hydrate;
     return actor;
   }
   function setMotion(data,name) {
@@ -327,6 +330,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       const dx=x-data.last.x,dz=z-data.last.y,displacement=Math.hypot(dx,dz);data.last.set(x,z);
       if(!actor.visible)continue;
       actor.position.y=actor===player&&actor.userData.vertical?.managed?actor.userData.vertical.y:groundHeight(x,z);
+      if(data.loadDetail&&dt>0&&player&&actor.position.distanceTo(player.position)<=detailRadius&&detailActive<detailConcurrency)data.loadDetail();
       if(!data.ready)continue;
       // Face the direction of travel from world-space movement so turnarounds and crossing paths
       // cannot leave the body facing backward while a walk or run clip is playing.

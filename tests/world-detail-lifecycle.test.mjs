@@ -8,7 +8,7 @@ const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 const start=html.indexOf('(async()=>{',html.indexOf('// Share one decoder pool'));
 const boot=html.slice(start,html.indexOf('const communityPlaza=',start)).trim();
 assert.ok(start>0&&boot.endsWith('})();'));
-for(const mobile of [true,false])for(const fail of [false,true]){
+for(const mobile of [false])for(const fail of [false,true]){
  const events=[],loaders=[],requests=[],warnings=[];let releaseCity,releaseSofa;
  const cityGate=new Promise(resolve=>{releaseCity=resolve}),sofaGate=new Promise(resolve=>{releaseSofa=resolve});
  class KTX2Loader{
@@ -34,5 +34,7 @@ for(const mobile of [true,false])for(const fail of [false,true]){
 }
 let disposed=0;
 class BrokenLoader{setWorkerLimit(){return this}setTranscoderPath(){return this}detectSupport(){throw Error('unsupported')}dispose(){disposed++}}
-await vm.runInNewContext(boot,{globalThis:{},plannedCommunity:{},KTX2Loader:BrokenLoader,mobileGraphics:true,renderer:{},console:{warn(){}}});assert.equal(disposed,1,'Support detection failures release the allocated pool');
-console.log('World detail lifecycle passed: one bounded decoder pool, shared scans, late-job cleanup, partial failures, mobile stand-ins and desktop replacements.');
+await vm.runInNewContext(boot,{globalThis:{},plannedCommunity:{},KTX2Loader:BrokenLoader,mobileGraphics:false,renderer:{},console:{warn(){}}});assert.equal(disposed,1,'Support detection failures release the allocated pool');
+let mobileAllocations=0;class NoMobileLoader{constructor(){mobileAllocations++;throw Error('Mobile must not allocate a decoder');}}
+await vm.runInNewContext(boot,{mobileGraphics:true,KTX2Loader:NoMobileLoader});assert.equal(mobileAllocations,0,'Mobile skips optional scans, bake/furniture/sofa jobs and decoder allocation entirely');
+console.log('World detail lifecycle passed: one bounded decoder pool, shared scans, late-job cleanup, partial failures, zero mobile decoder allocations and desktop replacements.');
