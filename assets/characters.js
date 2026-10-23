@@ -124,12 +124,12 @@ export function retargetMotion(clip, source, target) {
   return new THREE.AnimationClip(clip.name,clip.duration,tracks);
 }
 
-export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError = console.warn, baseURL = new URL('./characters/',import.meta.url).href, crowdLimit = {}, detailRadius=Infinity, detailConcurrency=Infinity } = {}) {
+export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError = console.warn, baseURL = new URL('./characters/',import.meta.url).href, crowdLimit = {}, detailRadius=Infinity, detailConcurrency=Infinity, drawRadius=Infinity, detailDrawRadius=Infinity, detailDrawLimit=Infinity, residencyRadius=Infinity } = {}) {
   const loader = new GLTFLoader();
   const templates = new Map(), animations = new Map(), actors = [];
   const masks = { head: maskTexture(true), body: maskTexture(false) };
   const pending = new Set();
-  let crowdCount=0,detailActive=0;const ambientClips=new Map();
+  let crowdCount=0,detailActive=0,residencyDirty=true,lastResidency=null;const releasedResources=new WeakSet();const ambientClips=new Map();
   // Ambient clips download per animation set, only once someone needs them.
   const seatedClips=new Map();
   function seatedMotions(set){if(!seatedClips.has(set))seatedClips.set(set,Promise.all(Object.entries(SEATED_MOTIONS).map(async ([name,file])=>({name,gltf:await load(set+'_'+file+'.glb')}))));return seatedClips.get(set);}
@@ -220,8 +220,8 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     if(ambient===undefined&&fromCrowd)ambient='loner';
     if(!MODELS[model])throw new Error('Unknown character model '+model);
     const actor=new THREE.Group();actor.position.set(x,groundHeight(x,z),z);scene.add(actor);
-    const fallback=placeholder(shirt);actor.add(fallback);
-    const data={ model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61,ambient:ambient||null,turn,seed:ambientSeed??(fromCrowd?crowdSeed:actors.length),life:0 };
+    const fallback=placeholder(shirt),renderRoot=new THREE.Group(),detailRoot=new THREE.Group();renderRoot.name='Character render range';detailRoot.name='Character detailed render';actor.add(renderRoot);renderRoot.add(fallback,detailRoot);
+    const data={ renderRoot,detailRoot,model,customizable:customizable||police||firefighter,interactive,police,firefighter,fallback,appearance:police?{shirt:0x172b45,shoes:0x17212f}:firefighter?{shirt:0xa49158,shoes:0x17212f}:{},last:new THREE.Vector2(x,z),speed:0,active:null,phase:actors.length*.61,ambient:ambient||null,turn,seed:ambientSeed??(fromCrowd?crowdSeed:actors.length),life:0 };
     if(police)actor.userData.role='police-officer';
     actor.userData.character=data;actors.push(actor);
     const hydrate=()=>{delete data.loadDetail;detailActive++;
@@ -230,7 +230,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       source.updateMatrixWorld(true);
       const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
       const ratio=MODELS[model].height*(.9+.1*scale)/size.y;
-      source.position.set(-center.x,-bounds.min.y,-center.z);visual.scale.setScalar(ratio);visual.add(source);actor.add(visual);
+      source.position.set(-center.x,-bounds.min.y,-center.z);visual.scale.setScalar(ratio);visual.add(source);data.detailRoot.add(visual);
       data.source=source;data.visual=visual;data.height=MODELS[model].height*(.9+.1*scale);
       const bones=MODELS[model].bones||'Bip01',head=source.getObjectByName(bones+'_Head');
       const leftEye=source.getObjectByName(bones+'_LEye');
@@ -246,7 +246,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       }
       if(data.customizable){
         data.uniforms={avatarPants:{value:new THREE.Color(0x9daab1)},avatarPantsEnabled:{value:0},avatarTopPattern:{value:0},avatarSkinRatio:{value:new THREE.Color(1,1,1)},avatarShirt:{value:new THREE.Color(0x496d84)},avatarHair:{value:new THREE.Color(0x483c35)},avatarShoes:{value:new THREE.Color(0x303f52)},avatarHairStyle:{value:0}};
-        data.accessories=makeAccessories();actor.add(data.accessories.head,data.accessories.torso);
+        data.accessories=makeAccessories();data.detailRoot.add(data.accessories.head,data.accessories.torso);
       }
       source.traverse(mesh=>{if(!mesh.isMesh)return;mesh.castShadow=mesh.receiveShadow=true;mesh.frustumCulled=false;
         const prepare=m=>{if(data.customizable)return makeAvatarMaterial(m,/head/i.test(m.name),data.uniforms);const mat=m.clone();mat.metalness=0;mat.roughness=m.roughnessMap?1:.85;return mat};
@@ -263,7 +263,7 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
         data.accessories.policeBadge.visible=data.police;
         data.accessories.fireHelmet.visible=data.firefighter;data.accessories.fireStripes.visible=data.firefighter;
       }
-      fallback.visible=false;data.ready=true;setMotion(data,'idle');if(data.seated)loadSeated(data);data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
+      fallback.visible=false;data.ready=true;residencyDirty=true;setMotion(data,'idle');if(data.seated)loadSeated(data);data.actions.idle.time=data.phase%data.actions.idle.getClip().duration;
       if(data.ambient)ambientMotions(MODELS[model].set).then(list=>{for(const {name,gltf:motion} of list){const clip=retargetMotion(motion.animations[0],motion.scene,source);clip.name=name;data.actions[name]=data.mixer.clipAction(clip);}const hand=source.getObjectByName((MODELS[model].bones||'Bip01')+'_R_Hand');if(hand){data.phone=phoneProp();hand.add(data.phone);const s=hand.getWorldScale(new THREE.Vector3()).x;data.phone.scale.setScalar(.8/Math.max(1e-6,s));data.phone.position.set(.09/s,.015/s,.025/s);data.phone.rotation.set(Math.PI/2,0,Math.PI/2);}data.ambientReady=true;}).catch(error=>onError('Townsperson gestures could not load.',error));
       data.mixer.update(0);actor.updateMatrixWorld(true);if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
       return actor;
@@ -324,14 +324,35 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
     }
     if(held&&held.visible){const hand=find('R','Hand');if(hand){held.position.copy(actor.worldToLocal(hand.getWorldPosition(new THREE.Vector3())));held.position.y+=.035;}else held.position.set(.25,1.1,.3);held.rotation.set(0,0,0);}
   }
+  // Disposing GPU resources keeps the decoded model cache intact. A shared
+  // buffer/texture is retained while ANY nearby actor still uses it. Three
+  // uploads the same resource again on return; no repeat network request.
+  function updateResidency(player){
+    if(residencyRadius===Infinity||!player)return;
+    if(!residencyDirty&&lastResidency&&lastResidency.distanceToSquared(player.position)<256)return;
+    residencyDirty=false;lastResidency=player.position.clone();const all=new Set(),active=new Set();
+    for(const actor of actors){const keep=actor===player||actor.position.distanceTo(player.position)<=residencyRadius;
+      const add=r=>{if(!r?.dispose)return;all.add(r);if(keep)active.add(r);};
+      actor.userData.character.renderRoot.traverse(o=>{if(!o.isMesh)return;add(o.geometry);add(o.skeleton?.boneTexture);for(const material of Array.isArray(o.material)?o.material:[o.material]){add(material);for(const value of Object.values(material))if(value?.isTexture)add(value);}});
+    }
+    for(const resource of active)releasedResources.delete(resource);
+    for(const resource of all)if(!active.has(resource)&&!releasedResources.has(resource)){resource.dispose();releasedResources.add(resource);}
+  }
   function update(dt,player) {
+    updateResidency(player);
+    const detailed=new Set(actors.filter(actor=>actor.visible&&actor.userData.character.ready&&(!player||actor.position.distanceTo(player.position)<=detailDrawRadius)).sort((a,b)=>a===player?-1:b===player?1:!player?0:a.position.distanceToSquared(player.position)-b.position.distanceToSquared(player.position)).slice(0,detailDrawLimit));
     for(const actor of actors){
       const data=actor.userData.character,x=actor.position.x,z=actor.position.z;
       const dx=x-data.last.x,dz=z-data.last.y,displacement=Math.hypot(dx,dz);data.last.set(x,z);
-      if(!actor.visible)continue;
+      const range=!player?0:actor.position.distanceTo(player.position),rich=detailed.has(actor);
+      data.renderRoot.visible=range<=drawRadius;
+      if(data.renderRoot.visible&&data.renderRoot.parent!==actor)actor.add(data.renderRoot);
+      else if(!data.renderRoot.visible&&data.ready)data.renderRoot.removeFromParent();
+      data.detailRoot.visible=rich;data.fallback.visible=!rich;
+      if(!actor.visible||!data.renderRoot.visible)continue;
       actor.position.y=actor===player&&actor.userData.vertical?.managed?actor.userData.vertical.y:groundHeight(x,z);
       if(data.loadDetail&&dt>0&&player&&actor.position.distanceTo(player.position)<=detailRadius&&detailActive<detailConcurrency)data.loadDetail();
-      if(!data.ready)continue;
+      if(!data.ready||!rich)continue;
       // Face the direction of travel from world-space movement so turnarounds and crossing paths
       // cannot leave the body facing backward while a walk or run clip is playing.
       if(!data.riding&&!data.seated&&!data.resting&&displacement>.025&&displacement<1){const heading=characterFacingYaw(dx,dz);if(heading!==null)actor.rotation.y=heading;}
