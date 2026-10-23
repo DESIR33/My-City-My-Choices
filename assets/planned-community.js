@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {createSofaSets} from './sofa-sets.js';
 import {MAPLE_STREETS,MAPLE_GROVE,mapleOnRoad,COMMUNITY_ROADS,COMMUNITY_HOMES,communityPoint,communityDriveway,communityRoadRect,communityOnRoad,worldDrivable,withinRect} from './world-rules.js';
 import {createResidentialDoors} from './residential-doors.js';
 
@@ -208,6 +209,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     mesh.userData.architectureBoxes=boxes;mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingSphere();scene.add(mesh);architectureBatches.push(mesh);
   }
   addressMap.needsUpdate=true;doorSystem.finalize();
+  const sofaSets=createSofaSets({scene,homes:COMMUNITY_HOMES,solid});
   function interior(p){const home=homes.find(h=>h.id!=='maple-grove-1'&&Math.abs(p.x-h.x)<h.w/2-.15&&Math.abs(p.z-h.z)<h.d/2-.15);return home?{minX:home.x-home.w/2+.22,maxX:home.x+home.w/2-.22,minZ:home.z-home.d/2+.22,maxZ:home.z+home.d/2-.22,ceiling:3.18}:null;}
-  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,furnishedInteriors,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:doorSystem.update,interior,fenced:homes.filter(h=>h.fenced).length};
+  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,furnishedInteriors,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:(dt,p)=>{doorSystem.update(dt,p);sofaSets.update(p);},sofaSets,interior,fenced:homes.filter(h=>h.fenced).length};
 }
