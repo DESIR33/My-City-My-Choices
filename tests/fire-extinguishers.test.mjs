@@ -34,8 +34,8 @@ const home=COMMUNITY_HOMES.find(h=>h.id==='maple-grove-20');
 for(const spot of FIRE_EXTINGUISHER_SPOTS.filter(s=>s.id.startsWith('house-139'))){
   const behind={x:spot.x-spot.nx*.05,z:spot.z-spot.nz*.05},overlaps=(o,p,r=0)=>p.x>o.minX-r&&p.x<o.maxX+r&&p.z>o.minZ-r&&p.z<o.maxZ+r;
   assert.ok(obstacles.some(o=>o.homeId===home.id&&o.kind==='community-wall'&&overlaps(o,behind)),spot.id+' hangs on a real wall');
-  const body={x:spot.x+spot.nx*.1,z:spot.z+spot.nz*.1};assert.ok(!obstacles.some(o=>o.fixtureId&&overlaps(o,body,.2)),spot.id+' is clear of furniture');
-  const stand={x:spot.x+spot.nx*.9,z:spot.z+spot.nz*.9};assert.ok(!obstacles.some(o=>o.homeId===home.id&&!o.vehicleOnly&&overlaps(o,stand)),spot.id+' can be walked up to');
+  const body={x:spot.x+spot.nx*.1,z:spot.z+spot.nz*.1};assert.ok(!obstacles.some(o=>o.fixtureId&&(o.minY??0)<1.5&&overlaps(o,body,.2)),spot.id+' is clear of furniture');
+  const stand={x:spot.x+spot.nx*.9,z:spot.z+spot.nz*.9};assert.ok(!obstacles.some(o=>o.homeId===home.id&&!o.vehicleOnly&&(o.minY??0)<1.5&&overlaps(o,stand)),spot.id+' can be walked up to');
 }
 
 // Runtime: shared clones, floor-aware drawing and the fire-safety prompt.

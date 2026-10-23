@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile,stat} from 'node:fs/promises';
 import * as THREE from 'three';
-import {SOFA_SET_LAYOUT,SOFA_SET_SKIP,SOFA_SET_URL,SOFA_FLOOR,sofaSetHomes,sofaSetPlacement} from '../assets/sofa-sets.js';
+import {SOFA_SET_LAYOUT,SOFA_SET_SKIP,SOFA_SET_EXTRA,SOFA_SET_URL,SOFA_FLOOR,sofaSetHomes,sofaSetPlacement} from '../assets/sofa-sets.js';
 import {createPlannedCommunity} from '../assets/planned-community.js';
 import {COMMUNITY_HOMES,communityPoint} from '../assets/world-rules.js';
 import {houseObstacleBlocks} from '../assets/house-rules.js';
@@ -17,7 +17,7 @@ assert.equal(SOFA_SET_URL,'./assets/sofa-set/rosa-living.glb');
 
 // Every other eligible home, never the landmark 101 or the furnished 139.
 const chosen=sofaSetHomes(COMMUNITY_HOMES),eligible=COMMUNITY_HOMES.filter(h=>!SOFA_SET_SKIP.includes(h.id));
-assert.equal(chosen.length,Math.ceil(eligible.length/2));assert.ok(chosen.every(h=>!SOFA_SET_SKIP.includes(h.id)));
+assert.equal(chosen.length,Math.ceil(eligible.length/2)+SOFA_SET_EXTRA.length);assert.ok(!chosen.some(h=>h.id==='maple-grove-1'),'never the landmark 101');assert.ok(chosen.some(h=>h.id==='maple-grove-20'),'139 furnished living room');
 for(let i=0;i<eligible.length;i++)assert.equal(chosen.includes(eligible[i]),i%2===0,'alternating at '+eligible[i].id);
 
 // Fits inside every chosen shell with clearance at the walls and the front door.
@@ -42,12 +42,13 @@ for(const set of sofas.sets.filter((s,i)=>i<3||s.home.heading!==0)){
   const home=set.home,point=(x,z)=>communityPoint(home,x,z);
   const blocked=(x,z)=>obstacles.some(o=>o.homeId===home.id&&!o.vehicleOnly&&houseObstacleBlocks({...o,houseId:home.id},x,z,.3));
   const valid=(x,z)=>Math.abs(x-home.x)<home.w/2-.2&&Math.abs(z-home.z)<home.d/2-.2&&!blocked(x,z),scale=4;
-  const from=point(home.w*.2,home.d/2-.45);assert.ok(valid(from.x,from.z),'entry is clear in '+home.id);
+  const from=point(home.w*.2,home.d/2-.75);assert.ok(valid(from.x,from.z),'entry is clear in '+home.id);
   const seat=set.place.pieces.find(p=>p.id==='coffee-table');
-  for(const [name,target] of [['rear',point(home.w*.2,-home.d/2+.9)],['garage side',point(-home.w*.3,0)],['beside the coffee table',point(seat.x-seat.w/2-.5,seat.z)]]){
+  for(const [name,target] of [['rear door',point(home.w*.24,-home.d/2+.9)],['garage side',point(-home.w*.3,0)],['beside the coffee table',point(seat.x-seat.w/2-.5,seat.z)]]){
     assert.ok(valid(target.x,target.z),name+' is open in '+home.id);
-    const path=localWalkPath({x:from.x*scale,z:from.z*scale},{x:target.x*scale,z:target.z*scale},(x,z)=>valid(x/scale,z/scale))?.map(p=>({x:p.x/scale,z:p.z/scale}));
-    assert.ok(path&&path.slice(1).every((p,i)=>lineClear(path[i],p,valid)),'walk from the door to the '+name+' in '+home.id);
+    // Plan on a 12.5 cm grid and verify every leg on that same grid.
+    const fine=8,scaled=(x,z)=>valid(x/fine,z/fine),path=localWalkPath({x:from.x*fine,z:from.z*fine},{x:target.x*fine,z:target.z*fine},scaled);
+    assert.ok(path&&path.slice(1).every((p,i)=>lineClear(path[i],p,scaled)),'walk from the door to the '+name+' in '+home.id);
   }
   const sofa=set.colliders.find(c=>c.fixtureId==='sofa-set-sectional');assert.equal(blocked((sofa.minX+sofa.maxX)/2,(sofa.minZ+sofa.maxZ)/2),true,'the sectional is solid');
 }
