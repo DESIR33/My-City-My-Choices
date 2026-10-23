@@ -490,6 +490,15 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-23 — Objective markers no longer fill the screen
+
+- Request / reason: owner asked to keep improving realism. A real full-game capture showed a large translucent green column over the middle of the screen at the start of every new story.
+- Root cause: a new story places the camera behind the player at Mom's spot (0.3 m from her objective marker), so the view looked out through the marker's translucent beam.
+- Result and status: implemented on branch `marker-fade` and proposed for merge. New `assets/objective-markers.js`: every `marker()` keeps its ground ring, its beam fades in only between 4 m and 12 m from the camera (0.14 opacity at full), and a small bobbing arrow floats over the target, fading when the camera is within about 1.5 to 3.5 m of it. `index.html` updates all objective markers each frame after the camera and house-guide marker. Turning the starting camera toward Mom was tried and reverted: it placed the camera inside a nearby building.
+- State/save/migration: none.
+- Validation actually run: `npm test` 118/118 including new `tests/objective-markers.test.mjs`; inline module `node --check`; full game in headless Chromium with software WebGL, new story started in daylight: before, the column covered the view; after, the view is clear. No GPU or device check.
+- Remaining work: the start camera still sits on Mom's spot; a dedicated opening camera is a later option.
+
 ### 2026-10-22 — Fix startup crash that locked Start and Continue
 
 - Request / reason: owner reported that "Continue saved story" and "Start exploring" could not be clicked after filling out setup.
