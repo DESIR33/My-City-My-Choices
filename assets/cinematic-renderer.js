@@ -17,7 +17,9 @@ export function renderPixelScale(width,height,pixelRatio=1,quality='smooth',mobi
  const cap=quality==='basic'?1.15:quality==='smooth'?1.3:mobile?1.25:1.5,budget=mobile?RENDER_PIXEL_BUDGET.mobile:(RENDER_PIXEL_BUDGET[quality]||RENDER_PIXEL_BUDGET.smooth),textureLimit=Number.isFinite(maxTextureSize)&&maxTextureSize>0?maxTextureSize:8192;
  return Math.min(Math.min(ratio,cap)*(adaptive?.82:1),Math.sqrt(budget/(w*h)),textureLimit/w,textureLimit/h);
 }
-export function restoreGraphics(saved,mobile=false){return {quality:['cinematic','smooth','basic'].includes(saved?.quality)?saved.quality:mobile?'smooth':'cinematic',wetness:saved?.wetness===1?1:0};}
+// Mobile browsers can terminate the page before WebGL recovery runs. Start each
+// visit without HDR/bloom buffers; explicit quality changes still work in-session.
+export function restoreGraphics(saved,mobile=false){return {quality:mobile?'basic':['cinematic','smooth','basic'].includes(saved?.quality)?saved.quality:'cinematic',wetness:saved?.wetness===1?1:0};}
 export const CinemaGrade={name:'Maple cinematic grade',uniforms:{tDiffuse:{value:null},strength:{value:.28}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:`uniform sampler2D tDiffuse;uniform float strength;varying vec2 vUv;
 void main(){vec4 source=texture2D(tDiffuse,vUv);vec3 c=max(source.rgb,vec3(0.0));float l=dot(c,vec3(.2126,.7152,.0722));float shadows=1.0-smoothstep(.08,.7,l);vec3 split=c*mix(vec3(1.025,1.0,.972),vec3(.955,1.006,1.035),shadows);c=mix(c,split,strength);float edge=dot((vUv-.5)*vec2(.95,1.0),(vUv-.5)*vec2(.95,1.0));c*=1.0-strength*.27*smoothstep(.10,.50,edge);gl_FragColor=vec4(c,source.a);}`};
 export function createCinematicRenderer(renderer,scene,camera,{mobile=false,width=globalThis.innerWidth||1280,height=globalThis.innerHeight||720,pixelRatio=globalThis.devicePixelRatio||1,onFallback=console.warn}={}){
