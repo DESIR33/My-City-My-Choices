@@ -132,6 +132,7 @@ import {createHouseTargetVisuals} from "./assets/house-target-visuals.js";
 import {COMMUNITY_ADDRESSES,COMMUNITY_DESTINATIONS} from "./assets/community-addresses.js";
 import {createPlannedCommunity} from "./assets/planned-community.js";
 import {SOFA_SET_URL} from "./assets/sofa-sets.js";
+import {INTERIOR_MODELS,loadInteriorSurfaceMaps} from "./assets/home-interiors.js";
 import {createFireExtinguishers,FIRE_EXTINGUISHER_URL,FIRE_SAFETY_LESSON} from "./assets/fire-extinguishers.js";
 import {createArchitectureDetail} from "./assets/architecture-detail.js";
 import {sampleRoadSurface} from "./assets/road-surfaces.js";
@@ -171,7 +172,7 @@ function mountainSegment(x,z,width,depth,height,seed,rocky=false){const group=ne
 for(let i=0;i<12;i++){const a=i*Math.PI/6;if(Math.cos(a)>0)continue;mountainSegment(Math.sin(a)*1100,-850+Math.cos(a)*2200,450,140,62+(i*17%24),37+i,false);mountainSegment(Math.sin(a)*1350,-850+Math.cos(a)*2500,540,180,86+(i*23%35),91+i,true)}
 visualKit.addForest();
 const streets=[-120,-60,0,60,120];
-function groundHeight(x,z,referenceY=globalThis.landmarkHome?.referenceY||0){const houseFloor=globalThis.landmarkHome?.floorAt(x,z,referenceY);if(houseFloor!=null)return houseFloor;if(onBridge(x,z))return bridgeHeight(z)+(Math.abs(x)>7.5?.15:0);let y=Math.max(coastGroundHeight(x,z),plazaGroundHeight(x,z));for(const surface of groundSurfaces)if(x>=surface.minX&&x<=surface.maxX&&z>=surface.minZ&&z<=surface.maxZ)y=Math.max(y,surface.top);return y}
+function groundHeight(x,z,referenceY=globalThis.landmarkHome?.referenceY||0){const houseFloor=globalThis.landmarkHome?.floorAt(x,z,referenceY);if(houseFloor!=null)return houseFloor;const homeFloor=globalThis.residentialCommunity?.floorAt?.(x,z,referenceY);if(homeFloor!=null)return homeFloor;if(onBridge(x,z))return bridgeHeight(z)+(Math.abs(x)>7.5?.15:0);let y=Math.max(coastGroundHeight(x,z),plazaGroundHeight(x,z));for(const surface of groundSurfaces)if(x>=surface.minX&&x<=surface.maxX&&z>=surface.minZ&&z<=surface.maxZ)y=Math.max(y,surface.top);return y}
 const characters=createCharacterSystem(scene,{groundHeight,crowdLimit:mobileGraphics?CROWD_LIMITS.mobile:CROWD_LIMITS.desktop,onError:(message,error)=>{console.warn(message,error);notify(message)}});
 for(const road of MAPLE_ROADS){const r=communityRoadRect(road);cube(scene,(r.minX+r.maxX)/2,.01,(r.minZ+r.maxZ)/2,r.maxX-r.minX,.05,r.maxZ-r.minZ,C.road,false)}
 // Sidewalks run along the blocks and stop at each crossing, leaving the road
@@ -357,6 +358,7 @@ globalThis.landmarkHome=createLandmarkHouse({scene,visualKit,obstacles,groundSur
   await Promise.all([
    job("City scans unavailable",()=>upgradeCitySurfaces(visualKit.pbr,options)),
    job("House textures unavailable",()=>home?.surfaces&&loadHouseSurfaceMaps(home.surfaces,options)),
+   job("Home interior textures unavailable",()=>plannedCommunity.interiorSurfaces&&loadInteriorSurfaceMaps(plannedCommunity.interiorSurfaces,options)),
    job("House lighting unavailable",async()=>{if(!home?.surfaces)return;const bake=await loadHouseBake();home.applyBake(bake.texture,bake.data)})
   ]);
   // Phones keep the fully furnished procedural stand-ins and their interactions.
@@ -367,6 +369,9 @@ globalThis.landmarkHome=createLandmarkHouse({scene,visualKit,obstacles,groundSur
    home.installFurniture(scenes);
   });
   if(sofas?.count)await job("Sofa sets unavailable",async()=>{const gltf=await new GLTFLoader().setKTX2Loader(loader).loadAsync(SOFA_SET_URL);sofas.install(gltf.scene)});
+  // Neighborhood interiors: owner bed set and accent cabinet, CC0 chairs and plants.
+  // Phones keep the stand-in blocks, which carry the same colliders.
+  const props=plannedCommunity.interiorProps;if(props&&!mobileGraphics)for(const id of props.modelIds)await job("Home interior model unavailable: "+id,async()=>{const gltf=await new GLTFLoader().setKTX2Loader(loader).loadAsync(INTERIOR_MODELS[id].url);props.install(id,gltf.scene)});
  }catch(error){console.warn("World detail unavailable",error)}finally{loader?.dispose()}
 })();
 const communityPlaza=createCommunityPlaza({scene,visualKit,obstacles,groundSurfaces,seats:civicWorld.seats,characters});

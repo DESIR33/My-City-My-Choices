@@ -103,6 +103,11 @@ The game remains a browser prototype with procedural architecture and textured r
 Every other neighborhood home (13 houses, not 101 or 139) has a furnished living room from the owner-supplied "Full set rosa" model: an L-shaped sectional with cushions and a blanket, an armchair, a marble coffee table with decor, an end table with a lamp, a side table and a patterned rug. Each piece blocks movement like other furniture. The model (`assets/sofa-set/rosa-living.glb`, 2.4 MB) streams in after the city is ready and is drawn only near the player. Rebuild it from the source FBX with `node tools/prepare-sofa-set.mjs --fbx /path/to/Full_set_rosa.fbx`.
 
 
+## Two-storey home interiors
+
+Every neighborhood home you can enter (all except 101, which has its own interior) now has stairs and a second floor with a hall, main bedroom, second bedroom, office and bathroom. Walls are painted in one of six colour schemes per house with panel moulding, crown moulding, baseboards and framed prints, and every home has a kitchen (cabinets, worktop, sink, range, fridge) and a dining table. 139 Willow Way is fully furnished with the owner-supplied bed set and accent cabinet, the sofa set, CC0 chairs and plants, and see-through windows with curtains. Rebuild the models with `node tools/prepare-interior-models.mjs --bedroom /path/bedroom_01.fbx --cabinet /path/LaurensAccentCabinet.FBX`.
+
+
 ## Fire extinguishers and fire safety
 
 Wall-mounted fire extinguishers (owner-supplied model, `assets/safety/fire-extinguisher.glb`, 136 KB) hang in the kitchens and garages of 101 Maple Grove and 139 Willow Way, beside the Maple Cafe and Maple Bakery counters, in Thread & Sole, outside Maple Fire & Rescue and at each Flamingo elevator landing. Walk up to one and press the interact key for a short fire-safety lesson: get out, stay out, tell an adult and call 911 from outside; grown-ups use PASS on small fires. Rebuild the model with `node tools/prepare-fire-extinguisher.mjs --fbx /path/to/fire_extinguisher_mid_poly_model.fbx`.
