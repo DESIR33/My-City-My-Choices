@@ -60,3 +60,24 @@ npm test
 Meshopt decoding uses the decoder bundled with the existing Three.js version.
 Gzip is decoded with `DecompressionStream`, as with the existing Mustang asset.
 There are no texture downloads or new runtime packages for these two cars.
+
+## Compact mobile derivatives
+
+`gls-mobile.glb.gz` (313,463 bytes) and `senna-mobile.glb.gz` (824,062 bytes)
+contain only the original medium/far bodies and all four wheel rigs. No maximum
+detail nodes, source images or texture downloads are included. Runtime uses
+standard metallic paint/glass materials and shares geometry across cars. The
+mobile fleet uses the available GLS/Senna shapes in the saved civilian slots;
+Ford labels/ownership IDs remain stable through the existing visual fallback.
+Desktop keeps the original three-model fleet and physical materials.
+
+Rebuild these derivatives using the pinned Three package:
+
+```sh
+node tools/prepare-mobile-vehicles.mjs
+```
+
+Only active play starts loading; files are fetched/parsed serially, once. One
+nearby civilian is upgraded per frame. The driven car uses authored medium detail
+and phones never expose a maximum-detail level. Police retain their existing rig.
+These changes restore authored shapes without claiming measured device stability.

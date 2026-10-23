@@ -80,7 +80,7 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
   const shallow=new THREE.Color(0x54bbc0),deep=new THREE.Color(0x155b81);
   for(let i=0;i<waterPos.count;i++){const x=waterPos.getX(i)+1332,c=shallow.clone().lerp(deep,THREE.MathUtils.smoothstep(x,132,650));waterColors.push(c.r,c.g,c.b);}
   waterGeo.setAttribute('color',new THREE.Float32BufferAttribute(waterColors,3));
-  const waterMaterial=new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.27,metalness:.12,clearcoat:.95,clearcoatRoughness:.22});
+  const waterMaterial=mobile?new THREE.MeshStandardMaterial({vertexColors:true,roughness:.27,metalness:.12}):new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.27,metalness:.12,clearcoat:.95,clearcoatRoughness:.22});
   waterMaterial.onBeforeCompile=shader=>{
     shader.uniforms.coastTime=waterTime;
     shader.vertexShader='uniform float coastTime;\n'+shader.vertexShader
@@ -104,7 +104,7 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(const [i,b] of COAST_BUILDINGS.entries()) {
     const front=b.x+b.w/2;
     if(b.name==='THE FLAMINGO'&&b.height>=30){
-      flamingo=createFlamingoHotel({scene,building:b,obstacles,groundSurfaces,visualKit});
+      flamingo=createFlamingoHotel({scene,building:b,obstacles,groundSurfaces,visualKit,mobile});
       buildings.push({...b,coastal:true,shop:false,enterable:true});
       const entranceWalk=b.x+60-9.3;
       cube(scene,(front+entranceWalk)/2,.07,b.z,entranceWalk-front,.14,3.2,paving,false);
