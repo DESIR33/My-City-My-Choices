@@ -1,6 +1,6 @@
 # My City, My Choices — project context
 
-Last updated: 2026-10-22 (America/New_York). Maintained project handoff, product brief, architecture guide, decision record and change ledger.
+Last updated: 2026-10-23 (America/New_York). Maintained project handoff, product brief, architecture guide, decision record and change ledger.
 
 **Read this document before changing the project. Update it in every change commit, including fixes, assets, configuration, tests and documentation.** See [Maintenance contract](#maintenance-contract). This is the current-state guide; Git history and linked PRs retain implementation detail and earlier states.
 
@@ -10,10 +10,10 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 - Repository: [DESIR33/My-City-My-Choices](https://github.com/DESIR33/My-City-My-Choices).
 - Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site (owner access required; do not change sharing without a request).
-- Audited GitHub baseline: `ab5efb1ac5439356244e92ba4341feed86952bee`, through merged PR #60 (cursor/menu and house 139), preserving learning, tier money, realism, crowd and foliage work. That complete runtime is published in private Site version 69, source `c1bf138d390ad6fa8c664ba6415233d036af8add`. The current candidate rebuilds onboarding; exact new publication/PR outcomes belong in the handoff. Older ledger entries record status when written and do not override this snapshot.
+- Audited GitHub baseline: `2ef78eeb56480535d8b6a15fe812deb1d3c0a772`, through merged PR #66. Reviewed the ten recent merged PRs #57–66. The private Site was still version 70, source `fecbff238d6085eea000aeaaf9c0e85cf4164042`, through onboarding PR #61; it lacked the startup fixes, marker changes, sofa sets and fire extinguishers. This candidate reconciles those merged changes and adds first-objective guidance. Exact new publication/PR outcomes belong in the handoff. Older ledger entries record status when written and do not override this snapshot.
 - The repository serves root `index.html` and `assets/`. The separate Sites checkout serves `dist/index.html` and `dist/assets/`. They are related source layouts, not interchangeable directory trees.
 - Current major feature: furnished 101 Maple Grove Lane, connected to renting/buying, improvements, daily reviews and an optional settling-in guide.
-- Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. 139 Willow Way now has a furnished, partitioned ground floor; other neighboring homes have empty walk-in shells. Only 101 Maple Grove has two furnished interactive floors. Actual-device stability and GPU playtesting remain priorities.
+- Current neighborhood update: 27 illuminated front-wall address plaques, 79 shared animated neighborhood doors plus the furnished home's six doors, explicit desktop/touch entry prompts and a world-map address directory. 139 Willow Way has a furnished, partitioned ground floor; 13 other shells have the supplied living-room set, while the remaining 12 have empty ground floors. Only 101 Maple Grove has two furnished interactive floors. Eleven fire extinguishers offer a nearby safety lesson. Actual-device stability and GPU playtesting remain priorities.
 - Learning layer (merged in PR #50; published in Site version 69): Chapter 1 questions come from seeded skill generators with age tiers, per-skill mastery, a placement warm-up, a three-plan Garden Club and a PIN-protected Parents page. See [Learning layer](#learning-layer-adaptive-skills-garden-club-and-parents-page).
 - Tier-scaled story money (merged in PR #51; included in this reconciled candidate): the age tier now also sets the money scale. Sprout keeps today's coin economy; Builder uses ×10 amounts plus weekly savings interest; Planner uses realistic amounts with a weekly paycheck and taxes, loans with interest and monthly bills. See [Tier-scaled story money](#tier-scaled-story-money).
 - Multiplayer, server-assigned properties, cloud save synchronization and a production real-estate economy are not built.
@@ -22,7 +22,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 The current source tree, runtime imports, module code, README and PR history through #50 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Runtime reconciliation:** PR #60 reconciled the private Site to main through #59 and fixed controls/139, with all 243 shipped runtime files matching. Onboarding adds two local assets (controller and CSS), making 245 files in both candidate layouts. The full inventory/hash comparison includes binary models, baked light and compressed textures. Docs/tests retain their layout-specific paths. Parity does not establish browser/GPU/device acceptance.
+**Runtime reconciliation:** the current handoff reconciles Site version 70 to main through #66 plus the first-step guide, including the binary sofa/extinguisher assets. There are 252 shipped runtime files in both candidate layouts. The inventory/hash comparison includes binary models, baked light and compressed textures. Docs/tests retain their layout-specific paths. Parity does not establish browser/GPU/device acceptance.
 
 ## Contents
 
@@ -98,6 +98,8 @@ A validated existing primary save gets a prominent Continue card, revalidated on
 
 ### Gameplay controls
 
+During the first two story stages, the existing objective line now gives rounded distance and one of eight world directions to Mom or Maya (north is negative Z). When the actual nearby selection is that person, it changes to Press E · Talk to Mom/Maya or Tap Talk to Mom/Maya, with the same named touch button. Door priority stays intact: a selected nearby door produces a nearby/move-clear hint instead of telling the player to talk. Sitting and vehicles give stand/step-out hints. This is guidance derived from existing stage, actor positions and nearby selection, not navigation, automatic interaction or a new saved field. It runs at most five times per second during active play and changes DOM text only when needed; later business objectives retain their existing behavior. PR #63's fading world markers remain intact.
+
 | Situation | Desktop | Touch |
 | --- | --- | --- |
 | Walk / look | WASD/arrows; mouse look after capture | Left stick; drag the scene with another finger |
@@ -164,11 +166,11 @@ The separate in-world marker uses two fixed meshes (72 triangles total) sharing 
 
 ### Neighborhood entry and finding addresses
 
-139 Willow Way (`maple-grove-20`, center `(-176,-24)`) now has a furnished ground floor: plaster inner faces and full-height partitions, open room passages, sofa/coffee table/media console/TV, kitchen counters/sink/oven/fridge/island, a four-chair dining table, guest bed/nightstand/dresser and a separated garage/workbench. All pieces use the existing static instance batches and shared materials, with actual furniture/wall collision and per-piece camera bounds. `furnishedInteriors` exposes construction metadata for regression checks. There are no added lights, textures, ownership assignments or household action/save flags for 139. Its furniture is scenery; its three existing doors work, while the upper floor remains inaccessible. 101 keeps its complete two-floor interactive experience. Other neighboring homes remain empty shells.
+139 Willow Way (`maple-grove-20`, center `(-176,-24)`) now has a furnished ground floor: plaster inner faces and full-height partitions, open room passages, sofa/coffee table/media console/TV, kitchen counters/sink/oven/fridge/island, a four-chair dining table, guest bed/nightstand/dresser and a separated garage/workbench. All pieces use the existing static instance batches and shared materials, with actual furniture/wall collision and per-piece camera bounds. `furnishedInteriors` exposes construction metadata for regression checks. There are no added lights, textures, ownership assignments or household action/save flags for 139. Its furniture is scenery; its three existing doors work, while the upper floor remains inaccessible. 101 keeps its complete two-floor interactive experience. Thirteen other neighboring shells now contain the supplied living-room set; twelve remain empty.
 
 All 26 neighboring house slabs now top out at 0.27 m, beneath the unchanged 0.30 m finished wood floor. Previously both broad top faces occupied 0.30 m and competed in the depth buffer. Lowering the foundation removes that shared plane without changing walk height, saved player coordinates, door thresholds, street/lot data or ownership. The flagship home's separate baked construction is untouched. Native downward rays inspect the actual instanced geometry and confirm exactly one finished-floor hit at each neighboring home, with stable footing and no new floor-height registration.
 
-Every neighboring front/patio/garage door now has an animated shared-instance leaf, live height-aware collision, nearby addressed Open/Close labels and player sweep protection. The model-home garage uses the same system; its original six household doors remain separate. Mobile prompts are visible above the controls and the contextual button says Open/Close door or garage. Neighboring homes have registered wood floors and indoor camera limits; 139 is furnished downstairs, and the others retain empty shells. Their upper floors remain closed. Neighborhood door positions are session-local and reset closed on reload; furnished-home state retains its existing save contract.
+Every neighboring front/patio/garage door now has an animated shared-instance leaf, live height-aware collision, nearby addressed Open/Close labels and player sweep protection. The model-home garage uses the same system; its original six household doors remain separate. Mobile prompts are visible above the controls and the contextual button says Open/Close door or garage. Neighboring homes have registered wood floors and indoor camera limits; 139 is furnished downstairs, thirteen other shells have living-room sets and twelve remain empty. Their upper floors remain closed. Neighborhood door positions are session-local and reset closed on reload; furnished-home state retains its existing save contract.
 
 All 27 front-wall plaques use one 1024-pixel number/street atlas with brass/dark backing and a night glow. Rendering, labels and the new **World map → Maple Grove · Find an address** directory share `COMMUNITY_HOMES`. The directory groups all addresses by street, routes on foot to exterior front walks and by vehicle to the spare driveway bay, and preserves selected address IDs through the existing navigation save. It adds no permanent HUD controls, charges or ownership changes.
 
@@ -311,6 +313,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 | Files under `assets/` | Responsibility / related tests |
 | --- | --- |
 | `onboarding.js`, `onboarding.css` | Renderer-independent setup steps, goal catalogue/amount previews, validated saved-story discovery, readiness/failure and responsive/focus behavior; onboarding/story-flow tests |
+| `first-steps.js`, `objective-markers.js` | First-story distance/action cues and camera-aware world markers; first-steps/objective-markers/story-flow tests |
 | `world-rules.js` | District bounds, bridge/coast heights, roads, community lots and shared playable constraints; world/navigation/community tests |
 | `north-world.js`, `coast-world.js`, `flamingo-hotel.js` | Northern/coastal construction, interiors, elevator and surface contracts; north/coast/bridge tests |
 | `planned-community.js`, `residential-doors.js`, `community-addresses.js`, `community-plaza.js` | Lots, plaques, dynamic doors, address destinations, landscaping and plaza/playground; community/address/door tests |
@@ -351,7 +354,7 @@ No backend database, account service, authoritative multiplayer server, cloud ec
 
 ## State, saves and compatibility
 
-Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. The proposed learning layer adds `learning` (version 1: `childId`, `tier`, `age`, `placementDone`, `parentPinHash`, `tierSuggestion`, Garden reflections and per-skill level/status/streaks/last 8 attempts) and `gardenReflectionDue`; `restoreLearning` validates both, and saves without them load as Builder with every skill New. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
+Primary local story key: `mapleStreetChapter1`. Story serialization includes stage/goal/business/day, wallet/savings/earnings/spending, journal, reservations, wardrobe, car ownership/pose, two-wheeler state, city activity/food service, errands, deliveries, navigation, player X/Z, avatar and house/home-life state. The merged learning layer adds `learning` (version 1: `childId`, `tier`, `age`, `placementDone`, `parentPinHash`, `tierSuggestion`, Garden reflections and per-skill level/status/streaks/last 8 attempts) and `gardenReflectionDue`; `restoreLearning` validates both, and saves without them load as Builder with every skill New. Multi-level house visit data restores upstairs correctly and recovers blocked saved resting positions to a clear landing. Read the current serializer for exact field shape before adding a field.
 
 Optional `houseGuide: {targetId}` stores only a whitelisted furnished-object ID, independently from city navigation and settling progress. Old saves default to no target; invalid/removed/door IDs are dropped. The existing portable backup format carries it without a version change. Selecting, canceling and successfully using the target use normal story saves, and New story clears it. Tours and guidance are free; no ownership, wallet, savings or business-day change occurs.
 
@@ -438,7 +441,7 @@ For a requested runtime update, use the supported Sites source opening/credentia
 | Future runtime source drift | PR #44 resolved the observed weather/siren/mobile gap; rerun the read-only parity command against an available current Site checkout before future handoffs |
 | PR #8 school/grocery/bus/Hudson/riverfront expansion | Historical merged PR describes these, but current main lacks its dedicated city-next test/module and several runtime identifiers; do not present the full package as currently playable without reconciliation |
 | Full GPU/mobile acceptance | Still needed on actual iPhone/Safari and desktop; test first load, doors, stairs, shadows, frame stability, audio, touch, app switching and save recovery |
-| Remaining homes/towers | 139 has furnished ground-floor rooms; other neighbors remain empty downstairs. Only 101 has an accessible furnished upstairs; most towers remain scenery |
+| Remaining homes/towers | 139 has furnished ground-floor rooms; 13 other shells have living-room sets and 12 remain empty downstairs. Only 101 has an accessible furnished upstairs; most towers remain scenery |
 | Premium visuals | Procedural materials/assets are an improvement. Scanned surfaces cover the city (merged); baked light and real furniture exist only in 101 Maple Grove (merged). GTA-level fidelity, realistic people, ray tracing, destruction and production streaming are not implemented |
 | House realism pilot | Needs a GPU and phone check of load time, frame rate, memory and texture quality; tune bake gamma/floor and wall colors by eye; faint wall seams remain; bake must be rerun after house geometry edits |
 | Physics/camera | Assisted kinematic simulation and conservative architecture bounds; not full rigid-body realism or automatic safety around all dynamic vehicles |
@@ -455,7 +458,7 @@ Run targeted tests first, then the appropriate full suite once inputs settle. Va
 
 ### Immediate, grounded in owner feedback
 
-1. Learning layer is merged (PR #50) and tier money is proposed: playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds, hints, weekly rates and Planner prices. Its runtime changes make the private Site differ until it is deliberately published; rerun parity before publishing.
+1. Learning and tier money are merged (PRs #50/#51): playtest Chapter 1 with one younger (Sprout) and one older (Planner) child, then tune thresholds, hints, weekly rates and Planner prices. Both are already in the private playtest; keep parity verified as new changes ship.
 2. Review the house pilot, city scans and the new people/pets on a real desktop GPU and phone (load time, memory, frame rate). Decide whether to buy realistic animated pets.
 3. Confirm the new neighborhood door/prompt behavior on the reporting device; the source now supports addressed Open/Close actions and visible mobile guidance. Do not declare a device-specific issue resolved solely from native tests.
 4. Playtest exterior address readability, door animations, directory guidance and empty-shell entry at day/night and phone/desktop sizes. The 27 front-wall plaque and address-data pass is implemented.
@@ -497,6 +500,16 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-23 — Reconcile the recent releases and guide the first objectives
+
+- Request / reason: continue with the next useful work after reviewing the last ten PRs. The live private playtest was behind main, including fixes for the owner's blocked Start/Continue report; onboarding also ended with a static objective even when Mom was already reachable.
+- Review: #57 scanned lawns, #58 leafy shrubs, #59 wind, #60 cursor/menu and 139, #61 onboarding, #62 pre-player conversation startup crash and lock explanations, #63 camera-aware markers, #64 supplied living-room sets, #65 fire extinguishers, #66 startup error classification and late-ready recovery. All ten are merged. The version-70 Site already held #57–61 and lacked #62–66.
+- Result / status: implemented a presentation-only first-step guide for Mom and Maya, with rounded world direction/distance, actual nearby-target readiness, named desktop/touch actions and door/seat/vehicle hints. Reconciled the hosted entry point, onboarding, planned community and six new merged assets (including original GLBs/layout data), preserving all markers, loaders, safety actions and startup fixes. This is a candidate until the source/deployment result in the handoff; it does not assert an unobserved merge.
+- Affected: `first-steps.js`, entry-point integration, new first-step tests, real story-handler tests, README/source/context; hosted checkout additionally receives merged #62–66 and layout-normalized tests. No new geometry, lights, textures, HUD widgets or runtime dependencies for the guide.
+- Compatibility: no save format/keys, prices, rewards, ownership, player coordinates or transactions change. Guide state is derived each frame; existing Continue restores normally. Never replace or clear a player's save to work around startup. The actual crash in #62 was a temporal-dead-zone read of `player` during `conversation()` construction; its `openGround()` fix must stay independent of player state.
+- Validation: repository and hosted-layout `npm test` each pass 121/121 across 75 files, including actual first-interaction/Maya integration, door precedence, paused updates, invalid stages/positions and unchanged serialized progress/money. The hosted suite now includes the context/parity checker cases as well as normalized runtime/asset paths. All 252 runtime files match; module/inline syntax and whitespace checks pass. Phone-width isolated browser QA uses the shipped objective CSS, cue/update function and real touch controls: named Mom/Maya actions, 95 m east cue and doorway priority pass. Temporary QA pages are removed. Full-game QA here cannot create WebGL; it reaches the explicit graphics error. Past software-WebGL evidence in #62/#66 is historical, not a fresh full-game pass. Staged/committed context checks and final source/deployment outcomes belong in the PR/handoff.
+- Remaining: actual-device new-story/Continue acceptance, Sprout/Planner learning playtests, GPU/memory/audio tuning, sofa seating and shell interior lighting. Preserve the current private audience.
 
 ### 2026-10-23 — Setup no longer fails on errors that are not the game's
 
@@ -740,7 +753,7 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ### Historical milestones
 
-The table below records reviewed merged PR milestones through #50 merged to main. PR #48 is open; PR #49 merged into #48's branch, not main. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
+The table below records reviewed merged PR milestones through #50 merged to main. PR #48 subsequently merged with main after #50, including #49's marker work. Current-source exceptions above still apply. PR bodies contain their original tests, limitations and detailed scope. These are implementation milestones, not a verbatim archive of every chat. No unseen conversation is claimed to have been reconstructed.
 
 | PR | Milestone | Merged (UTC date) |
 | --- | --- | --- |
