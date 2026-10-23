@@ -48,10 +48,15 @@ const camera=new THREE.PerspectiveCamera();camera.position.set(0,1.6,0);
 const refs=Array.from({length:16},(_,i)=>{const group=new THREE.Group();group.position.set(i*.3,0,5+i*.2);mountVehicle(group,templates.get('gls'),0x31474f);return{group};});
 for(const mobile of [false,true]) {
   updateVehicleDetail(refs,camera,{mobile,focusVehicle:refs[15].group});
-  assert.equal(refs[15].group.userData.vehicleVisual.activeLevel,0,'The driven car retains near detail');
-  assert.ok(refs.filter(r=>r.group.userData.vehicleVisual.activeLevel===0).length<=(mobile?2:4),'Near detail has a strict device budget');
+  assert.equal(refs[15].group.userData.vehicleVisual.activeLevel,mobile?1:0,'The driven car uses device-appropriate detail');
+  assert.ok(refs.filter(r=>r.group.userData.vehicleVisual.activeLevel===0).length<=(mobile?0:4),'Near detail has a strict device budget');
   assert.ok(refs.filter(r=>r.group.userData.vehicleVisual.activeLevel===1).length<=(mobile?5:10),'Medium detail has a strict device budget');
   for(const {group} of refs)assert.equal(group.userData.vehicleVisual.levels.filter(l=>l.root.visible).length,1);
+  if(mobile)for(let i=0;i<100;i++){
+    updateVehicleDetail(refs,camera,{mobile,focusVehicle:i%2?refs[i%refs.length].group:null});
+    assert.ok(refs.every(r=>r.group.userData.vehicleVisual.activeLevel!==0),'Entry and on-foot travel never expose the heaviest model on phones');
+    assert.ok(refs.filter(r=>r.group.userData.vehicleVisual.activeLevel===1).length<=5);
+  }
 }
 camera.position.set(1000,2,1000);updateVehicleDetail(refs,camera);
 assert.ok(refs.every(r=>r.group.userData.vehicleVisual.activeLevel===2),'Distant vehicles use the inexpensive silhouette');

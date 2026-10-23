@@ -199,6 +199,8 @@ export function updatePremiumVehicleVisual(group,state) {
 
 // Keep a bounded number of rich models nearby. Every level uses the same
 // authored silhouette and independent wheel pivots, so no car turns into a box.
+// Phones use authored medium detail even for the driven car: selecting it must
+// not suddenly upload the largest buffers while changing camera and controls.
 export function updateVehicleDetail(refs,camera,{mobile=false,focusVehicle=null}={}) {
   const cameraPosition=camera.getWorldPosition(new THREE.Vector3());
   const candidates=refs.map(ref=>ref.group||ref).filter(group=>group.userData.vehicleVisual?.kind==='premium')
@@ -207,7 +209,7 @@ export function updateVehicleDetail(refs,camera,{mobile=false,focusVehicle=null}
   let near=0,mid=0;
   for(const {group,distance} of candidates) {
     const data=group.userData.vehicleVisual,nearLimit=(mobile?14:24)*(data.activeLevel===0?1.15:1),midLimit=(mobile?42:72)*(data.activeLevel===1?1.1:1);
-    const level=(group===focusVehicle||distance<nearLimit)&&near<(mobile?2:4)?(near++,0):distance<midLimit&&mid<(mobile?5:10)?(mid++,1):2;
+    const level=!mobile&&(group===focusVehicle||distance<nearLimit)&&near<4?(near++,0):(group===focusVehicle||distance<midLimit)&&mid<(mobile?5:10)?(mid++,1):2;
     if(data.activeLevel===level)continue;
     data.levels.forEach((entry,i)=>entry.root.visible=i===level);
     data.activeLevel=level;data.body=data.levels[level].body;data.wheels=data.levels[level].wheels;

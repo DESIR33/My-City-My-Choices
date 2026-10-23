@@ -53,6 +53,16 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
   }
   for(let i=0;i<(mobile?2:4);i++)lampLights.push(pooledLight('Nearby street illumination',0xffdeb1,24,1.05,.7));
   for(let i=0;i<2;i++)headLights.push(pooledLight('Working vehicle low beam',0xe2efff,55,.32,.65));
+  // Phones keep a constant zero practical-spotlight layout. Adding two lights
+  // on car entry otherwise changes the lighting program of every lit surface.
+  // Two unlit road pools preserve visible low beams with a fixed tiny buffer.
+  let headBeamMesh=null;
+  if(mobile){
+    const material=poolMaterial.clone();material.name='Mobile vehicle road beams';material.color.setHex(0xc6e2ff);material.opacity=0;
+    headBeamMesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),material,2);const dummy=new THREE.Object3D();
+    for(let i=0;i<2;i++){dummy.position.set((i?1:-1)*.7,.11,12);dummy.rotation.x=-Math.PI/2;dummy.scale.set(4.6,22,1);dummy.updateMatrix();headBeamMesh.setMatrixAt(i,dummy.matrix);}
+    headBeamMesh.computeBoundingSphere();headBeamMesh.matrixAutoUpdate=false;headBeamMesh.visible=false;headBeamMesh.renderOrder=2;headBeamMesh.name='Mobile vehicle road beams';headBeamMesh.userData.cameraIgnore=true;scene.add(headBeamMesh);
+  }
 
   // One inexpensive sky batch; stars follow the observer instead of remaining
   // behind in the southern neighborhood during a trip to Northstar.
@@ -115,33 +125,36 @@ export function createCityAtmosphere({renderer, scene, sky, sun, hemisphere, lig
     if(!Number.isFinite(lastHour)||Math.abs(hour-lastHour)>.001||Math.abs(rain-lastRain)>.001)applyPalette(hour,rain);
     sky.position.set(position.x,0,position.z);stars.position.set(position.x,0,position.z);moon.position.set(position.x-820,900,position.z-1480);
     selectClock+=Math.max(0,dt);
-    if(selectClock>=.2) {
+    if(!mobile&&selectClock>=.2) {
       selectedLamps=streetLamps.map(lamp=>({lamp,distance:Math.hypot(lamp.x-position.x,lamp.z-position.z)}))
         .filter(entry=>entry.distance<32).sort((a,b)=>a.distance-b.distance).slice(0,lampLights.length).map(entry=>entry.lamp);
       selectClock=0;
     }
     lampLights.forEach((light,i)=>{
-      const lamp=selectedLamps[i];light.visible=!!lamp&&sample.night>.02;
-      light.intensity=lamp?145*sample.night:0;
+      const lamp=selectedLamps[i];light.visible=!mobile&&!!lamp&&sample.night>.02;
+      light.intensity=light.visible?145*sample.night:0;
       if(lamp){light.position.set(lamp.x,lamp.y,lamp.z);light.target.position.set(lamp.x,lamp.groundY,lamp.z);light.target.updateMatrixWorld();}
     });
     updateVehicles(vehicles,focusVehicle);
     if(focusVehicle)focusVehicle.updateWorldMatrix(true,false);
     headLights.forEach((light,i)=>{
       const lowBeam=Math.max(sample.night,lastRain*.8),active=!!focusVehicle&&!focusVehicle.userData.disabled&&lowBeam>.02;
-      light.visible=active;light.intensity=active?210*lowBeam:0;
-      if(active){const side=i?1:-1,height=focusVehicle.userData.vehicleVisual?.modelId==='gls'?.86:.61;
+      light.visible=!mobile&&active;light.intensity=light.visible?210*lowBeam:0;
+      if(light.visible){const side=i?1:-1,height=focusVehicle.userData.vehicleVisual?.modelId==='gls'?.86:.61;
         vector.set(side*.7,height,2.18);target.set(side*.95,.10,31);
         light.position.copy(focusVehicle.localToWorld(vector));light.target.position.copy(focusVehicle.localToWorld(target));light.target.updateMatrixWorld();}
     });
+    if(headBeamMesh){const lowBeam=Math.max(sample.night,lastRain*.8),active=!!focusVehicle&&!focusVehicle.userData.disabled&&lowBeam>.02;
+      headBeamMesh.visible=active;headBeamMesh.material.opacity=active?.2*lowBeam:0;
+      if(active){headBeamMesh.matrix.copy(focusVehicle.matrixWorld);headBeamMesh.matrixWorldNeedsUpdate=true;}}
     return sample;
   }
   function captureDaylight(capture) {
-    const hour=Number.isFinite(lastHour)?lastHour:15,rain=Number.isFinite(lastRain)?lastRain:0,lights=[...lampLights,...headLights],visible=lights.map(light=>light.visible);
-    applyPalette(15);lights.forEach(light=>light.visible=false);
+    const hour=Number.isFinite(lastHour)?lastHour:15,rain=Number.isFinite(lastRain)?lastRain:0,lights=[...lampLights,...headLights],visible=lights.map(light=>light.visible),beamVisible=headBeamMesh?.visible;
+    applyPalette(15);lights.forEach(light=>light.visible=false);if(headBeamMesh)headBeamMesh.visible=false;
     try{return capture();}
-    finally{applyPalette(hour,rain);lights.forEach((light,i)=>light.visible=visible[i]);}
+    finally{applyPalette(hour,rain);lights.forEach((light,i)=>light.visible=visible[i]);if(headBeamMesh)headBeamMesh.visible=beamVisible;}
   }
   return {addStreetLight,registerGlow,finalizeStreetLights,update,captureDaylight,
-    get sample(){return sample;},get streetLamps(){return streetLamps;},get lampLights(){return lampLights;},get headLights(){return headLights;},get poolMesh(){return poolMesh;}};
+    get sample(){return sample;},get streetLamps(){return streetLamps;},get lampLights(){return lampLights;},get headLights(){return headLights;},get poolMesh(){return poolMesh;},get headBeamMesh(){return headBeamMesh;}};
 }
