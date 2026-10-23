@@ -1,4 +1,4 @@
-import {COMMUNITY_ROADS,MAPLE_STREETS,NORTH_CITY,COAST_CITY,worldDrivable,worldWalkable} from './world-rules.js';
+import {COMMUNITY_ROADS,MAPLE_STREETS,NORTH_CITY,COAST_CITY,RONDA,worldDrivable,worldWalkable} from './world-rules.js';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z),lerp=(a,b,t)=>({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t});
 const key=p=>p.x.toFixed(2)+','+p.z.toFixed(2);
 class Heap{constructor(){this.a=[]}push(v){const a=this.a;a.push(v);let i=a.length-1;while(i){let p=(i-1)>>1;if(a[p].score<=v.score)break;a[i]=a[p];i=p;}a[i]=v;}pop(){const a=this.a,r=a[0],v=a.pop();if(a.length){let i=0;while(i*2+1<a.length){let c=i*2+1;if(c+1<a.length&&a[c+1].score<a[c].score)c++;if(a[c].score>=v.score)break;a[i]=a[c];i=c;}a[i]=v;}return r;}get length(){return this.a.length}}
@@ -23,6 +23,12 @@ export function createCityNetwork(mode='drive'){
 
  if(mode==='drive'){link({x:0,z:-120},{x:0,z:-1150});link({x:0,z:-1150},{x:-60,z:-1150});link({x:0,z:-1150},{x:60,z:-1150});link({x:0,z:120},{x:0,z:1080});}
  else for(const s of [-1,1]){link({x:s*9.3,z:-129.3},{x:s*9.3,z:-1140.7});link({x:s*9.3,z:-1140.7},{x:s*50.7,z:-1140.7});link({x:s*9.3,z:129.3},{x:s*9.3,z:1070.7});}
+ // Ronda: the link road leaves Sunshore's west avenue, then the old town's shared
+ // streets. The east street stops at the gorge; only the Puente Nuevo crosses it.
+ {const [a,b]=RONDA.roads.ew,[c,d]=RONDA.roads.ns,g=RONDA.gorge,line=(...ps)=>{for(let i=1;i<ps.length;i++)link(ps[i-1],ps[i]);};
+  const west=COAST_CITY.avenues[0]-(mode==='drive'?0:15);line({x:west,z:a},{x:d,z:a},{x:c,z:a},{x:-660,z:a});line({x:-660,z:b},{x:c,z:b},{x:d,z:b},{x:-302,z:b});
+  line({x:c,z:1180},{x:c,z:a},{x:c,z:b},{x:c,z:1820});line({x:d,z:1180},{x:d,z:a},{x:d,z:g.minZ-3});line({x:d,z:g.maxZ+3},{x:d,z:b},{x:d,z:1820});
+  if(mode!=='drive')for(const s of [-1,1])link({x:COAST_CITY.avenues[0]-9.3,z:a+s*9.3},{x:west,z:a});}
  return {nodes,edges,adj,mode};
 }
 function project(p,a,b){const dx=b.x-a.x,dz=b.z-a.z,t=dx*dx+dz*dz===0?0:Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));return {...lerp(a,b,t),t};}

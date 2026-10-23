@@ -149,7 +149,7 @@ c.carUpkeep('fuel');assert.equal(run('carLife.fuel'),4);assert.equal(run('cash')
 run('cash=0');const coastalFuel=run('carLife.fuel');c.carUpkeep('fuel');assert.equal(run('carLife.fuel'),coastalFuel,'An empty wallet cannot buy coastal fuel');
 run('saveGame();player.position.set(-83,0,-22);garageCar.position.set(-86,0,115);carLife=freshCarOwnership();restoreGame()');
 assert.equal(run('player.position.z'),1114);assert.equal(run('garageCar.position.z'),1114);assert.equal(run('carLife.fuel'),4,'Coastal car, player, and fuel state survive save/restore');
-c.openWorldMap();assert.ok(doc.querySelector('#panel').innerHTML.includes('Sunshore City'));assert.ok(doc.querySelector('#panel').innerHTML.includes('Three connected districts'));
+c.openWorldMap();assert.ok(doc.querySelector('#panel').innerHTML.includes('Sunshore City'));assert.ok(doc.querySelector('#panel').innerHTML.includes('Four connected districts')&&doc.querySelector('#panel').innerHTML.includes('Ronda · Puente Nuevo'));
 c.setCityDestination('coast');assert.equal(run('navigationTarget.z'),1080);c.setCityDestination('beach');assert.equal(run('navigationTarget.x'),48);
 run('player.position.set(25,0,1090);near=null;interactNow()');assert.ok(doc.querySelector('#panel').innerHTML.includes('Welcome to the coast'),'The beach information board is reachable through the actual interaction system');
 c.newStory();assert.equal(storage.has('mapleStreetChapter1'),false);assert.ok(c.reloaded);
