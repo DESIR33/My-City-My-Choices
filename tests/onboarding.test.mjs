@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {mountOnboarding,STARTER_GOALS,setupGoal,setupTier,setupTarget,setupPinValid,existingSetupStory} from '../assets/onboarding.js';
+import {mountOnboarding,ownScriptError,LOAD_GRACE_MS,STARTER_GOALS,setupGoal,setupTier,setupTarget,setupPinValid,existingSetupStory} from '../assets/onboarding.js';
 import {convertDollars} from '../assets/economy.js';
 
 for(const value of ['',null,undefined,'3','-1','0.0','01',true,{},NaN])assert.equal(setupGoal(value),null);
@@ -24,7 +24,7 @@ function fixture(raw=null){
  root.querySelectorAll=selector=>selector==='[data-setup-panel]'?panels:selector==='[data-setup-step]'?steps:selector==='[data-goal]'?goals:selector==='[data-goal-price]'?prices:[get('avatarName'),get('setupNext')];
  for(const group of ['skinChoices','shirtChoices','hairChoices'])get(group).children=[new Element(),new Element()];
  doc={events:{},querySelector:selector=>get(selector.slice(1)),addEventListener:Element.prototype.addEventListener,emit:Element.prototype.emit};let writes=0,reloads=0;
- const win={events:{},addEventListener:Element.prototype.addEventListener,emit:Element.prototype.emit,localStorage:{getItem:()=>raw,setItem(){writes++;}},location:{reload(){reloads++;}},matchMedia:()=>({matches:false})};
+ const win={events:{},addEventListener:Element.prototype.addEventListener,emit:Element.prototype.emit,localStorage:{getItem:()=>raw,setItem(){writes++;}},location:{href:'https://play.example/index.html',reload(){reloads++;}},matchMedia:()=>({matches:false}),timers:[],setTimeout(fn,ms){this.timers.push({fn,ms});return this.timers.length;},clearTimeout(id){if(this.timers[id-1])this.timers[id-1].fn=null;}};
  const control=mountOnboarding(doc,win);return {control,get,root,panels,steps,goals,prices,win,get writes(){return writes;},get reloads(){return reloads;}};
 }
 let f=fixture();assert.equal(f.control.step,0);assert.equal(f.panels[0].hidden,false);assert.equal(f.get('setupResume').hidden,true);assert.equal(f.get('begin').disabled,true);
@@ -41,7 +41,18 @@ f.get('setupBack').emit('click');assert.equal(f.control.step,1);assert.equal(f.g
 let prevented=false;doc.activeElement=f.get('setupNext');f.root.emit('keydown',{code:'Tab',preventDefault(){prevented=true;}});assert.ok(prevented);assert.equal(doc.activeElement,f.get('avatarName'));
 assert.equal(mountOnboarding(doc,f.win),null,'Mounting twice does not attach duplicate handlers');
 f=fixture(JSON.stringify(saved));assert.equal(f.get('setupResume').hidden,false);assert.equal(f.get('savedStorySummary').textContent,'Existing · Business day 1');f.goals[0].emit('click');f.root.dataset.cityReady='true';doc.emit('city:ready');assert.equal(f.get('continueStory').disabled,false);assert.equal(f.get('begin').disabled,true,'An existing story needs explicit replacement consent');f.get('replaceStory').checked=true;f.get('replaceStory').emit('change');assert.equal(f.get('begin').disabled,false);assert.equal(f.writes,0);
-f=fixture();f.goals[2].emit('click');f.win.emit('error');assert.match(f.get('citySetupStatus').textContent,/couldn’t finish loading/);assert.equal(f.get('setupRetry').hidden,false);assert.equal(f.get('onboardingGoal').value,'2');f.get('setupRetry').emit('click');assert.equal(f.reloads,1);
+f=fixture();f.goals[2].emit('click');f.win.emit('error',{type:'error',message:'ReferenceError: x is not defined',filename:'https://play.example/index.html'});assert.match(f.get('citySetupStatus').textContent,/couldn’t finish loading/);assert.equal(f.get('setupRetry').hidden,false);assert.equal(f.get('onboardingGoal').value,'2');f.get('setupRetry').emit('click');assert.equal(f.reloads,1);
+
+// Errors that are not the game's own crash no longer lock setup on their own.
+const own={type:'error',message:'TypeError: boom',filename:'https://play.example/index.html'},href={location:{href:'https://play.example/index.html'}};
+assert.equal(ownScriptError(own,href),true);assert.equal(ownScriptError({...own,filename:'https://play.example/assets/onboarding.js'},href),true);
+for(const e of [{type:'error',message:'Script error.',filename:''},{...own,filename:'https://cdn.overlay.example/edit.js'},{type:'unhandledrejection',reason:new Error('x')},{type:'error',message:'x'},undefined])assert.equal(ownScriptError(e,href),false);
+f=fixture();f.win.emit('error',{type:'error',message:'Script error.'});f.win.emit('unhandledrejection',{type:'unhandledrejection'});
+assert.equal(f.root.dataset.cityError,undefined,'host overlay errors and stray rejections do not fail setup immediately');assert.equal(f.win.timers.length,1,'one grace timer');assert.equal(f.win.timers[0].ms,LOAD_GRACE_MS);
+f.root.dataset.cityReady='true';doc.emit('city:ready');assert.equal(f.win.timers[0].fn,null,'ready cancels the grace timer');assert.equal(f.root.dataset.cityError,undefined);
+f=fixture();f.win.emit('unhandledrejection',{type:'unhandledrejection'});f.win.timers[0].fn();assert.match(f.get('citySetupStatus').textContent,/couldn’t finish loading/,'a city that never becomes ready still reports the failure');
+f.root.dataset.cityReady='true';doc.emit('city:ready');assert.equal(f.root.dataset.cityError,undefined,'a late ready clears the generic message');assert.match(f.get('citySetupStatus').textContent,/ready/);
+f=fixture();f.root.dataset.cityError='The city couldn’t start on this device.';f.win.emit('error',own);f.root.dataset.cityReady='true';doc.emit('city:ready');assert.ok(f.root.dataset.cityError,'specific setup errors are never cleared by ready');
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');for(const g of STARTER_GOALS)assert.ok(html.includes('id="startupGoal'+g.id+'"'),'Goal '+g.id+' exists before any runtime JS');assert.match(html,/<script type="module" src="\.\/assets\/onboarding.js"><\/script>/);assert.ok(!html.includes('goalNames.forEach((n,i)=>{let b=document.createElement'));
 // A saved story locks Start until the player chooses to replace it, and step 3 says so.
 f=fixture(JSON.stringify(saved));f.root.dataset.cityReady='true';doc.emit('city:ready');f.get('setupNext').emit('click');f.goals[0].emit('click');f.get('setupNext').emit('click');
