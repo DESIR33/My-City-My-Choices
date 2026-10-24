@@ -6,7 +6,9 @@ Last updated: 2026-10-24 (America/New_York). Maintained project handoff, product
 
 ## Integration status
 
-Conflict repair order is #76 → #77 → #78 → #70 → #80. Main through `251ba7f4dc5f0ce44abdef84e8297bdfaf0ed275` (#79 skyline) is incorporated. #70 combines its painted/furnished interiors with #78 household interactions and save contracts; it is stacked on #78 to keep review scope focused. No PR is merged to main by this repair. Private Site v80 remains unchanged, so GitHub now intentionally includes newer skyline/interior assets absent from that deployment. Publish a separately validated combined source when requested.
+Conflict repairs preserve both feature histories in this sequence: #76 → #77 → #78 → #70 → #80. Main through #79's skyline and #76's mobile work is incorporated. GitHub now marks #76, #77 and #78 merged; #77/#78 were merged to their stacked feature bases, so the resolved #70/#80 source also carries their changes forward. The remaining #70 and #80 PRs target main directly; merge #70 before #80. Both are conflict-free against the checked main `fd1663c7b9ef081ab65cfa2143e7ced4cd2ae004`. No PR was merged by the conflict-repair task and no force push was used.
+
+#70 combines painted/furnished interiors with #78 household interactions and optional save fields. #80 includes that resolved source plus flyovers. The final combined runtime passes 148/148 native tests across 93 files, and Game regression/Project context CI checks pass on every repaired feature head. This final documentation-only follow-up records the base adjustment after observing the earlier PR merges; it changes no runtime. Private Site v80 remains unchanged, intentionally behind GitHub's newer skyline/interior/aircraft assets. Physical-device/GPU/audio acceptance is still outstanding.
 
 ## Start here
 
@@ -26,7 +28,7 @@ My City, My Choices is a single-player, third-person browser life-skills game. A
 
 The current source tree, runtime imports, module code, README and PR history through #50 were reviewed for this document. A merged PR is historical evidence, not proof that all its changes remain in today's tree. Earlier implementation notes and test counts in README are chronological and can be stale. Use this document's current-state distinctions and inspect source before changing behavior.
 
-**Runtime reconciliation:** both layouts begin at private v79/open #77. This candidate adds `neighborhood-life.js` and rebakes 101's changed fridge geometry; runtime inventory becomes 289 files. Docs/tests retain layout-specific paths. Compare all runtime files before publication; source parity and native tests do not prove GPU/device acceptance.
+**Runtime reconciliation:** conflict repair now combines main/#79 skyline, #76 mobile diagnostics/residency, #77 Ronda wayfinding, #78 household/wardrobe, #70 furnished interiors and #80 aircraft. The final GitHub candidate has 303 runtime files. The unchanged private Site v80 has 289: parity reports 14 new skyline/interior/aircraft files and six changed runtime files, all explained by these PRs. This task updates branches only; it does not publish an untested source over the owner's playtest. Docs/tests retain their layout-specific paths, and native tests do not establish GPU/device acceptance.
 
 ## Contents
 
@@ -336,6 +338,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 | `onboarding.js`, `onboarding.css` | Renderer-independent setup steps, goal catalogue/amount previews, validated saved-story discovery, readiness/failure and responsive/focus behavior; onboarding/story-flow tests |
 | `first-steps.js`, `objective-markers.js` | First-story distance/action cues and camera-aware world markers; first-steps/objective-markers/story-flow tests |
 | `world-rules.js` | District bounds, bridge/coast heights, roads, community lots and shared playable constraints; world/navigation/community tests |
+| `air-traffic.js`, `assets/airplanes/` | Flyover airliners: 10-minute play-time schedule, flight planning/positions, lazy model loading, navigation lights, engine-sound sample; generated `fleet.js`; air-traffic tests; built by `tools/prepare-airplanes.mjs` |
 | `northstar-skyline.js`, `assets/city/skyline/` | San Francisco skyline: generated `layout.js` (tower heights/footprints per lot), `towers.glb`, far `skyline.glb`, facade/window shader, stand-in towers, desktop/mobile loading; northstar-skyline tests; built by `tools/prepare-skyline.mjs` |
 | `home-interiors.js`, `assets/interior/` | Shared scanned interior surfaces, paint schemes/prints, owner furniture layouts/proxies and fixed desktop room lights; home-interiors tests |
 | `north-world.js`, `coast-world.js`, `flamingo-hotel.js` | Northern/coastal construction, interiors, elevator and surface contracts; north/coast/bridge tests |
@@ -540,6 +543,27 @@ This requirement comes directly from the owner: the context must be updated afte
 
 ## Change ledger and history
 
+### 2026-10-24 — Record final PR bases after concurrent merges
+
+- GitHub marked #76/#77/#78 merged while the remaining repairs completed. Retarget #70 and #80 from feature bases to main so their combined tested source reaches the main branch. Preserve ancestry and recommend #70 before #80; no branch history is rewritten and the repair task does not merge PRs itself.
+- Git merge-tree checks against main `fd1663c7b9ef081ab65cfa2143e7ced4cd2ae004` produce exactly the tested #70 and #80 trees with no conflicts or extra runtime changes. Context policy passes all nine nonempty change commits against main. All repaired heads' game/context CI checks pass; final runtime remains the 148/148 tested source. This follow-up changes context only and does not require redeployment or another full gameplay run. Site v80 and device-verification limits are unchanged.
+
+
+### 2026-10-24 — Resolve #80 flyovers with the complete integrated game
+
+- Merge resolved #70 (including #76/#77/#78 and current main's skyline) into #80. Retain both flyover and household frame updates: aircraft advances only during active play; household food, neighbors, real wardrobe preview and diagnostics still run through their established frame hooks. Aircraft sound joins the existing household/emergency/traffic/rain sampling rather than replacing it. Preserve all four original aircraft GLBs, fictional liveries and lazy loading.
+- Stack #80 on #70; intended merge order is #76 → #77 → #78 → #70 → #80. This repairs PR branches without merging to main or replacing private Site v80. Saves, prices, owned wardrobe/vehicles and mobile safeguards remain unchanged. Both source histories and context entries are retained.
+- Validation: the full combined Node suite passes 148/148 across 93 test files. Executable inline scripts parse; staged context and whitespace checks pass, and committed #70 context checks pass for all three relevant change commits. The aircraft timer/model/sound tests and household/wardrobe/mobile/stair/garage regressions pass together. Native checks do not establish GPU appearance, physical-device stability, aircraft audibility or frame rate. Source parity differs intentionally from published v80 by skyline/interior/aircraft features and is reviewed before handoff; there is no new Site deployment in this task.
+
+
+### 2026-10-24 — Airliners fly over the city every 10 minutes of play
+
+- Request: the owner supplied four airliner FBX models and asked for airplanes flying in the air every 10 minutes of play.
+- Source assets: SketchUp/3ds Max exports in metres (two single-aisle jets, a twin-aisle jet and a double-deck jet, 31k–127k triangles). They carried real airline liveries modelled as geometry and colours, and referenced logo images that were not supplied.
+- Implemented: `tools/prepare-airplanes.mjs` repaints every plane by region in a fictional livery (white fuselage, grey belly/wings, coloured fin and cheatline: Maple Air, Sunshore Airways, Northstar Air, Ronda Skyways), keeps windows/glass/tyres dark, removes painted lettering, orients nose +Z about the fuselage axis, simplifies to about 14k triangles and writes meshopt GLBs plus `fleet.js` (sizes, light positions). `assets/air-traffic.js` counts play time from the game's `dt` (zero while blocked), launches one flight per 600 s, cycles the fleet, loads a model on its first flight, flies a straight line 4.4 km long at 78 m/s (about 56 s) passing 150–500 m beside the player, starting 340–460 m up and climbing gently; navigation lights, beacon and strobes are screen-sized points; thinner fog on the plane. `index.html` updates it in the animation loop, shows a "Look up!" toast and feeds `airTraffic.sound(camera)` to a new panned `aircraft` ambience loop in `city-audio.js` (quieter indoors, respects mute and ambience volume).
+- Compatibility: no save change; the 10-minute clock is per session and restarts on reload. City audio now has eleven fixed loops (house-audio test updated); rain remains the last loop.
+- Validation: new `tests/air-traffic.test.mjs` (fleet files, no real airline names in data or GLBs, decoded orientation/size, flight geometry over 200 random plans, timer with paused time, fleet rotation, load failure, sound, wiring). Full `npm test` passed. Standalone SwiftShader renders from the ground by day and night.
+- Limits: from the ground a plane is small (about 30–60 px wide) and pale against a bright hazy sky, as in real life; landing gear stays extended as modelled. If the Northstar skyline PR (#79) merges, its tallest tower (about 270 m) is still below the 340 m minimum. Device performance and GPU look unverified; Site parity unverified.
 ### 2026-10-24 — Resolve #70 interiors with shipped household behavior
 
 - Merge the tested #78/#77/#76/current-main lineage into #70 and stack it on #78. Both change histories and all original binary assets remain. Use one left-wall 14-tread flight per additional house and the furnished upper-floor plan, replacing the competing central flight. Keep #78 upstairs-save restoration and per-actor grounding, actual wardrobe try-on, stock/food actions, doorbells/residents, Northstar road/tree clearances and mobile character budgets.
