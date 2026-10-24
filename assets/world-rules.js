@@ -52,7 +52,7 @@ export function communityDriveway(home){
 }
 // Leave a second garage bay and the front walk open beside each resident car.
 export const COMMUNITY_PARKED_CARS=Object.freeze([0,3,6,9,12,15,18,21].map((index,i)=>{
- const home=COMMUNITY_HOMES[index],p=communityPoint(home,-home.w*.23-1.55,home.d/2+4.2);
+ const home=COMMUNITY_HOMES[index],p=communityPoint(home,-home.w*.23+(index===0?-1.55:1.55),home.d/2+4.2);
  return Object.freeze({...p,id:'resident-'+home.id,homeId:home.id,heading:home.heading+(i%2?Math.PI:0)});
 }));
 export function communityRoadRect(road,extra=0){const half=road.halfWidth+extra;return {minX:Math.min(road.x1,road.x2)-half,maxX:Math.max(road.x1,road.x2)+half,minZ:Math.min(road.z1,road.z2)-half,maxZ:Math.max(road.z1,road.z2)+half};}
@@ -83,9 +83,9 @@ export function bridgeHeight(z){
 }
 export function onBridge(x,z){return Math.abs(x)<=BRIDGE.walkHalfWidth&&z<=BRIDGE.south&&z>=BRIDGE.north;}
 export function bridgePitch(x,z,heading){return onBridge(x,z)?Math.atan2(bridgeHeight(z-1)-bridgeHeight(z+1),2)*Math.cos(heading):0;}
-export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityReserved(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
-export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityDrivable(x,z))return true;if(communityReserved(x,z))return false;if(mapleOnRoad(x,z,-.02))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
-export function districtName(z,x=0){if(communityReserved(x,z))return MAPLE_GROVE.name;return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
+export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityReserved(x,z))return true;if(rondaWalkable(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
+export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityDrivable(x,z))return true;if(communityReserved(x,z))return false;if(rondaDrivable(x,z))return true;if(mapleOnRoad(x,z,-.02))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
+export function districtName(z,x=0){if(communityReserved(x,z))return MAPLE_GROVE.name;if(x<RONDA.maxX+.5&&z>=RONDA.minZ-60&&z<=RONDA.maxZ+60)return RONDA.name;return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
 export function northResponseRoute(start,target){
   const points=[{x:start.x,z:start.z},{x:130,z:start.z},{x:130,z:-30},{x:120,z:-30},{x:120,z:-120},{x:0,z:-120}];
   if(target.z>-1120){points.push({x:0,z:target.z+(target.z<-120?8:-8)});return points;}
@@ -93,6 +93,17 @@ export function northResponseRoute(start,target){
   if(Math.abs(target.x-ax)<Math.abs(target.z-sz))points.push({x:ax,z:-1150},{x:ax,z:target.z+8});else points.push({x:ax,z:-1150},{x:ax,z:sz},{x:target.x+(target.x>ax?-8:8),z:sz});return points;
 }
 
+// Ronda: an Andalusian cliff town west of Sunshore, split by a deep gorge (El Tajo)
+// and joined by its bridges. The town plateau is at y=0; the gorge and the valley
+// beyond the western escarpment drop about 100 m. Only the plateau, the bridge
+// decks and the link road from Sunshore's 1400 street are walkable.
+export const RONDA=Object.freeze({name:'Ronda',minX:-700,maxX:-300,minZ:1150,maxZ:1850,cliffX:-700,gorge:Object.freeze({minZ:1478,maxZ:1522,eastX:-330}),valleyY:-100,
+  bridges:Object.freeze([Object.freeze({id:'puente-nuevo',name:'Puente Nuevo',x:-520,halfWidth:6.2}),Object.freeze({id:'puente-viejo',name:'Puente Viejo',x:-410,halfWidth:2.6})]),
+  link:Object.freeze({z:1400,minX:-310,maxX:-252,halfWidth:7.5}),roads:Object.freeze({ew:Object.freeze([1400,1650]),ns:Object.freeze([-520,-345])})});
+export function rondaWalkable(x,z){const R=RONDA;if(Math.abs(z-R.link.z)<=R.link.halfWidth&&x>=R.link.minX&&x<=R.link.maxX)return true;
+  if(x<R.cliffX+1.6||x>R.maxX||z<R.minZ||z>R.maxZ)return false;const g=R.gorge;if(z>g.minZ-1.3&&z<g.maxZ+1.3&&x<g.eastX+1.3)return R.bridges.some(b=>Math.abs(x-b.x)<=b.halfWidth-.6);return true;}
+export function rondaDrivable(x,z){const R=RONDA;if(Math.abs(z-R.link.z)<7.48&&x>=R.link.minX&&x<=R.link.maxX)return true;if(!rondaWalkable(x,z))return false;
+  if(R.roads.ew.some(n=>Math.abs(z-n)<6)&&x>=-660&&x<=-300)return true;return R.roads.ns.some(n=>Math.abs(x-n)<(n===-520?5.6:6))&&z>=1180&&z<=1820;}
 export const COAST_CITY=Object.freeze({name:'Sunshore City',minX:-258,maxX:124,minZ:1040,maxZ:2090,avenues:[-240,-120,0],streets:[1080,1240,1400,1560,1720,1880,2040],beachStart:32,shore:132,promenade:23});
 export const COAST_MOTORS=Object.freeze({x:-15,z:1114});
 export const COAST_INFO=Object.freeze({x:25,z:1090});

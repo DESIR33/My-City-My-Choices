@@ -31,6 +31,7 @@ export function mountOnboarding(doc,win){
   get('setupResume').hidden=!story;get('setupReplace').hidden=!story;
   if(story)get('savedStorySummary').textContent=(story.avatarName||'Player')+' · Business day '+(story.marketDay||1);
   const ready=()=>root.dataset.cityReady==='true'&&!root.dataset.cityError;
+  const deferred=()=>root.dataset.cityDeferred==='true'&&root.dataset.cityState==='idle'&&!root.dataset.cityError;
   const selected=()=>setupGoal(get('onboardingGoal').value);
   function refresh(){
     const id=selected(),age=get('childAge').value,tier=setupTier(age),pin=get('parentPinSetup').value;
@@ -42,11 +43,11 @@ export function mountOnboarding(doc,win){
     get('setupGoalHint').textContent=id===null?'Choose one goal to continue.':STARTER_GOALS[id].name+' selected. You can change your mind before starting.';
     get('setupNext').disabled=step===1&&id===null;
     get('setupPinError').textContent=setupPinValid(pin)?'':'Use exactly four digits, or leave the PIN blank.';
-    get('begin').disabled=!ready()||id===null||!setupPinValid(pin)||!!story&&!get('replaceStory').checked;
-    get('continueStory').disabled=!ready();get('introBackups').disabled=!ready();
-    get('citySetupStatus').textContent=root.dataset.cityError|| (ready()?'Your city is ready. Let’s meet Mom.':'Getting your city ready. You can choose your player and goal while it loads.');
+    get('begin').disabled=(!ready()&&!deferred())||id===null||!setupPinValid(pin)||!!story&&!get('replaceStory').checked;
+    get('continueStory').disabled=!ready()&&!deferred();get('introBackups').disabled=!ready()&&!deferred();
+    get('citySetupStatus').textContent=root.dataset.cityError|| (ready()?'Your city is ready. Let’s meet Mom.':deferred()?'Your city loads when you start or continue. Your saved story stays unchanged while you set up.':'Getting your city ready. Your setup and saved story are safe while it loads.');
     // On the last step, say exactly why Start is not available yet.
-    if(step===2)get('setupActionHint').textContent=root.dataset.cityError?'Step 3 of 3 · The city didn’t load. Reload to try again.':!ready()?'Step 3 of 3 · Your city is still loading. Start unlocks when it’s ready.':id===null?'Step 3 of 3 · Go back and choose a goal first.':!setupPinValid(pin)?'Step 3 of 3 · Fix the PIN under Grown-up controls, or leave it blank.':story&&!get('replaceStory').checked?'Step 3 of 3 · You have a saved story. Continue it above, or tick “Start a new story” below to replace it.':'Step 3 of 3 · Start when you’re ready.';
+    if(step===2)get('setupActionHint').textContent=root.dataset.cityError?'Step 3 of 3 · The city didn’t load. Reload to try again.':!ready()&&!deferred()?'Step 3 of 3 · Your city is still loading. Your story starts when it’s ready.':id===null?'Step 3 of 3 · Go back and choose a goal first.':!setupPinValid(pin)?'Step 3 of 3 · Fix the PIN under Grown-up controls, or leave it blank.':story&&!get('replaceStory').checked?'Step 3 of 3 · You have a saved story. Continue it above, or tick “Start a new story” below to replace it.':'Step 3 of 3 · Start when you’re ready.';
     get('setupRetry').hidden=!root.dataset.cityError;get('setupRetry').textContent=root.dataset.lighterGraphics==='true'?'Try lighter graphics':'Reload city';
   }
   function render(focus=false){
@@ -64,8 +65,13 @@ export function mountOnboarding(doc,win){
     const buttons=[...get(group).querySelectorAll('button')];for(const button of buttons){button.setAttribute('aria-pressed',String(button.classList.contains('selected')));button.addEventListener('click',()=>{for(const other of buttons){other.classList.toggle('selected',other===button);other.setAttribute('aria-pressed',String(other===button));}});}
   }
   get('setupRetry').addEventListener('click',()=>{if(typeof win.retryCitySetup==='function')win.retryCitySetup();else win.location.reload();});
+  for(const id of ['begin','continueStory','introBackups'])get(id).addEventListener('click',event=>{
+    if(ready()||root.dataset.cityDeferred!=='true')return;
+    event.preventDefault?.();event.stopImmediatePropagation?.();if(get(id).disabled||!deferred())return;
+    doc.dispatchEvent(new win.CustomEvent('city:launch',{detail:{action:id}}));
+  },true);
   root.addEventListener('keydown',event=>{if(event.code!=='Tab'||!root.classList.contains('show'))return;const nodes=[...root.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),summary')].filter(el=>el.getClientRects().length);if(!nodes.length)return;const first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&(doc.activeElement===first||!nodes.includes(doc.activeElement))){event.preventDefault();last.focus();}else if(!event.shiftKey&&(doc.activeElement===last||!nodes.includes(doc.activeElement))){event.preventDefault();first.focus();}});
-  doc.addEventListener('city:ready',refresh);doc.addEventListener('city:setup-error',refresh);
+  doc.addEventListener('city:ready',refresh);doc.addEventListener('city:setup-error',refresh);doc.addEventListener('city:boot-state',refresh);
   // A crash in the game's own scripts before the city is ready stops setup at once.
   // Anything else (a browser add-on or host overlay, a late asset that failed to
   // stream) only counts if the city is still not ready LOAD_GRACE_MS later, and a

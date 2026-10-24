@@ -6,12 +6,12 @@ import {createResidentialDoors} from './residential-doors.js';
 
 // Metre-scale homes, private lots and streets share the same layout as navigation
 // and vehicle collision. Static detail is merged by the existing city batcher.
-export function createPlannedCommunity({scene,visualKit,obstacles,buildings,groundSurfaces}){
+export function createPlannedCommunity({scene,visualKit,obstacles,buildings,groundSurfaces,mobile=false}){
   const streetRoot=new THREE.Group();streetRoot.userData.staticArchitecture=true;streetRoot.name='Maple Grove streets and landscaping';scene.add(streetRoot);
   const unit=new THREE.BoxGeometry(1,1,1),materialCache=new Map(),grassGeometries=new Map(),homes=[],gateways=[],architectureRoots=[streetRoot];
   const doorSystem=createResidentialDoors({scene,obstacles}),addressPlaques=[],furnishedInteriors=[];
   const inside=createInteriorSurfaces();inside.ceiling=inside.materials.ceiling;inside.trim=inside.materials.trim;inside.lamp=inside.materials.lamp;
-  const props=createInteriorProps({scene,solid:(...a)=>solid(...a)}),roomLights=createRoomLights(scene),lights139={},lightSpots=new Map();
+  const props=createInteriorProps({scene,solid:(...a)=>solid(...a)}),roomLights=createRoomLights(scene,mobile?0:2),lights139={},lightSpots=new Map();
   const material=(color,roughness=.84,metalness=0)=>{const key=color+':'+roughness+':'+metalness;if(!materialCache.has(key))materialCache.set(key,new THREE.MeshStandardMaterial({color,roughness,metalness}));return materialCache.get(key);};
   const concrete=visualKit.concrete,grass=visualKit.grass,asphalt=visualKit.asphalt,trim=material(0xe5e0d3),dark=material(0x29383b,.6,.25),foundation=material(0xaca79a),wood=visualKit.wood(0x988160),whiteFence=material(0xdad8ca),mulch=material(0x4b3f32),metal=material(0x38433e,.55,.5);
   const palette=[
@@ -131,7 +131,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   // ---- Stairs and the upper storey (every enterable home) -------------------
   const GROUND=.3,UPPER=3.45,CEIL1=3.13,CEIL2=6.28;
   // A straight flight against the left wall, rising from the rear toward the front.
-  function stairsOf(home){const x0=-home.w/2+.25,z0=-home.d/2+.6;return {x0,x1:x0+1.15,z0,z1:z0+4.6,steps:14};}
+  function stairsOf(home){const x0=-home.w/2+.25,z0=-home.d/2+.9;return {x0,x1:x0+1.15,z0,z1:z0+4.6,steps:14};}
   // A slab or ceiling between the outer walls with a hole over the stairs.
   function aroundOpening(root,y,h,mat,home,S,inset){const X0=-home.w/2+inset,X1=home.w/2-inset,Z0=-home.d/2+inset,Z1=home.d/2-inset;
     box(root,(S.x1+X1)/2,y,0,X1-S.x1,h,Z1-Z0,mat,false);box(root,(X0+S.x1)/2,y,(S.z1+Z1)/2,S.x1-X0,h,Z1-S.z1,mat,false);
@@ -219,7 +219,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     lineShell(root,home,inside.paint(interiorScheme(home).walls),glazing);
     // Room dividers: bedroom/garage wall and the hall partition, with door openings.
     lowerWall(root,home,'z',-.2,-front+.25,front-.25,m.plaster,[{a:-4.2,b:-2.7,top:2.7},{a:2.2,b:3.7,top:2.7}]);
-    lowerWall(root,home,'x',1.2,-half+.25,-.2,m.plaster);
+    lowerWall(root,home,'x',.8,-half+.25,-.2,m.plaster);
     // Living room: the owner's sectional set (sofa-sets.js) faces a media cabinet and TV.
     const set=sofaSetPlacement(home),tvX=Math.max(set.x-.14,home.w*.2+.85+.55);
     model('media-console','cabinet',{x:tvX,z:front-.25-.21,yaw:0});
@@ -246,8 +246,9 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     // Study (rear left, beside the stairs): a desk under the print, the accent cabinet and a plant.
     fixture('study-desk',-3.5,-front+.25+.36,1.5,.7,.3,.76,null);piece(-3.5,1.02,-front+.61,1.5,.04,.7,m.walnut);for(const sx of [-1,1])piece(-3.5+sx*.7,.3,-front+.61,.05,.72,.62,m.black);
     model('study-chair','chair',{x:-3.5,z:-front+1.35,yaw:Math.PI});model('study-cabinet','cabinet',{x:-3.3,z:1.2-.11-.21,yaw:Math.PI});model('study-plant','plant',{x:-1.0,z:.5,yaw:0});
+    fixture('guest-bed',-3.8,-2.2,1.7,2.1,.3,.71,m.fabric);
     // Garage workbench with a pegboard and shelf.
-    fixture('garage-workbench',-5.6,1.8,2,.65,.3,.9,m.oak);piece(-5.6,1.2,1.8,2.06,.06,.72,m.quartz);piece(-5.6,1.45,1.45,2,.9,.03,m.upper);
+    fixture('garage-workbench',-6.6,3.1,.65,2,.3,.9,m.oak);piece(-6.6,1.2,3.1,.72,.06,2.06,m.quartz);
     // Colour: two-tone living wall with panel moulding, painted bedroom with an
     // accent wall behind the bed, crown moulding and original prints.
     const scheme=interiorScheme(home),R=half-.25,F=front-.25;
@@ -259,6 +260,50 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     buildStairs(root,home,stairsOf(home),inside.paint(scheme.bedroom));
     lights139.down=[ceilingLight(root,set.x-.6,set.z+.4),ceilingLight(root,3.4,-2.2),ceilingLight(root,-3.0,-3.2),ceilingLight(root,-3.6,3.6)];
     lights139.up=buildUpper(root,home,palette[home.palette],scheme,glazing,record,true);
+  }
+
+  function furnish144(root,home){
+    // A bounded furnished ground floor, using the same static instance batches.
+    // Its upstairs uses the shared furnished storey; ownership still belongs to 101.
+    const plaster=material(0xe6dfd1),fabric=material(0x829387,.96),linen=material(0xe2d8c2,.98),walnut=visualKit.wood(0x795e46),counter=material(0xd4d0c5),steel=material(0x909c9c,.3,.5);
+    const record={homeId:home.id,address:home.address+' '+home.street,rooms:['Living room','Kitchen & dining','Guest bedroom','Garage'],fixtures:[]};furnishedInteriors.push(record);
+    const front=home.d/2,half=home.w/2;
+    const sx=home.w/14.6,sz=home.d/12.8;const piece=(x,y,z,w,h,d,mat)=>box(root,x*sx,y,z*sz,w*sx,h,d*sz,mat,false);
+    function fixture(id,x,z,w,d,y,h,mat){
+      const mesh=piece(x,y,z,w,h,d,mat);mesh.name=home.address+' · '+id;
+      const collider=solid(home,x*sx,z*sz,w*sx,d*sz,'community-furniture');Object.assign(collider,{houseId:home.id,fixtureId:id,minY:y,maxY:y+h});
+      if(id==='guest-bed')collider.maxY=1.01;record.fixtures.push({id,...communityPoint(home,x*sx,z*sz),y,w:w*sx,d:d*sz,collider});return mesh;
+    }
+    // Inner plaster faces and full-height room dividers; openings align with
+    // the existing front/garage/patio leaves and keep a clear central route.
+    lowerWall(root,home,'z',-.2,-front+.25,front-.25,plaster,[{a:-4.2,b:-2.7,top:2.7},{a:2.2,b:3.7,top:2.7}]);
+    lowerWall(root,home,'x',.8,-half+.25,-.2,plaster,[{a:-1.9,b:-.2,top:3.18}]);
+
+    // Living room: a complete sofa, coffee table, media console and TV.
+    piece(4.8,.302,1.65,3.4,.012,3.3,material(0xb8a58c));
+    fixture('sofa',4.8,.05,2.8,1.05,.3,.4,fabric);piece(4.8,.7,-.43,2.8,.66,.16,fabric);
+    for(const side of [-1,1]){piece(4.8+side*1.3,.7,.05,.22,.32,1.05,fabric);piece(4.8+side*.67,.7,.07,1.1,.16,.83,linen);}
+    fixture('coffee-table',4.8,1.8,1.5,.75,.3,.52,walnut);
+    fixture('media-console',4.8,4.3,2.6,.45,.3,.64,walnut);piece(4.8,1.16,4.28,2.05,1.15,.10,dark);piece(4.8,1.23,4.215,1.88,.96,.012,material(0x547278,.6));
+    // Rear kitchen and four-place dining table, with separate appliance forms.
+    fixture('kitchen-counter',1,-5.77,1.4,.72,.3,.85,walnut);piece(1,1.15,-5.77,1.45,.06,.77,counter);
+    fixture('oven-counter',5.7,-5.77,1.45,.72,.3,.85,walnut);piece(5.7,1.15,-5.77,1.5,.06,.77,counter);
+    piece(5.7,.46,-5.395,.8,.5,.025,dark);for(const x of [.35,1.65,5.03,6.37])piece(x,.38,-5.39,.04,.67,.025,trim);
+    piece(1,1.211,-5.77,.7,.018,.48,steel);piece(1,1.35,-5.96,.055,.3,.055,steel);
+    fixture('refrigerator',6.4,-4.65,.8,.9,.3,1.95,trim);piece(6.4,1.36,-4.185,.75,.035,.025,dark);
+    fixture('kitchen-island',4.4,-2.8,2.25,1,.3,.85,walnut);piece(4.4,1.15,-2.8,2.35,.06,1.1,counter);
+    fixture('dining-table',2.9,-.8,2.2,1.3,.3,.76,walnut);
+    for(const [i,[x,z]] of [[2.3,-1.85],[3.5,-1.85],[2.3,.25],[3.5,.25]].entries()){
+      fixture('dining-chair-'+(i+1),x,z,.46,.46,.3,.45,walnut);piece(x,.75,z+.18,.46,.54,.08,walnut);
+    }
+    // Guest bedroom, separate from the garage and public living space.
+    fixture('guest-bed',-4.6,-4.6,2.05,2.35,.3,.45,walnut);piece(-4.6,.75,-4.6,2,.2,2.3,linen);piece(-4.6,.95,-4.3,2,.06,1.65,fabric);
+    piece(-4.6,.3,-5.83,2.1,1.2,.12,walnut);for(const x of [-5.12,-4.08])piece(x,.96,-5.4,.8,.14,.45,trim);
+    fixture('nightstand',-2.8,-4.9,.65,.65,.3,.6,walnut);piece(-2.8,.9,-4.9,.3,.5,.3,linen);
+    fixture('dresser',-3.8,-.2,2.1,.65,.3,.92,walnut);for(const y of [.52,.8,1.08])piece(-3.8,y,.14,1.95,.025,.025,trim);
+    fixture('garage-workbench',-6.6,3.1,.65,2,.3,.9,walnut);piece(-6.6,1.2,3.1,.72,.06,2.06,counter);
+    // Trim and framed art finish the inner walls without new textures/lights.
+    for(const z of [-1,1]){piece(7.03,.3,z*3.2,.045,.12,5.7,trim);piece(7.02,1.3,z*3.2,.07,.9,1.15,walnut);piece(6.975,1.35,z*3.2,.025,.8,1.02,fabric);}
   }
 
   const livingHomes=new Set(sofaSetHomes(COMMUNITY_HOMES).map(h=>h.id));
@@ -286,13 +331,16 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
       const spots={down:[ceilingLight(root,w*.2,front*.35),ceilingLight(root,w*.25,-front*.45),ceilingLight(root,-w*.25,front*.3)]};lightSpots.set(home.id,spots);
       // Kitchen along the rear wall either side of the patio door, fridge at the end,
       // and a dining table between the kitchen and the living area.
-      const rear=-F,doorL=w*.24-.95,doorR=w*.24+.95;baseRun(root,home,'kitchen-counter',.2,doorL,null);sink(root,(.2+doorL)/2,rear);baseRun(root,home,'oven-counter',doorR,R-1.0,null);range(root,(doorR+R-1.0)/2,rear);fridge(root,home,'refrigerator',R-.5,rear,null);
-      const tz=-F+3.4,tx=w*.25;furn(home,'dining-table',tx,tz,1.6,.9,.3,.76,null);box(root,tx,1.02,tz,1.7,.05,.95,inside.materials.oak,false);for(const sx of [-1,1])for(const sz of [-1,1])box(root,tx+sx*.72,.3,tz+sz*.37,.07,.72,.07,inside.materials.oak,false);
+      if(home.address!==144&&home.address!==146){const rear=-F,doorL=w*.24-.95,doorR=w*.24+.95;baseRun(root,home,'kitchen-counter',.2,doorL,null);sink(root,(.2+doorL)/2,rear);baseRun(root,home,'oven-counter',doorR,R-1.0,null);range(root,(doorR+R-1.0)/2,rear);fridge(root,home,'refrigerator',R-.5,rear,null);
+      }
+      if(home.address!==144){const tz=-F+3.4,tx=w*.25;furn(home,'dining-table',tx,tz,1.6,.9,.3,.76,null);box(root,tx,1.02,tz,1.7,.05,.95,inside.materials.oak,false);for(const sx of [-1,1])for(const sz of [-1,1])box(root,tx+sx*.72,.3,tz+sz*.37,.07,.72,.07,inside.materials.oak,false);
       for(const [i,sx] of [-.4,.4].entries())for(const sz of [-1,1])simpleChair(root,home,'dining-chair-'+i+(sz<0?'a':'b'),tx+sx,tz+sz*.78,-sz,null);
+      }
+      if(home.address===144)furnish144(root,home);
       buildStairs(root,home,stairsOf(home),inside.paint(scheme.walls));spots.up=buildUpper(root,home,p,scheme,glazing,null,false);
       // Homes with the owner's sofa set also get a media cabinet, TV and a plant.
       if(livingHomes.has(home.id)){const set=sofaSetPlacement(home),tvX=Math.max(set.x-.14,w*.2+.85+.55);props.add(home,'cabinet',{x:tvX,z:front-.25-.21},{name:'media-console'});box(root,tvX,1.2,front-.29,1.32,.76,.05,inside.materials.black,false);box(root,tvX,1.225,front-.32,1.26,.71,.012,inside.materials.screen,false);props.add(home,'plant',{x:w/2-.6,z:front-.7,yaw:Math.PI},{name:'living-plant'});spots.down[0]=ceilingLight(root,set.x-.6,set.z+.4);}
-      else{const set=sofaSetPlacement(home),sx=set.x-.2,sz=set.z-1.1,fab=inside.fabric(scheme.accent),mm=inside.materials;box(root,sx,.3,sz,2.4,.42,.95,fab,false);box(root,sx,.72,sz-.38,2.4,.45,.2,fab,false);for(const s of [-1,1])box(root,sx+s*1.12,.72,sz,.18,.22,.95,fab,false);for(const s of [-1,1])box(root,sx+s*.52,.72,sz+.06,1.0,.13,.7,mm.upper,false);furn(home,'sofa',sx,sz,2.4,.95,.3,.9,null);
+      else if(home.address!==144){const set=sofaSetPlacement(home),sx=set.x-.2,sz=set.z-1.1,fab=inside.fabric(scheme.accent),mm=inside.materials;box(root,sx,.3,sz,2.4,.42,.95,fab,false);box(root,sx,.72,sz-.38,2.4,.45,.2,fab,false);for(const s of [-1,1])box(root,sx+s*1.12,.72,sz,.18,.22,.95,fab,false);for(const s of [-1,1])box(root,sx+s*.52,.72,sz+.06,1.0,.13,.7,mm.upper,false);furn(home,'sofa',sx,sz,2.4,.95,.3,.9,null);
         box(root,sx,.3,sz+1.35,1.2,.4,.65,mm.walnut,false);furn(home,'coffee-table',sx,sz+1.35,1.2,.65,.3,.4,null);rug(root,sx,sz+1.1,3.0,2.2,.3,inside.fabric(scheme.walls));}}
     box(root,0,3.04,front+.08,w+.08,.17,.15,trim);box(root,0,6.27,front+.08,w+.16,.13,.15,trim);
     for(const side of [-1,1]){box(root,side*(w/2+.07),.3,front,.13,6.1,.15,trim,false);box(root,side*(w/2+.16),.24,-front+.4,.09,6.1,.09,metal,false);}
@@ -312,7 +360,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     surface(home,porchX,front+.87,w*.40,1.65,.3,concrete,'concrete',.14);surface(home,doorX,front+1.94,1.65,.65,.17,concrete,'concrete',.08);surface(home,doorX,front+2.53,1.7,.6,.09,concrete,'concrete',.025);
     for(const x of [w*.08,w*.48]){box(root,x,.3,front+1.42,.18,2.65,.18,trim);solid(home,x,front+1.42,.22,.22,'porch-post');}box(root,porchX,3.02,front+.88,w*.44,.16,2.05,trim);box(root,porchX,3.18,front+.88,w*.45,.12,2.15,p.roof);
     for(const x of [garageX-3.3,doorX+.94]){box(root,x,2.03,front+.19,.2,.42,.18,dark,false);box(root,x,2.1,front+.29,.14,.23,.08,porchLight,false);}
-    }else doorSystem.add(home,'garage',{x:garageX,z:front+.18,width:5.98,height:2.5,material:p.door});
+    }
     const drive=communityDriveway(home);surface(null,(drive.minX+drive.maxX)/2,(drive.minZ+drive.maxZ)/2,drive.maxX-drive.minX,drive.maxZ-drive.minZ,drive.top,concrete,'concrete',.025);
     for(let localZ=front+3;localZ<Math.abs(home.roadZ-home.z)-7.3;localZ+=3.2)box(root,garageX,.081,localZ,6.5,.003,.018,foundation,false);
     const walkEnd=Math.abs(home.roadZ-home.z)-9.1,walkStart=front+2.7;surface(home,doorX,(walkStart+walkEnd)/2,1.55,walkEnd-walkStart,.085,concrete,'concrete',.025);
@@ -372,7 +420,9 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   function onStairs(h,q){const S=stairsOf(h);return q.x>=S.x0&&q.x<=S.x1&&q.z>=S.z0&&q.z<=S.z1;}
   function floorAt(x,z,referenceY=0){const h=homeAt(x,z,.12);if(!h)return null;const q=localOf(h,x,z),S=stairsOf(h);
     if(onStairs(h,q)){const step=Math.max(0,Math.min(S.steps,Math.ceil((q.z-S.z0)/(S.z1-S.z0)*S.steps-1e-8)));return step>=S.steps?UPPER:GROUND+(UPPER-GROUND)*step/S.steps;}
+    for(const record of furnishedInteriors)if(record.homeId===h.id)for(const bed of record.fixtures.filter(f=>f.id==='guest-bed')){if(Math.abs(x-bed.x)<bed.w/2&&Math.abs(z-bed.z)<bed.d/2&&referenceY>=.93&&referenceY<1.6)return 1.01;}
     return referenceY>UPPER-.65?UPPER:GROUND;}
   function interior(p){const home=homeAt(p.x,p.z);if(!home)return null;const up=(p.y??0)>2.8||onStairs(home,localOf(home,p.x,p.z));return {minX:home.x-home.w/2+.22,maxX:home.x+home.w/2-.22,minZ:home.z-home.d/2+.22,maxZ:home.z+home.d/2-.22,ceiling:up?CEIL2:3.18,floor:up?UPPER:GROUND};}
-  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,furnishedInteriors,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:(dt,p)=>{doorSystem.update(dt,p);sofaSets.update(p);props.update(p);const home=p?homeAt(p.x,p.z):null,spots=home?lightSpots.get(home.id):null;roomLights.update(home,spots?((p.y??.3)>2.8?spots.up:spots.down):null,p);},sofaSets,interiorProps:props,interiorSurfaces:inside,roomLights,interior,floorAt,stairsOf,fenced:homes.filter(h=>h.fenced).length};
+  function garageDrivable(x,z){const h=homeAt(x,z,-.4);if(!h)return false;const q=localOf(h,x,z);return q.x>=-h.w*.23-2.85&&q.x<=-2.15&&q.z>=.87&&q.z<=h.d/2+.4;}
+  return {garageDrivable,homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,furnishedInteriors,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:(dt,p)=>{doorSystem.update(dt,p);sofaSets.update(p);props.update(p);const home=p?homeAt(p.x,p.z):null,spots=home?lightSpots.get(home.id):null;roomLights.update(home,spots?((p.y??.3)>2.8?spots.up:spots.down):null,p);},sofaSets,interiorProps:props,interiorSurfaces:inside,roomLights,interior,floorAt,stairsOf,fenced:homes.filter(h=>h.fenced).length};
 }

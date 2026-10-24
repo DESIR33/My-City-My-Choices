@@ -123,7 +123,7 @@ function plaque(text, w, h, {bg='#161513', fg='#f6f1e8', font='600 64px sans-ser
   return mesh;
 }
 
-export function createFlamingoHotel({scene, building, obstacles, groundSurfaces, visualKit}) {
+export function createFlamingoHotel({scene, building, obstacles, groundSurfaces, visualKit, mobile=false}) {
   const floors = FLAMINGO_FLOORS.map(floor => ({...floor}));
   const bx = building.x, bz = building.z, hx = building.w/2, hz = building.d/2;
   const front = bx+hx, back = bx-hx, zNorth = bz-hz, zSouth = bz+hz;
@@ -404,7 +404,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     const shade = new THREE.Mesh(new THREE.CylinderGeometry(.16, .2, .28, 18, 1, true), linen);
     shade.position.y = 1.48; g.add(shade);
     const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.07, .07, .07); bulb.position.y = 1.46; g.add(bulb);
-    const lamp = new THREE.PointLight(0xffd7a4, 26, 7, 2); lamp.position.y = 1.46; g.add(lamp); lights.push(lamp);
+    if(!mobile){const lamp = new THREE.PointLight(0xffd7a4, 26, 7, 2); lamp.position.y = 1.46; g.add(lamp); lights.push(lamp);}
   }
   function books(x, z, y) {
     const g = new THREE.Group(); g.position.set(x, y, z); interior.add(g);
@@ -499,7 +499,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     box(group, plaster, 0, 2.58, 0, 2.3, .06, 2.1);
     box(group, steel, 0, 1.15, 1.02, 1.7, .9, .02);
     box(group, brass, 0, 1.05, -1.0, 2.1, .04, .04);
-    const lamp = new THREE.PointLight(0xfff1dd, 18, 4.5, 2); lamp.position.set(0, 2.35, 0); group.add(lamp); cabLights.push(lamp);
+    if(!mobile){const lamp = new THREE.PointLight(0xfff1dd, 18, 4.5, 2); lamp.position.set(0, 2.35, 0); group.add(lamp); cabLights.push(lamp);}
     const leafL = box(group, steel, -.58, .08, -1.12, 1.12, 2.45, .06);
     const leafR = box(group, steel, .58, .08, -1.12, 1.12, 2.45, .06);
     doorLeaves.push(leafL, leafR);
@@ -628,7 +628,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
     const shade = new THREE.Mesh(new THREE.CylinderGeometry(.1, .13, .16, 14, 1, true), linen);
     shade.position.set(bedX+side*1.35, suiteY+.95, bedZ-.85); interior.add(shade);
     const bulb = new THREE.Mesh(sphere, glowMat); bulb.scale.set(.05,.05,.05); bulb.position.set(bedX+side*1.35, suiteY+.94, bedZ-.85); interior.add(bulb);
-    const lamp = new THREE.PointLight(0xffd7a4, 16, 4.5, 2); lamp.position.set(bedX+side*1.35, suiteY+1, bedZ-.85); scene.add(lamp); lights.push(lamp);
+    if(!mobile){const lamp = new THREE.PointLight(0xffd7a4, 16, 4.5, 2); lamp.position.set(bedX+side*1.35, suiteY+1, bedZ-.85); scene.add(lamp); lights.push(lamp);}
     blocker(bedX+side*1.35, bedZ-.85, .58, .5, floorSets[2]);
   }
   loungeChair(X(12), Z(-6), -1.2, suiteY, floorSets[2]);
@@ -656,6 +656,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   const doorHomeL = doorL.position.z, doorHomeR = doorR.position.z;
 
   function spot(x, y, z, tx, ty, tz, intensity, distance) {
+    if(mobile)return;
     const light = new THREE.SpotLight(0xfff0dc, intensity, distance, .7, .5, 1.2);
     light.position.set(x, y, z); light.target.position.set(tx, ty, tz);
     light.castShadow = false; scene.add(light, light.target); lights.push(light); return light;
@@ -668,6 +669,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
   spot(bedX, suiteY+2.45, bedZ, bedX, suiteY, bedZ, 64, 8);
   spot(X(-2), suiteY+2.4, Z(12), X(-4), suiteY, Z(12), 42, 8);
   function warm(x, y, z, intensity, distance) {
+    if(mobile)return;
     const light = new THREE.PointLight(0xffe3c4, intensity, distance, 2);
     light.position.set(x, y, z); light.castShadow = false; scene.add(light); lights.push(light);
   }
@@ -741,6 +743,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       else if (position.x > front+.8 || position.x < back-1 || Math.abs(position.z-bz) > hz+1) cutaway = false;
     }
     shell.visible = entrance.visible = true;
+    interior.visible = !mobile || !!position && Math.hypot(position.x-bx,position.z-bz)<70;
     const approach = position && Math.abs(position.z-bz) < 2.4 && position.x > front-1.2 && position.x < front+8;
     const entranceTarget = (approach || cutaway) ? 1 : 0;
     entranceOpen += (entranceTarget-entranceOpen)*Math.min(1, dt*4.5);
@@ -792,7 +795,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       sunLight = scene.children.find(object => object.isDirectionalLight);
       hemiLight = scene.children.find(object => object.isHemisphereLight);
     }
-    if (!cutaway || !sunLight) return;
+    if (mobile || !cutaway || !sunLight) return;
     sunLight.intensity *= .08;
     if (hemiLight) hemiLight.intensity *= .22;
     scene.environmentIntensity = .42;

@@ -77,3 +77,12 @@ for(const h of COMMUNITY_HOMES.filter(h=>h.id!=='maple-grove-1')){
 const index=await readFile(file('index.html'),'utf8');
 assert.match(index,/loadInteriorSurfaceMaps\(plannedCommunity\.interiorSurfaces,options\)/);assert.match(index,/residentialCommunity\?\.floorAt\?\.\(x,z,referenceY\)/);assert.match(index,/if\(props&&!mobileGraphics\)for\(const id of props\.modelIds\)/);assert.match(index,/INTERIOR_MODELS\[id\]\.url/);
 console.log('Home interiors passed: owner models, stairs and upper floors in every home, varied paint schemes, shared relief maps, rotated colliders, stand-ins, fixed light pool, painted shells, real 139 windows and wiring.');
+
+// Integration with the mobile and household PRs: no added phone light pool,
+// no duplicate 101 garage leaf, and ground beds never capture upstairs walkers.
+const phoneScene=new THREE.Scene(),phone=createPlannedCommunity({scene:phoneScene,visualKit,obstacles:[],groundSurfaces:[],buildings:[],mobile:true});
+assert.equal(phone.roomLights.lights.length,0,'phone interiors keep the no-new-point-light budget');
+assert.equal(community.doors.filter(d=>d.home.id==='maple-grove-1').length,0,'101 retains only its separately saved physical doors');
+assert.equal(community.doors.length,78);
+for(const record of community.furnishedInteriors){const b=record.fixtures.find(f=>f.id==='guest-bed');assert.ok(b);assert.equal(community.floorAt(b.x,b.z,.3),.3);assert.equal(community.floorAt(b.x,b.z,1.01),1.01);assert.equal(community.floorAt(b.x,b.z,3.45),3.45,'the bed below cannot pull an upstairs actor downstairs');}
+const h146=COMMUNITY_HOMES.find(h=>h.address===146);assert.ok(!obs.some(o=>o.homeId===h146.id&&o.fixtureId==='refrigerator'),'146 receives its working saved fridge from neighborhood-life, without a duplicate blocking it');

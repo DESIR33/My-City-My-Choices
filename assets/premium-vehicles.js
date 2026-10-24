@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {mergeGeometries,mergeVertices} from 'three/addons/utils/BufferGeometryUtils.js';
+import {availableFleetModel} from './vehicle-fleet.js';
 import {VEHICLE} from './vehicle-physics.js';
 
 const definitions = {
@@ -22,14 +23,15 @@ const palette = {
   Caliper: {color:0x9c2d20,metalness:.35,roughness:.38},
 };
 
-function surfaceMaterial(category) {
-  const m = category === 'Glass'
+function surfaceMaterial(category,mobile=false) {
+  const {clearcoat,...basic}=palette[category]||palette.Trim;
+  const m = mobile?new THREE.MeshStandardMaterial(category==='Glass'?{color:0x304650,roughness:.16,metalness:.15,transparent:true,opacity:.64,depthWrite:false}:basic):category === 'Glass'
     ? new THREE.MeshPhysicalMaterial({color:0x304650,roughness:.07,metalness:0,ior:1.5,
       clearcoat:1,clearcoatRoughness:.045,transparent:true,opacity:.56,depthWrite:false,side:THREE.DoubleSide})
     : new THREE.MeshPhysicalMaterial(palette[category] || palette.Trim);
   m.name = 'Vehicle_' + category;
   // Low-contrast carbon weave is filtered away when its cells become subpixel.
-  if(category === 'Carbon') {
+  if(category === 'Carbon'&&!mobile) {
     m.onBeforeCompile = shader => {
       shader.vertexShader = 'varying vec3 vehicleSurface;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvehicleSurface=position;');
       shader.fragmentShader = 'varying vec3 vehicleSurface;\n' + shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
@@ -43,7 +45,8 @@ function surfaceMaterial(category) {
   return m;
 }
 
-function paintMaterial(color,modelId) {
+function paintMaterial(color,modelId,mobile=false) {
+  if(mobile)return new THREE.MeshStandardMaterial({name:'Vehicle_Paint',color,metalness:.5,roughness:.25,envMapIntensity:1});
   const finish=modelId==='gls'?{metalness:.26,roughness:.4,clearcoat:.7,clearcoatRoughness:.29}
     :{metalness:.42,roughness:.26,clearcoat:1,clearcoatRoughness:.115};
   return new THREE.MeshPhysicalMaterial({name:'Vehicle_Paint',color,...finish,envMapIntensity:1});
@@ -56,13 +59,13 @@ function worldClone(object) {
   return clone;
 }
 
-export function preparePremiumVehicleTemplate(scene, modelId) {
+export function preparePremiumVehicleTemplate(scene, modelId,{mobile=false}={}) {
   if(!definitions[modelId])throw new Error('Unknown vehicle model: ' + modelId);
   scene.updateMatrixWorld(true);
   const materials = new Map(), originals = new Set();
   scene.traverse(o => {
     if(!o.isMesh)return;
-    if(modelId==='senna'&&!Array.isArray(o.material)&&/^Vehicle_(Paint|Glass)$/.test(o.material.name)) {
+    if(!mobile&&modelId==='senna'&&!Array.isArray(o.material)&&/^Vehicle_(Paint|Glass)$/.test(o.material.name)) {
       // Smooth within a surface material. Imported front/back materials stay
       // separate, and compression seams cannot turn into creases in the paint.
       const source=o.geometry,geometry=source.clone(),positions=source.attributes.position,points=new Float32Array(positions.count*3);
@@ -73,7 +76,7 @@ export function preparePremiumVehicleTemplate(scene, modelId) {
     const convert = old => {
       originals.add(old);
       const category=old.name.replace(/^Vehicle_/, '');
-      if(!materials.has(category))materials.set(category,category==='Paint'?paintMaterial(0xffffff,modelId):surfaceMaterial(category));
+      if(!materials.has(category))materials.set(category,category==='Paint'?paintMaterial(0xffffff,modelId,mobile):surfaceMaterial(category,mobile));
       return materials.get(category);
     };
     o.material=Array.isArray(o.material)?o.material.map(convert):convert(o.material);
@@ -81,10 +84,10 @@ export function preparePremiumVehicleTemplate(scene, modelId) {
   });
   originals.forEach(m=>m.dispose());
   const levels=['near','mid','far'].map(name=>{
-    const body=scene.getObjectByName(name+'_body');
+    const assetLevel=mobile&&name==='near'?'mid':name,body=scene.getObjectByName(assetLevel+'_body');
     if(!body)throw new Error('Missing vehicle body: '+name);
     const wheels=['LF','RF','LR','RR'].map(id=>{
-      const source=scene.getObjectByName(name+'_'+id);
+      const source=scene.getObjectByName(assetLevel+'_'+id);
       if(!source)throw new Error('Missing vehicle wheel: '+name+'_'+id);
       const bounds=new THREE.Box3().setFromObject(source),center=source.userData.wheelCenter
         ?new THREE.Vector3().fromArray(source.userData.wheelCenter):source.getWorldPosition(new THREE.Vector3());
@@ -94,18 +97,22 @@ export function preparePremiumVehicleTemplate(scene, modelId) {
   });
   const bounds=new THREE.Box3().setFromObject(scene),size=bounds.getSize(new THREE.Vector3());
   if(size.x>VEHICLE.width+.015||size.z>VEHICLE.length+.015)throw new Error('Vehicle exceeds its collision footprint');
-  return {kind:'premium',modelId,name:definitions[modelId].name,levels,materials,size,auxiliary:null};
+  return {kind:'premium',mobile,modelId,name:definitions[modelId].name,levels,materials,size,auxiliary:null};
 }
 
-export async function loadPremiumVehicleTemplates(baseURL=new URL('./vehicles/',import.meta.url)) {
+export async function loadPremiumVehicleTemplates(baseURL=new URL('./vehicles/',import.meta.url),{mobile=false}={}) {
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const results=await Promise.allSettled(Object.entries(definitions).map(async([id,definition])=>{
-    const url=new URL(definition.file,baseURL),response=await fetch(url);
+  const job=async([id,definition])=>{
+    const url=new URL(mobile?id+'-mobile.glb.gz':definition.file,baseURL),response=await fetch(url);
     if(!response.ok)throw new Error('Vehicle asset unavailable: '+id);
     const bytes=await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
     const gltf=await loader.parseAsync(bytes,baseURL.href);
-    return [id,preparePremiumVehicleTemplate(gltf.scene,id)];
-  }));
+    return [id,preparePremiumVehicleTemplate(gltf.scene,id,{mobile})];
+  };
+  const results=[];
+  if(mobile){
+    for(const entry of Object.entries(definitions))results.push(await job(entry).then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})));
+  }else results.push(...await Promise.allSettled(Object.entries(definitions).map(job)));
   const templates=new Map();
   for(const result of results) {
     if(result.status==='fulfilled')templates.set(...result.value);
@@ -138,8 +145,8 @@ export function mountPremiumVehicle(group, template, color) {
   group.userData.vehicleVisual?.dispose?.();
   group.clear();
   const rig=new THREE.Group();rig.name=template.name+' rig';group.add(rig);
-  const paint=paintMaterial(color,template.modelId),brakeMaterial=surfaceMaterial('TailLamp');
-  const headlampMaterial=surfaceMaterial('Headlamp');
+  const paint=paintMaterial(color,template.modelId,template.mobile),brakeMaterial=surfaceMaterial('TailLamp',template.mobile);
+  const headlampMaterial=surfaceMaterial('Headlamp',template.mobile);
   const reverseMaterial=new THREE.MeshStandardMaterial({color:0xbac5cc,roughness:.23,emissive:0xe6f2ff,emissiveIntensity:0});
   const hazardMaterial=new THREE.MeshStandardMaterial({color:0xa45b13,roughness:.3,emissive:0xff8917,emissiveIntensity:0});
   const environment=template.materials.get('Paint').envMap;
@@ -169,7 +176,7 @@ export function mountPremiumVehicle(group, template, color) {
     return {root,body,wheels};
   });
   const front=levels[0].wheels.filter(w=>w.front),back=levels[0].wheels.filter(w=>!w.front);
-  const data={kind:'premium',modelId:template.modelId,modelName:template.name,rig,levels,body:levels[2].body,wheels:levels[2].wheels,
+  const data={kind:'premium',mobile:!!template.mobile,modelId:template.modelId,modelName:template.name,rig,levels,body:levels[2].body,wheels:levels[2].wheels,
     paint,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial,travel:0,activeLevel:2,
     wheelbase:Math.abs(front[0].center.z-back[0].center.z),track:Math.abs(front[0].center.x-front[1].center.x),
     materials:[paint,brakeMaterial,reverseMaterial,hazardMaterial,headlampMaterial,...template.materials.values()],
@@ -199,6 +206,8 @@ export function updatePremiumVehicleVisual(group,state) {
 
 // Keep a bounded number of rich models nearby. Every level uses the same
 // authored silhouette and independent wheel pivots, so no car turns into a box.
+// Phones use authored medium detail even for the driven car: selecting it must
+// not suddenly upload the largest buffers while changing camera and controls.
 export function updateVehicleDetail(refs,camera,{mobile=false,focusVehicle=null}={}) {
   const cameraPosition=camera.getWorldPosition(new THREE.Vector3());
   const candidates=refs.map(ref=>ref.group||ref).filter(group=>group.userData.vehicleVisual?.kind==='premium')
@@ -207,7 +216,7 @@ export function updateVehicleDetail(refs,camera,{mobile=false,focusVehicle=null}
   let near=0,mid=0;
   for(const {group,distance} of candidates) {
     const data=group.userData.vehicleVisual,nearLimit=(mobile?14:24)*(data.activeLevel===0?1.15:1),midLimit=(mobile?42:72)*(data.activeLevel===1?1.1:1);
-    const level=(group===focusVehicle||distance<nearLimit)&&near<(mobile?2:4)?(near++,0):distance<midLimit&&mid<(mobile?5:10)?(mid++,1):2;
+    const level=!mobile&&(group===focusVehicle||distance<nearLimit)&&near<4?(near++,0):(group===focusVehicle||distance<midLimit)&&mid<(mobile?5:10)?(mid++,1):2;
     if(data.activeLevel===level)continue;
     data.levels.forEach((entry,i)=>entry.root.visible=i===level);
     data.activeLevel=level;data.body=data.levels[level].body;data.wheels=data.levels[level].wheels;
@@ -227,4 +236,18 @@ export function setVehicleEnvironment(refs,templates,environment) {
   for(const material of materials)if(material.isMeshStandardMaterial) {
     material.envMap=environment;material.envMapIntensity=1;material.needsUpdate=true;
   }
+}
+
+// Phone downloads contain no maximum-detail geometry. Start only in active
+// play, load models serially, and replace at most one nearby car per frame.
+export function createMobileFleet({refs,mount,load=()=>loadPremiumVehicleTemplates(undefined,{mobile:true}),onError=console.warn}){
+ let started=false,templates=null,pending=Promise.resolve();const mounted=new WeakSet();
+ function update(dt,position,focus=null){
+  if(!(dt>0)||!position)return;
+  if(!started){started=true;pending=Promise.resolve().then(load).then(value=>{templates=value;}).catch(onError);return;}
+  if(!templates?.size)return;
+  const candidates=refs.map((ref,index)=>({ref,index,distance:ref.group.position.distanceTo(position)})).filter(({ref,distance})=>!ref.group.userData.policeVehicle&&!mounted.has(ref.group)&&(distance<110||ref.group===focus)).sort((a,b)=>(a.ref.group===focus?-1:b.ref.group===focus?1:a.distance-b.distance));
+  for(const {ref,index} of candidates){const id=availableFleetModel(ref.group.userData.fleetAppearance||{index,modelId:'gls'},templates),template=templates.get(id);if(!template)continue;mount(ref,template,index);mounted.add(ref.group);break;}
+ }
+ return {update,ready:()=>pending};
 }

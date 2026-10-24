@@ -84,6 +84,19 @@ export function createPalmGrove({scene,placements,groundHeight,mobile=false}){
   const group={trees,near:[],far:[]};for(const level of ['near','far'])for(const part of ['trunk','crown']){const mesh=new THREE.InstancedMesh(kit.templates[variant][level][part],part==='trunk'?kit.bark:kit.foliage,trees.length);mesh.name=part==='trunk'?'Textured palm trunks':'Layered palm crowns';mesh.userData.palmDetail=level;mesh.count=0;mesh.visible=false;mesh.castShadow=mesh.receiveShadow=true;mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);scene.add(mesh);group[level].push(mesh);meshes.push(mesh);}groups.push(group);
  }
  let last=null;
- function update(dt,eye){kit.windTime.value+=Math.max(0,dt||0);if(!eye)return;const threshold=mobile?72:110;if(last&&Math.hypot(eye.x-last.x,eye.z-last.z)<12)return;last={x:eye.x,z:eye.z};for(const group of groups){let near=0,far=0;for(const p of group.trees){const close=Math.hypot(p.x-eye.x,p.z-eye.z)<threshold,level=close?'near':'far',i=close?near++:far++;dummy.position.set(p.x,groundHeight(p.x,p.z),p.z);dummy.rotation.set(0,p.z*.017+p.x,0);dummy.scale.set(p.scale*(.93+((Math.abs(p.x*13+p.z*7)%17)/17)*.14),p.scale,p.scale);dummy.updateMatrix();for(const mesh of group[level])mesh.setMatrixAt(i,dummy.matrix);}for(const level of ['near','far'])for(const mesh of group[level]){mesh.count=level==='near'?near:far;mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;if(mesh.count)mesh.computeBoundingSphere();}}}
+ function update(dt,eye){
+  kit.windTime.value+=Math.max(0,dt||0);if(!eye||!Number.isFinite(eye.x)||!Number.isFinite(eye.z))return;
+  if(last&&Math.hypot(eye.x-last.x,eye.z-last.z)<12)return;last={x:eye.x,z:eye.z};
+  // Four detailed palms total, selected globally rather than per tile. Distant
+  // mobile trees stop submitting geometry outside the local coastal horizon.
+  const distance=p=>Math.hypot(p.x-eye.x,p.z-eye.z),ranked=mobile?placements.filter(p=>distance(p)<=260).sort((a,b)=>distance(a)-distance(b)).slice(0,64):placements;
+  const visible=new Set(ranked),close=new Set(mobile?ranked.filter(p=>distance(p)<38).slice(0,4):placements.filter(p=>distance(p)<110));
+  for(const group of groups){let near=0,far=0;for(const p of group.trees){
+   if(mobile&&!visible.has(p))continue;
+   const detailed=close.has(p),level=detailed?'near':'far',i=detailed?near++:far++;
+   dummy.position.set(p.x,groundHeight(p.x,p.z),p.z);dummy.rotation.set(0,p.z*.017+p.x,0);dummy.scale.set(p.scale*(.93+((Math.abs(p.x*13+p.z*7)%17)/17)*.14),p.scale,p.scale);dummy.updateMatrix();for(const mesh of group[level])mesh.setMatrixAt(i,dummy.matrix);
+  }for(const level of ['near','far'])for(const mesh of group[level]){mesh.count=level==='near'?near:far;mesh.visible=mesh.count>0;mesh.instanceMatrix.needsUpdate=true;if(mesh.count)mesh.computeBoundingSphere();}}
+ }
+
  update(0,{x:0,z:0});return {...kit,meshes,update};
 }

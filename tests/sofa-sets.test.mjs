@@ -16,9 +16,9 @@ assert.ok((await stat(file(SOFA_SET_URL.slice(2)))).size<3e6,'set GLB stays unde
 assert.equal(SOFA_SET_URL,'./assets/sofa-set/rosa-living.glb');
 
 // Every other eligible home, never the landmark 101 or the furnished 139.
-const chosen=sofaSetHomes(COMMUNITY_HOMES),eligible=COMMUNITY_HOMES.filter(h=>!SOFA_SET_SKIP.includes(h.id));
+const chosen=sofaSetHomes(COMMUNITY_HOMES),eligible=COMMUNITY_HOMES.filter(h=>!['maple-grove-1','maple-grove-20'].includes(h.id));
 assert.equal(chosen.length,Math.ceil(eligible.length/2)+SOFA_SET_EXTRA.length);assert.ok(!chosen.some(h=>h.id==='maple-grove-1'),'never the landmark 101');assert.ok(chosen.some(h=>h.id==='maple-grove-20'),'139 furnished living room');
-for(let i=0;i<eligible.length;i++)assert.equal(chosen.includes(eligible[i]),i%2===0,'alternating at '+eligible[i].id);
+for(let i=0;i<eligible.length;i++)assert.equal(chosen.includes(eligible[i]),i%2===0&&!SOFA_SET_SKIP.includes(eligible[i].id),'alternating at '+eligible[i].id);
 
 // Fits inside every chosen shell with clearance at the walls and the front door.
 for(const home of chosen){const p=sofaSetPlacement(home);

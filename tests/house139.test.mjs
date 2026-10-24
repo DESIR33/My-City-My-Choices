@@ -14,7 +14,7 @@ const scene=new THREE.Scene(),obstacles=[],groundSurfaces=[];
 const community=createPlannedCommunity({scene,visualKit,obstacles,groundSurfaces,buildings:[]});
 scene.updateMatrixWorld(true);
 const home=COMMUNITY_HOMES.find(h=>h.address===139);assert.equal(home.id,'maple-grove-20');assert.equal(home.street,'Willow Way');
-assert.equal(community.furnishedInteriors.length,1);const furnishing=community.furnishedInteriors[0];assert.equal(furnishing.homeId,home.id);assert.equal(furnishing.rooms.length,8);
+assert.equal(community.furnishedInteriors.length,2);const furnishing=community.furnishedInteriors[0];assert.equal(furnishing.homeId,home.id);assert.equal(furnishing.rooms.length,8);
 for(const id of ['media-console-cabinet','living-plant-plant','kitchen-counter','oven-counter','refrigerator','kitchen-island','dining-table','main-bed-bed','main-bed-nightstand-left','main-bed-nightstand-right','main-bed-ottoman','study-cabinet-cabinet','study-desk','bath-tub','bath-vanity','bath-toilet','second-bed','third-bed','garage-workbench'])assert.ok(furnishing.fixtures.some(f=>f.id===id),id+' is real furnished geometry');
 assert.equal(furnishing.fixtures.filter(f=>f.id.startsWith('dining-chair')).length,4);assert.equal(furnishing.fixtures.filter(f=>f.id.startsWith('stool-')).length,3);
 assert.ok(community.sofaSets.sets.some(s=>s.home.id===home.id),'139 living room uses the owner sofa set');
