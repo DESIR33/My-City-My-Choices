@@ -54,7 +54,7 @@ await mkdir(OUT,{recursive:true});const models={};
     node.setMesh(mesh);scene.addChild(node);}
   await doc.transform(F.weld(),F.simplify({simplifier:MeshoptSimplifier,ratio:.45,error:.0015}),F.unweld(),F.normals({overwrite:true}),F.weld(),F.reorder({encoder:MeshoptEncoder}),F.quantize(),F.meshopt({encoder:MeshoptEncoder,level:'high'}));
   await io.write(join(OUT,'train.glb'),doc);const b=getBounds(scene);let tris=0;for(const m of doc.getRoot().listMeshes())for(const p of m.listPrimitives())tris+=p.getIndices().getCount()/3;
-  models.train={url:'./assets/metro/train.glb',length:+(b.max[2]-b.min[2]).toFixed(2),width:+(b.max[0]-b.min[0]).toFixed(2),height:+(b.max[1]-b.min[1]).toFixed(2),floor:1.02,doorZ:[-6.45,6.45],doorHalfWidth:3.55,doorSlide:.68,triangles:tris};
+  models.train={url:'./assets/metro/train.glb',length:+(b.max[2]-b.min[2]).toFixed(2),width:+(b.max[0]-b.min[0]).toFixed(2),height:+(b.max[1]-b.min[1]).toFixed(2),floor:1.02,doorways:[-9.7,-3.24,3.24,9.7],doorWidth:1.3,doorSlide:.68,triangles:tris};
   console.log('train',models.train);}
 
 // ---------------- entrance ----------------

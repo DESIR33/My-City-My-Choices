@@ -10,7 +10,7 @@ import {DECK_Y,RAIL_Y,PLATFORM_Y,TRACK_OFFSET,PLATFORM,CENTRAL,ENTRANCE,LINE_LEN
   CENTRELINE,lineAt,stationFrame,stationLandings,stationStairs,metroSafePoint,stairHeight,metroFloorAt,metroWalk,stationById,trainState,LOOP} from './metro-line.js';
 import {NORTH_CITY,AIRPORT} from './world-rules.js';
 
-export const DOORWAYS=Object.freeze([-9.7,-3.24,3.24,9.7]);// doorway centres along the car (both sides)
+export const DOORWAYS=Object.freeze([...METRO_MODELS.train.doorways]);// doorway centres along the car (both sides)
 export const METRO_FARE=Object.freeze({adult:2.75,weekPass:22,youth:0});
 export const METRO_RANGE=1600;// stream the train model when this close to the line
 export const METRO_FACTS=Object.freeze({

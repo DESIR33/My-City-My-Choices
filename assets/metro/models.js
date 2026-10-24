@@ -6,11 +6,13 @@ export const METRO_MODELS=Object.freeze({
   "width": 2.92,
   "height": 5.9,
   "floor": 1.02,
-  "doorZ": [
-   -6.45,
-   6.45
+  "doorways": [
+   -9.7,
+   -3.24,
+   3.24,
+   9.7
   ],
-  "doorHalfWidth": 3.55,
+  "doorWidth": 1.3,
   "doorSlide": 0.68,
   "triangles": 15362
  },
