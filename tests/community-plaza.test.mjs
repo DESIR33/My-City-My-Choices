@@ -36,7 +36,7 @@ assert.equal(world.COMMUNITY_PARKED_CARS.length,8);
 for(const p of world.COMMUNITY_PARKED_CARS){const home=world.COMMUNITY_HOMES.find(h=>h.id===p.homeId),drive=world.communityDriveway(home),shape=vehicleFootprint(p.x,p.z,p.heading);
  assert.ok(shape.every(v=>world.withinRect(v.x,v.z,drive,-.15)),'Whole parked car stays on its driveway');
  const block=obstacles.some(o=>rectanglesOverlap(shape,[{x:o.minX,z:o.minZ},{x:o.maxX,z:o.minZ},{x:o.maxX,z:o.maxZ},{x:o.minX,z:o.maxZ}]));assert.equal(block,false,'Resident car clears walls, trees, fences and the porch');
- const lane=world.communityPoint(home,-home.w*.23+1.55,home.d/2+4.2),freeShape=vehicleFootprint(lane.x,lane.z,home.heading);assert.equal(rectanglesOverlap(shape,freeShape),false,'The second bay stays clear');
+ const lane=world.communityPoint(home,-home.w*.23+(p.homeId==='maple-grove-1'?1.55:-1.55),home.d/2+4.2),freeShape=vehicleFootprint(lane.x,lane.z,home.heading);assert.equal(rectanglesOverlap(shape,freeShape),false,'The second bay stays clear');
 }
 for(const tree of planted)assert.equal(world.worldDrivable(tree.x,tree.z),false,'Designed trees stay outside roads and drives');
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8'),streetTrees=[];

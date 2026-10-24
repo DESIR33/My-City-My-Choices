@@ -26,4 +26,3 @@ after(()=>{globalThis.document=oldDocument;});
   console.log('Mobile coastal peak submitted palm triangles:',peak);
  });
  test('Desktop retains practical hotel lights and the full palm horizon',()=>{const {scene,coast}=build(false),hotel=COAST_BUILDINGS.find(b=>b.name==='THE FLAMINGO'&&b.height>30);coast.update(.04,new THREE.Vector3(hotel.x,0,hotel.z));const lights=[];scene.traverseVisible(o=>{if(o.isPointLight||o.isSpotLight)lights.push(o);});assert.ok(lights.length>=15);assert.equal(coast.palmGrove.meshes.filter(m=>m.name.includes('crowns')).reduce((n,m)=>n+m.count,0),coast.palms.length);});
-

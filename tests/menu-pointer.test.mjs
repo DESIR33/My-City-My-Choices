@@ -10,7 +10,7 @@ assert.ok(shortcuts&&pointer&&hide);
 const classes=()=>{const set=new Set();return {add:k=>set.add(k),remove:k=>set.delete(k),contains:k=>set.has(k)};};
 const modal={classList:classes()},intro={classList:classes()},body={classList:classes()},canvas={};let menus=0,locks=0,exits=0,resets=0;
 const listeners={},keys={KeyW:true,Space:true};
-const c={modal,panel:{},stage:'done',locked:true,keys,homeProjectTicket:{},backupLoadId:0,pendingImportedSave:null,pendingMoneyDecision:null,neighborJobStep:null,
+const c={endWardrobePreview(){},modal,panel:{},stage:'done',locked:true,keys,homeProjectTicket:{},backupLoadId:0,pendingImportedSave:null,pendingMoneyDecision:null,neighborJobStep:null,
  renderer:{domElement:canvas},document:{body,pointerLockElement:canvas,addEventListener:(key,fn)=>{listeners[key]=fn;},querySelector:()=>intro,exitPointerLock(){exits++;this.pointerLockElement=null;}},
  resetInputs(){resets++;for(const key in keys)keys[key]=false;},requestGamePointerLock(){locks++;},openCityMenu(){menus++;modal.classList.add('show');c.document.exitPointerLock();}};
 vm.createContext(c);vm.runInContext(hide+pointer+shortcuts,c);c.closeGamePanel=c.hide;

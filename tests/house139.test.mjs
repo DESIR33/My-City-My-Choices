@@ -14,18 +14,21 @@ const scene=new THREE.Scene(),obstacles=[],groundSurfaces=[];
 const community=createPlannedCommunity({scene,visualKit,obstacles,groundSurfaces,buildings:[]});
 scene.updateMatrixWorld(true);
 const home=COMMUNITY_HOMES.find(h=>h.address===139);assert.equal(home.id,'maple-grove-20');assert.equal(home.street,'Willow Way');
-assert.equal(community.furnishedInteriors.length,1);const furnishing=community.furnishedInteriors[0];assert.equal(furnishing.homeId,home.id);assert.equal(furnishing.rooms.length,4);
-for(const id of ['sofa','coffee-table','media-console','kitchen-counter','oven-counter','refrigerator','kitchen-island','dining-table','guest-bed','nightstand','dresser','garage-workbench'])assert.ok(furnishing.fixtures.some(f=>f.id===id),id+' is real furnished geometry');
-assert.equal(furnishing.fixtures.filter(f=>f.id.startsWith('dining-chair')).length,4);
+assert.equal(community.furnishedInteriors.length,2);const furnishing=community.furnishedInteriors[0];assert.equal(furnishing.homeId,home.id);assert.equal(furnishing.rooms.length,8);
+for(const id of ['media-console-cabinet','living-plant-plant','kitchen-counter','oven-counter','refrigerator','kitchen-island','dining-table','main-bed-bed','main-bed-nightstand-left','main-bed-nightstand-right','main-bed-ottoman','study-cabinet-cabinet','study-desk','bath-tub','bath-vanity','bath-toilet','second-bed','third-bed','garage-workbench'])assert.ok(furnishing.fixtures.some(f=>f.id===id),id+' is real furnished geometry');
+assert.equal(furnishing.fixtures.filter(f=>f.id.startsWith('dining-chair')).length,4);assert.equal(furnishing.fixtures.filter(f=>f.id.startsWith('stool-')).length,3);
+assert.ok(community.sofaSets.sets.some(s=>s.home.id===home.id),'139 living room uses the owner sofa set');
+for(const kind of ['bedroom','cabinet','chair','plant'])assert.ok(community.interiorProps.placements.some(p=>p.home.id===home.id&&p.model===kind),kind+' model is placed in 139');
 const point=(x,z)=>({...communityPoint(home,x,z),y:.3});
 const blocked=(x,z)=>obstacles.some(o=>o.homeId===home.id&&houseObstacleBlocks({...o,houseId:home.id},x,z,.3));
 const from=point(home.w*.2,home.d/2+1.05);
 for(const door of community.doors.filter(d=>d.home.id===home.id)){const exterior=point(door.x,door.z+(door.type==='rear'?-2.7:2.7));assert.equal(community.actDoor(door.id,exterior).ok,true);}
 for(let i=0;i<120;i++)community.update(1/60);
-for(const [name,x,z] of [['entry',2.92,5.4],['living room',4.8,3.15],['kitchen',2,-4.3],['dining room',.8,1],['bedroom',-2,-3.4],['garage',-3,4.5],['patio',home.w*.24,-home.d/2-1]]){
+for(const [name,x,z,via] of [['entry',2.92,5.4],['living room',4.6,4.95],['kitchen',2,-4.3],['dining room',.8,1],['study',-2,-3.4],['garage',-3,4.5],['patio',home.w*.24,-home.d/2-1,[2,-4.3]]]){
  const target=point(x,z),valid=(x,z)=>Math.abs(x-home.x)<home.w/2+.1&&Math.abs(z-home.z)<home.d/2+1.5&&!blocked(x,z),scale=4;
  assert.equal(blocked(target.x,target.z),false,name+' has a clear approach: '+JSON.stringify(obstacles.filter(o=>o.homeId===home.id&&houseObstacleBlocks({...o,houseId:home.id},target.x,target.z,.3))));
- const path=localWalkPath({x:from.x*scale,z:from.z*scale},{x:target.x*scale,z:target.z*scale},(x,z)=>valid(x/scale,z/scale))?.map(p=>({x:p.x/scale,z:p.z/scale}));
+ // The patio is reached through the kitchen, which is itself checked from the front door.
+ const start=via?point(...via):from,path=localWalkPath({x:start.x*scale,z:start.z*scale},{x:target.x*scale,z:target.z*scale},(x,z)=>valid(x/scale,z/scale))?.map(p=>({x:p.x/scale,z:p.z/scale}));
  assert.ok(path,'Walk from front door to '+name);assert.ok(path.slice(1).every((p,i)=>lineClear(path[i],p,valid)));
 }
 const partition=point(-.2,0);assert.equal(blocked(partition.x,partition.z),true,'Room dividers have real collision');
@@ -39,5 +42,5 @@ const ray=new THREE.Raycaster();for(const h of COMMUNITY_HOMES.filter(h=>h.id!==
  const floor=Math.max(...groundSurfaces.filter(s=>p.x>=s.minX&&p.x<=s.maxX&&p.z>=s.minZ&&p.z<=s.maxZ).map(s=>s.top));assert.equal(floor,.3);
  const state=createVerticalState(p.x,p.z,.3);for(let i=0;i<120;i++)advanceVertical(state,{...p,floor,dt:1/60});assert.equal(state.y,.3);assert.equal(state.grounded,true);
 }
-assert.ok(community.architectureBatches.length<90,'Furnishings remain in bounded shared architecture batches');
+assert.ok(community.architectureBatches.length<110,'Furnishings remain in bounded shared architecture batches');
 console.log('House 139 passed: real partitions/furnishings, all room and exit routes, collision/camera after batching, and 26 single-surface floors with stable footing.');

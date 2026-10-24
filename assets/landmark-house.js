@@ -1,9 +1,10 @@
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {textileStyle} from './home-life.js';
 import {createHouseSurfaces,addHouseBake,houseBakeUniforms} from './house-surfaces.js';
 import {mergeHouseStatic} from './house-bake.js';
 import {fitFurniture} from './house-furniture.js';
-import {MODEL_HOME as H,freshHouse,restoreHouse,houseLocal,houseInside,onHouseStairs,houseFloorAt,houseObstacleBlocks} from './house-rules.js';
+import {MODEL_HOME as H,freshHouse,restoreHouse,houseLocal,houseInside,onHouseStairs,houseFloorAt,houseObstacleBlocks,HOUSE_FOOD} from './house-rules.js';
 
 // One persistent property, built at world scale. Moving leaves stay outside the
 // static batches; all collision volumes carry their real vertical interval.
@@ -84,6 +85,12 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  }
  door('front','Open / close the front door','x',1.83,5.9,0,1);door('rear','Open / close the patio door','x',-6.15,-5.9,0,-1);door('garage','Open / close the utility-room door','z',-.8,1.95,0,-1);
  door('bedroom1','Open / close the main bedroom','z',-.6,1.85,1,1);door('bedroom2','Open / close the second bedroom','z',-.6,-.25,1,1,-1);door('bathroom','Open / close the bathroom','x',-.25,-2.4,1,1);
+ // A roll-up exterior door, distinct from the utility-room door named garage.
+ const garageLeaf=new THREE.Group();garageLeaf.name='Roll-up garage door';garageLeaf.userData.dynamicHouse=true;garageLeaf.userData.cameraIgnore=true;garageLeaf.position.set(-3.08,2.85,5.93);root.add(garageLeaf);
+ for(let i=0;i<9;i++){box(garageLeaf,0,-2.55+i*.283,0,5.98,.27,.1,trim);box(garageLeaf,0,-2.55+i*.283, .06,5.75,.025,.025,metal);}
+ for(const material of [trim,metal]){const parts=garageLeaf.children.filter(m=>m.material===material),geometries=parts.map(m=>{m.updateMatrix();return m.geometry.clone().applyMatrix4(m.matrix)}),mesh=new THREE.Mesh(mergeGeometries(geometries),material);for(const g of geometries)g.dispose();for(const m of parts)m.removeFromParent();mesh.castShadow=mesh.receiveShadow=true;garageLeaf.add(mesh);}
+ const garageCollider=solid(-3.08,5.93,6,.12,.3,2.85,'garage-door');let garageLift=0;
+ action('garage-door','Open / close the garage door',-3.08,7.1,0,'garageDoor',{radius:3.1});
  const chairGroups={};function chair(id,title,x,z,floor=0,heading=0,width=.64,stand=null){const y=floor?H.upper:.3,g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=heading;root.add(g);chairGroups[id]=g;
   for(const a of [-1,1])for(const b of [-1,1])box(g,a*(width/2-.07),0,b*.2,.055,.43,.055,walnut);
   box(g,0,.43,0,width,.1,.6,fabric);box(g,0,.53,-.25,width,.65,.09,oak);
@@ -107,8 +114,19 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  const stream=shape(root,cylinder,.35,1.42,-5.22,.014,.37,.014,water);stream.userData.dynamicHouse=true;action('tap','Turn the kitchen tap on / off',.1,-4.0);
  const cabinet=new THREE.Group();cabinet.position.set(-.7,.4,-4.77);cabinet.userData.dynamicHouse=true;root.add(cabinet);for(let i=0;i<3;i++){box(cabinet,0,i*.23,0,.8,.2,.055,oak);box(cabinet,0,i*.23+.1,.05,.3,.025,.04,brass);}moving.push({key:'cabinet',mesh:cabinet,axis:'z',base:-4.77,delta:.38});action('cabinet','Open / close the kitchen drawers',-.7,-4.0);
  furnishing(.75,.3,-2.8,2.1,.9,.8,mat(0x657a6b),'island');box(root,.75,1.2,-2.8,2.25,.06,.95,quartz);shape(root,cylinder,.75,1.35,-2.8,.2,.2,.2,ceramic);
- furnishing(3.05,.3,-5.1,.95,1.95,1.05,metal,'fridge');box(root,3.05,.55,-4.55,.78,1.6,.03,dark);for(const y of [.65,1.05,1.45,1.85])box(root,3.05,y,-4.48,.72,.025,.18,trim);
- for(const [x,y] of [[2.8,.75],[3.1,1.15],[3.3,1.6]])shape(root,sphere,x,y,-4.43,.1,.15,.1,mat(0xa3ac65));
+ solid(3.05,-5.1,.95,1.05,.3,2.25,'fridge');
+ for(const x of [2.6,3.5])box(root,x,.3,-5.1,.05,1.95,1.05,metal);
+ for(const y of [.3,2.2])box(root,3.05,y,-5.1,.85,.05,1.05,ceramic);
+ box(root,3.05,.35,-5.59,.85,1.85,.05,ceramic);
+ for(const y of [.65,1.05,1.45,1.85])box(root,3.05,y,-5.08,.83,.025,.9,trim);
+ const foodMeshes=[];
+ for(const [row,f] of HOUSE_FOOD.entries())for(let i=0;i<f.count;i++){
+  const g=new THREE.Group();g.name=f.name+' in refrigerator';g.userData.dynamicHouse=true;root.add(g);g.position.set(2.8+i*.22,.79+row*.4,-4.84);
+  const m=mat(f.color,.9);if(f.id==='apple')shape(g,sphere,0,0,0,.09,.1,.09,m);
+  else if(f.id==='yogurt'){shape(g,cylinder,0,0,0,.075,.18,.075,m);shape(g,cylinder,0,.1,0,.08,.025,.08,trim);}
+  else {box(g,0,-.04,0,.16,.04,.15,m);box(g,0,0,0,.17,.025,.16,mat(0x658b48));box(g,0,.025,0,.16,.04,.15,m);}
+  foodMeshes.push({id:f.id,index:i,group:g});
+ }
  const fridgeDoor=new THREE.Group();fridgeDoor.position.set(2.57,.3,-4.5);fridgeDoor.userData.dynamicHouse=true;root.add(fridgeDoor);box(fridgeDoor,.48,0,0,.95,1.95,.065,ceramic);box(fridgeDoor,.78,.8,.07,.04,.6,.04,brass);moving.push({key:'fridge',mesh:fridgeDoor,rotation:true,base:0,delta:-Math.PI*.6});action('fridge','Open / close the refrigerator',3.05,-3.7);
  box(root,.7,1.9,-5.7,3.2,.7,.38,oak);for(const x of [-.4,.6,1.6])box(root,x,1.92,-5.48,.94,.65,.04,trim);
  // Dining furniture has distinct usable chair positions and clear exits.
@@ -116,11 +134,11 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  chair('dining-front','dining chair',1.3,1.8,0,Math.PI,.65,[1.3,2.9]);chair('dining-back','dining chair',1.3,-1.05,0,0,.65,[2.9,-1.1]);chair('dining-side','dining chair',3.05,.4,0,-Math.PI/2,.65,[3.05,1.55]);
  for(const id of ['dining-front','dining-back','dining-side'])standIn(id,'dining_chair_02',chairGroups[id]);
  // Utility garage: laundry drum, shelving, a workbench and household supplies.
- furnishing(-5.65,.3,4.6,1.05,.95,.9,ceramic,'washer');const drum=shape(root,torus,-5.65,.85,5.08,.3,.3,.3,metal);drum.userData.dynamicHouse=true;action('washer','Start / stop the washing machine',-5.65,3.55);
- furnishing(-3.9,.3,4.1,1.7,.95,.7,oak,'workbench');box(root,-3.9,1.25,4.1,1.85,.08,.8,stone);action('workbench','Inspect the household tool kit',-3.9,3.05,0,'read',{message:'A tool kit, spare bulbs and a tape measure. This home is ready for future improvements.'});
+ furnishing(-5.65,.3,4.6,1.05,.95,.9,ceramic,'washer');const drum=shape(root,torus,-5.65,.85,5.08,.3,.3,.3,metal);drum.userData.dynamicHouse=true;action('washer','Start / stop the washing machine',-4.65,4.6);
+ furnishing(-5.8,.3,3.1,.7,.95,1.7,oak,'workbench');box(root,-5.8,1.25,3.1,.8,.08,1.85,stone);action('workbench','Inspect the household tool kit',-4.85,3.1,0,'read',{message:'A tool kit, spare bulbs and a tape measure. This home is ready for future improvements.'});
  for(const y of [.6,1.2,1.8])box(root,-5.9,y,1.5,.75,.06,1.2,oak);action('supplies','Inspect laundry and storage',-4.85,1.5,0,'read',{message:'Laundry supplies and labeled storage boxes keep this utility room organized.'});
- function bed(id,x,z,heading=0){const g=new THREE.Group();g.position.set(x,H.upper,z);g.rotation.y=heading;root.add(g);box(g,0,.1,0,2.15,.25,2.45,walnut);box(g,0,.35,0,2.05,.2,2.35,linen);const duvet=box(g,0,.55,.2,2.05,.08,1.9,id==='bed1'?fabric:mat(0x9f8b76,.98));duvet.userData.dynamicHouse=true;box(g,0,.1,-1.23,2.2,1.1,.12,oak);for(const side of [-1,1])box(g,side*.5,.56,-.8,.8,.16,.45,trim);solid(x,z,2.2,2.5,H.upper,H.upper+.7,id);
-  const stand=world(x+1.85,z),seat={id,type:'bed',...world(x-Math.sin(heading)*.0,z+Math.cos(heading)*.9),floor:H.upper,height:.64,heading,rest:true,stand};beds.push({id,duvet,seat});action(id,'Rest / make the '+(id==='bed1'?'main bed':'second bed'),x+1.85,z,1,'bed',{seat});
+ function bed(id,x,z,heading=0){const g=new THREE.Group();g.position.set(x,H.upper,z);g.rotation.y=heading;root.add(g);box(g,0,.1,0,2.15,.25,2.45,walnut);box(g,0,.35,0,2.05,.2,2.35,linen);const duvet=box(g,0,.55,.2,2.05,.08,1.9,id==='bed1'?fabric:mat(0x9f8b76,.98));duvet.userData.dynamicHouse=true;box(g,0,.1,-1.23,2.2,1.1,.12,oak);for(const side of [-1,1])box(g,side*.5,.56,-.8,.8,.16,.45,trim);solid(x,z,2.2,2.5,H.upper,H.upper+.63,id);solid(x,z-Math.cos(heading)*1.23,2.2,.12,H.upper,H.upper+1.2,id+'-headboard');
+  const stand=world(x+1.85,z),seat={id,type:'bed',...world(x-Math.sin(heading)*.0,z+Math.cos(heading)*.9),floor:H.upper,height:.64,heading,rest:true,stand};beds.push({id,x,z,top:H.upper+.63,duvet,seat});action(id,'Rest / make the '+(id==='bed1'?'main bed':'second bed'),x+1.85,z,1,'bed',{seat});
  }
  bed('bed1',-3.5,4.1,Math.PI);bed('bed2',-3.5,-4.2);
  for(const [i,[x,z]] of [[-5.2,4.5],[-5.2,-4.7]].entries()){adopt('nightstand-'+i,'side_table_01',[furnishing(x,H.upper,z,.65,.62,.6,walnut,'nightstand')]);shape(root,cylinder,x,H.upper+1.05,z,.19,.4,.19,linen);}
@@ -158,6 +176,12 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  function inSwing(d,p){if(Math.abs((p.y||0)-d.y)>1.7)return false;const q=houseLocal(p),dx=d.axis==='x'?d.w:0,dz=d.axis==='z'?d.direction*d.w:0,angle=d.sign*Math.PI/2,ox=dx*Math.cos(angle)+dz*Math.sin(angle),oz=-dx*Math.sin(angle)+dz*Math.cos(angle);return q.x>d.x+Math.min(0,dx,ox)-.5&&q.x<d.x+Math.max(0,dx,ox)+.5&&q.z>d.z+Math.min(0,dz,oz)-.5&&q.z<d.z+Math.max(0,dz,oz)+.5;}
  function update(dt=0,position=null,instant=false){tvTime+=Math.max(0,dt);for(const d of doors){if(!state[d.id]&&Math.abs(d.angle)>.02&&position&&inSwing(d,position))state[d.id]=true;const goal=state[d.id]?d.sign*Math.PI/2:0,previous=d.angle;d.angle=instant?goal:dt?THREE.MathUtils.damp(d.angle,goal,9,dt):d.angle;if(Math.abs(d.angle-goal)<.0001)d.angle=goal;if(instant||d.angle!==previous)syncDoor(d);}
   for(const m of moving){if(m.rotation)m.mesh.rotation.y=state[m.key]?m.base+m.delta:m.base;else m.mesh.position[m.axis]=m.base+(state[m.key]?m.delta:0);}
+  const closingObstruction=obstacles.some(o=>o.vehiclePose&&o.minX<H.x-.08&&o.maxX>H.x-6.08&&o.minZ<H.z+6.15&&o.maxZ>H.z+5.86)||position&&position.x>H.x-6.5&&position.x<H.x+.3&&Math.abs(position.z-H.z-5.93)<.65;
+  if(!state.garageDoor&&garageLift>.05&&closingObstruction)state.garageDoor=true;
+  garageLift=instant?(state.garageDoor?1:0):dt?THREE.MathUtils.damp(garageLift,state.garageDoor?1:0,5,dt):garageLift;
+  if(Math.abs(garageLift-(state.garageDoor?1:0))<.0001)garageLift=state.garageDoor?1:0;
+  garageLeaf.scale.y=1-garageLift*.96;garageCollider.minY=2.85-2.55*garageLeaf.scale.y;
+  for(const f of foodMeshes)f.group.visible=state.fridge&&f.index<state.food[f.id];
   stream.visible=state.tap;shower.visible=state.shower;if(state.washer)drum.rotation.z+=dt*3;
   for(const b of beds){b.duvet.rotation.z=state[b.id]?0:.09;b.duvet.position.z=state[b.id]?.2:.5;}for(const c of curtains)c.scale.x=state.curtains?.45:1.1;
   // Changing the visible light count recompiles lit materials across the city.
@@ -170,6 +194,7 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  const objectNames={fridge:'Refrigerator',oven:'Oven',tap:'Kitchen tap',cabinet:'Kitchen drawers',shower:'Shower',washer:'Washing machine',desk:'Study lamp',lights0:'Downstairs lights',lights1:'Upstairs lights',curtains:'Bedroom curtains'};
  function describe(a){
   if(a.kind==='door')return {...a,title:(state[a.id]?'Close ':'Open ')+a.title.replace(/^Open \/ close (the )?/, '')+' · '+H.address,actionLabel:state[a.id]?'Close door':'Open door'};
+  if(a.kind==='garageDoor')return {...a,title:'Garage door',status:state.garageDoor?'Open':'Closed',actionLabel:state.garageDoor?'Close garage':'Open garage'};
   if(a.id==='tv'){const channels=['Nature','City stories','Garden time'];return {...a,title:'TV',status:state.tv?channels[state.channel]:'Off',actionLabel:!state.tv?'Turn on':state.channel<2?'Next channel':'Turn off'};}
   if(a.kind==='toggle'){const open=['fridge','oven','cabinet','curtains'].includes(a.id);return {...a,title:objectNames[a.id]||a.title,status:state[a.id]?(open?'Open':'On'):(open?'Closed':'Off'),actionLabel:state[a.id]?(open?'Close':'Turn off'):(open?'Open':'Turn on')};}
   if(a.kind==='bed')return {...a,title:a.id==='bed1'?'Main bed':'Second bed',status:state[a.id]?'Made':'Bedding turned down',actionLabel:'Rest or make bed'};
@@ -182,9 +207,16 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  function act(id,p){const a=actions.find(a=>a.id===id);if(!a||!reachable(a,p))return {ok:false,message:'Move closer to this object.'};
   if(a.kind==='home')return {ok:true,action:a};if(a.kind==='seat'||a.kind==='bed')return {ok:true,seat:a.seat,bed:a.kind==='bed',action:a};if(a.kind==='wardrobe')return {ok:true,wardrobe:true};if(a.kind==='read')return {ok:true,message:a.message};
   if(a.kind==='door'&&state[id]&&inSwing(a.door,p))return {ok:false,message:'Step clear of the doorway before closing it.'};
-  if(id==='tv'){if(!state.tv){state.tv=true;state.channel=0;}else if(state.channel<2)state.channel++;else state.tv=false;}else state[id]=!state[id];
+  if(a.kind==='garageDoor')state.garageDoor=!state.garageDoor;
+  else if(id==='tv'){if(!state.tv){state.tv=true;state.channel=0;}else if(state.channel<2)state.channel++;else state.tv=false;}else state[id]=!state[id];
   update(0,p);const info=describe(a);return {ok:true,message:id==='tv'?(state.tv?['Nature on TV','City stories on TV','Garden time on TV'][state.channel]:'TV switched off'):a.kind==='door'?(state[id]?'Door opened. Walk inside.':'Door closed.'):info.title+' · '+info.status.toLowerCase()};
  }
+ function fridgeContents(){return {open:state.fridge,held:HOUSE_FOOD.find(f=>f.id===state.heldFood)||null,items:HOUSE_FOOD.map(f=>({...f,remaining:state.food[f.id]}))};}
+ function takeFood(id,p){const a=actions.find(a=>a.id==='fridge'),f=HOUSE_FOOD.find(f=>f.id===id);if(!f||!reachable(a,p)||!state.fridge||state.heldFood||state.food[id]<=0)return {ok:false,message:'Open the fridge nearby and take one available snack at a time.'};state.food[id]--;state.heldFood=id;update(0,p);return {ok:true,message:'Picked up '+f.name.toLowerCase()+'.',food:f};}
+ function eatFood(){const f=HOUSE_FOOD.find(f=>f.id===state.heldFood);if(!f)return {ok:false};state.heldFood=null;return {ok:true,food:f,message:'You ate the '+f.name.toLowerCase()+'.'};}
+ function returnFood(p){const a=actions.find(a=>a.id==='fridge'),f=HOUSE_FOOD.find(f=>f.id===state.heldFood);if(!f||!state.fridge||!reachable(a,p))return false;state.food[f.id]=Math.min(f.count,state.food[f.id]+1);state.heldFood=null;update(0,p);return true;}
+ function floorAt(x,z,y=referenceY){const floor=houseFloorAt(x,z,y);if(floor!==H.upper)return floor;const b=beds.find(b=>Math.abs(x-H.x-b.x)<=1.025&&Math.abs(z-H.z-b.z)<=1.175&&y>=b.top-.08);return b?.top??floor;}
+ function garageDrivable(x,z){const q=houseLocal({x,z});return q.x>=-6.08&&q.x<=-.93&&q.z>=.87&&q.z<=6.2;}
  function makeBed(id){if(!beds.some(b=>b.id===id))return false;state[id]=!state[id];update(0);return state[id];}
  function serialize(p){return {...state,visit:p&&houseInside(p)?{floor:(p.y||0)>H.upper-.65?1:0}:null};}
  function restore(value,p=null){state=restoreHouse(value);update(0,null,true);if(p&&houseInside(p)){referenceY=value?.propertyId===H.id&&value?.visit?.floor===1?H.upper:.3;let y=houseFloorAt(p.x,p.z,referenceY);if(blocked(p.x,p.z,y)){const q=referenceY>2?world(3.3,-1.3):world(2.68,3.7);return {...q,y:referenceY};}return {x:p.x,z:p.z,y};}return null;}
@@ -204,5 +236,5 @@ export function createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces,su
  function installFurniture(scenes){let triangles=0,installed=0;for(const p of proxies){if(p.installed||!scenes[p.model])continue;const r=fitFurniture(p,scenes[p.model]);p.installed=r.holder;triangles+=r.triangles;installed++;}return {installed,triangles};}
  const bakeOccluders=()=>[...batches,...proxies.flatMap(p=>{const list=[];p.group.traverse(m=>{if(m.isMesh&&!m.userData.furnitureModel)list.push(m);});return list;})];
  function indirectAt(p){if(!probes||!p||!houseInside(p,.2))return 1;const {origin,step,dims,values}=probes,f=[p.x-origin[0],(p.y??.3)+1.1-origin[1],p.z-origin[2]].map((v,i)=>Math.max(0,Math.min(dims[i]-1.001,v/step))),i0=f.map(Math.floor),t=f.map((v,i)=>v-i0[i]);let sum=0;for(let c=0;c<8;c++){const o=[c&1,c>>1&1,c>>2&1],idx=(i0[0]+o[0])+dims[0]*((i0[1]+o[1])+dims[1]*(i0[2]+o[2]));sum+=(values[idx]??255)/255*o.reduce((w,b,k)=>w*(b?t[k]:1-t[k]),1);}return sum*sum*1.25;}
- update(0);return {property:H,root,actions,bakeLayout:bake.layout,surfaces,applyBake,indirectAt,furnitureProxies:proxies,installFurniture,bakeOccluders,seats,beds,doors,colliders,batches,nearby,nearest,act,makeBed,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt:(x,z,y=referenceY)=>houseFloorAt(x,z,y),surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get state(){return {...state};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
+ update(0);return {property:H,root,actions,bakeLayout:bake.layout,surfaces,applyBake,indirectAt,furnitureProxies:proxies,installFurniture,bakeOccluders,seats,beds,doors,colliders,batches,nearby,nearest,act,makeBed,fridgeContents,takeFood,eatFood,returnFood,garageDrivable,garageLeaf,serialize,restore,update,blocked,interior,applyLiving,projectGroups,floorAt,surface:p=>houseInside(p)?(houseLocal(p).x>-.5&&houseLocal(p).x<2.2&&houseLocal(p).z<-2.4&&p.y>2.8?'concrete':'wood'):null,get heldFood(){return state.heldFood;},get state(){return {...state,food:{...state.food}};},get referenceY(){return referenceY;},set referenceY(y){referenceY=Number.isFinite(y)?y:.3;}};
 }
