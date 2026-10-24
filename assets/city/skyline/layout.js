@@ -16,174 +16,234 @@ export const SKYLINE_LAYOUT=Object.freeze({
    "minZ": -2834.6,
    "maxZ": -1850
   },
-  "top": 242.1,
-  "triangles": 83261
+  "top": 268.6,
+  "triangles": 84161
  },
  "towers": [
   {
    "lot": 0,
    "name": "Hudson Exchange",
-   "height": 203.1,
+   "height": 169.8,
    "footprint": [
-    34.6,
-    39
+    48,
+    49.7
    ],
-   "fit": 0.686,
-   "triangles": 1056
+   "offset": [
+    0,
+    -6.87
+   ],
+   "fit": 0.699,
+   "triangles": 938
   },
   {
    "lot": 1,
    "name": "Northstar Residences",
-   "height": 223.8,
+   "height": 190.1,
    "footprint": [
-    34.5,
-    43
+    35.1,
+    58
    ],
-   "fit": 0.867,
-   "triangles": 330
+   "offset": [
+    0,
+    -9
+   ],
+   "fit": 0.721,
+   "triangles": 288
   },
   {
    "lot": 2,
    "name": "Grand River Hotel",
-   "height": 200.9,
+   "height": 163,
    "footprint": [
-    43,
-    36.4
+    37.9,
+    58
    ],
-   "fit": 0.72,
-   "triangles": 760
+   "offset": [
+    0,
+    -11
+   ],
+   "fit": 0.658,
+   "triangles": 595
   },
   {
    "lot": 3,
    "name": "Atlas Financial",
-   "height": 244.5,
+   "height": 193.8,
    "footprint": [
-    32.4,
-    43
+    44.7,
+    58
    ],
-   "fit": 0.569,
-   "triangles": 200
+   "offset": [
+    0,
+    -9
+   ],
+   "fit": 0.628,
+   "triangles": 12
   },
   {
    "lot": 4,
    "name": "Parkview Apartments",
-   "height": 198.6,
+   "height": 148.4,
    "footprint": [
-    38.6,
-    39
+    48,
+    51.9
    ],
-   "fit": 0.406,
-   "triangles": 3375
+   "offset": [
+    0,
+    -7.96
+   ],
+   "fit": 0.558,
+   "triangles": 3318
   },
   {
    "lot": 5,
    "name": "Meridian House",
-   "height": 260.6,
+   "height": 175.9,
    "footprint": [
-    43,
-    39.4
+    48,
+    54.8
    ],
-   "fit": 0.417,
-   "triangles": 1529
+   "offset": [
+    0,
+    -7.39
+   ],
+   "fit": 0.455,
+   "triangles": 1222
   },
   {
    "lot": 6,
    "name": "Foundry Studios",
-   "height": 207.8,
+   "height": 158.3,
    "footprint": [
-    34.2,
-    39
+    48,
+    57
    ],
-   "fit": 0.533,
-   "triangles": 858
+   "offset": [
+    0,
+    -10.48
+   ],
+   "fit": 0.58,
+   "triangles": 781
   },
   {
    "lot": 7,
    "name": "Northstar Tower",
-   "height": 326,
+   "height": 269.8,
    "footprint": [
-    40,
-    38.8
+    44.1,
+    58
    ],
-   "fit": 0.746,
-   "triangles": 428
+   "offset": [
+    0,
+    -9
+   ],
+   "fit": 0.685,
+   "triangles": 446
   },
   {
    "lot": 8,
    "name": "Crescent Hotel",
-   "height": 234.1,
+   "height": 207.4,
    "footprint": [
-    21.1,
-    39
+    48,
+    48.3
    ],
-   "fit": 0.552,
-   "triangles": 381
+   "offset": [
+    0,
+    -6.15
+   ],
+   "fit": 0.785,
+   "triangles": 433
   },
   {
    "lot": 9,
    "name": "Broadway Works",
-   "height": 198.7,
+   "height": 157.8,
    "footprint": [
-    37,
-    38.1
+    48,
+    54.9
    ],
-   "fit": 0.68,
-   "triangles": 1840
+   "offset": [
+    0,
+    -7.45
+   ],
+   "fit": 0.631,
+   "triangles": 1902
   },
   {
    "lot": 10,
    "name": "Skyline Homes",
-   "height": 252.4,
+   "height": 186.4,
    "footprint": [
-    25.1,
-    39
+    45.9,
+    58
    ],
-   "fit": 0.531,
-   "triangles": 1589
+   "offset": [
+    0,
+    -11
+   ],
+   "fit": 0.545,
+   "triangles": 1676
   },
   {
    "lot": 11,
    "name": "Harbor Suites",
-   "height": 215.9,
+   "height": 164.2,
    "footprint": [
-    36.7,
-    43
+    48,
+    50.8
    ],
-   "fit": 0.434,
-   "triangles": 505
+   "offset": [
+    0,
+    -5.38
+   ],
+   "fit": 0.578,
+   "triangles": 324
   },
   {
    "lot": 12,
    "name": "Union Center",
-   "height": 268.6,
+   "height": 225.5,
    "footprint": [
-    37,
-    32.2
+    48,
+    49.8
    ],
-   "fit": 0.747,
-   "triangles": 1193
+   "offset": [
+    0,
+    -6.9
+   ],
+   "fit": 0.705,
+   "triangles": 1235
   },
   {
    "lot": 13,
    "name": "Garden Residences",
-   "height": 202.2,
+   "height": 167.3,
    "footprint": [
-    37.4,
-    43
+    47.9,
+    58
    ],
-   "fit": 0.718,
-   "triangles": 454
+   "offset": [
+    0,
+    -9
+   ],
+   "fit": 0.684,
+   "triangles": 523
   },
   {
    "lot": 14,
    "name": "Crown Plaza",
-   "height": 237.6,
+   "height": 178.5,
    "footprint": [
-    32,
-    39
+    40.3,
+    58
    ],
-   "fit": 0.49,
-   "triangles": 592
+   "offset": [
+    0,
+    -11
+   ],
+   "fit": 0.564,
+   "triangles": 497
   }
  ]
 });

@@ -11,9 +11,15 @@ const file=p=>new URL('../'+p,import.meta.url);
 // Layout: every lot gets one tower, the tallest lot the tallest tower, all inside the collider.
 assert.equal(SKYLINE_LAYOUT.towers.length,TOWERS.length);assert.deepEqual(SKYLINE_LAYOUT.towers.map(t=>t.lot).sort((a,b)=>a-b),TOWERS.map((_,i)=>i));
 const byLot=[...TOWERS.keys()].sort((a,b)=>TOWERS[b].height-TOWERS[a].height),byNew=[...TOWERS.keys()].sort((a,b)=>SKYLINE_TOWERS[b].height-SKYLINE_TOWERS[a].height);
-assert.equal(byNew[0],byLot[0],'the tallest tower stands on the tallest lot ('+TOWERS[byLot[0]].name+')');assert.equal(SKYLINE_TOWERS[byLot[0]].height,326);
-for(const [i,t] of SKYLINE_TOWERS.entries()){assert.equal(t.name,TOWERS[i].name);assert.ok(t.height>=150&&t.height<=326,t.name+' height '+t.height);
-  assert.ok(t.footprint[0]<=TOWERS[i].w+4&&t.footprint[1]<=TOWERS[i].d+4,t.name+' fits its collider');}
+assert.equal(byNew[0],byLot[0],'the tallest tower stands on the tallest lot ('+TOWERS[byLot[0]].name+')');assert.ok(SKYLINE_TOWERS[byLot[0]].height>250);
+// Each tower (and its collider, 2 m around) stays clear of the lot's streets, the
+// neighbouring low-rise blocks and street trees; its front stays at the entrance.
+const roadClear=(x0,x1,z0,z1)=>NORTH_CITY.avenues.every(a=>x1<a-10.8||x0>a+10.8)&&NORTH_CITY.streets.every(s=>z1<s-10.8||z0>s+10.8);
+for(const [i,t] of SKYLINE_TOWERS.entries()){const L=TOWERS[i];assert.equal(t.name,L.name);assert.ok(t.height>=120&&t.height<=326,t.name+' height '+t.height);
+  const [fw,fd]=t.footprint,cz=L.z+t.offset[1],box=[L.x-fw/2-2,L.x+fw/2+2,cz-fd/2-2,cz+fd/2+2];
+  assert.ok(Math.abs(cz+fd/2-(L.z+L.d/2))<.05,t.name+' front face at the entrance');assert.ok(roadClear(...box),t.name+' clear of streets');
+  for(const b of CITY_BLOCKS)assert.ok(box[1]<=b.x-b.w/2||box[0]>=b.x+b.w/2||box[3]<=b.z-b.d/2||box[2]>=b.z+b.d/2,t.name+' clear of '+b.name);
+  for(const s of [-1,1])assert.ok(Math.abs(L.x+s*40-L.x)>fw/2+2.5,t.name+' clear of street trees');}
 assert.ok(SKYLINE_LAYOUT.skyline.bounds.maxZ<=NORTH_CITY.minZ-30,'the far skyline starts north of the last street');
 
 // Assets: compressed, in budget, carrying the shader attributes.
@@ -33,8 +39,8 @@ assert.equal(stub.glow.m,skyline.material,'windows light up at night');
 assert.equal(skyline.installTowers(towers),true);assert.ok(skyline.lots.every(l=>!l.standIn.visible&&l.model));
 scene.updateMatrixWorld(true);
 for(const l of skyline.lots){const box=new THREE.Box3().setFromObject(l.model),t=TOWERS[l.lot.lot];
-  assert.ok(Math.abs(box.max.y-l.lot.height)<.6,t.name+' model height '+box.max.y);assert.ok(box.min.y>-.2);
-  assert.ok(box.min.x>=t.x-(t.w+4)/2-.3&&box.max.x<=t.x+(t.w+4)/2+.3&&box.min.z>=t.z-(t.d+4)/2-.3&&box.max.z<=t.z+(t.d+4)/2+.3,t.name+' stays on its lot');
+  const [fw,fd]=l.lot.footprint,cz=t.z+l.lot.offset[1];assert.ok(Math.abs(box.max.y-l.lot.height)<.6,t.name+' model height '+box.max.y);assert.ok(box.min.y>-.2);
+  assert.ok(box.min.x>=t.x-fw/2-2.3&&box.max.x<=t.x+fw/2+2.3&&box.min.z>=cz-fd/2-2.3&&box.max.z<=cz+fd/2+2.3,t.name+' stays inside its collider '+JSON.stringify([box.min.x-t.x,box.max.x-t.x,box.min.z-cz,box.max.z-cz,fw,fd]));
   l.model.traverse(c=>{if(c.isMesh){assert.equal(c.material,skyline.material);assert.ok(c.geometry.attributes._level&&c.geometry.attributes.color.itemSize===4);}});}
 skyline.installSkyline(sky);scene.updateMatrixWorld(true);const far=new THREE.Box3().setFromObject(sky);
 assert.ok(far.max.z<=NORTH_CITY.minZ-30&&far.max.y<=330&&far.min.y>-.2&&Math.abs(far.min.x+far.max.x)<1,'far skyline: north of Northstar, centred, below 330 m');
@@ -44,15 +50,15 @@ assert.ok(!worldWalkable(0,far.max.z-1)&&!worldWalkable(0,(far.min.z+far.max.z)/
 
 // The shader hooks every chunk it relies on.
 const mat=createSkylineMaterial(),shader={vertexShader:THREE.ShaderLib.standard.vertexShader,fragmentShader:THREE.ShaderLib.standard.fragmentShader,uniforms:{}};mat.onBeforeCompile(shader);
-for(const s of ['vLevel=_level','vFogDepth*=.42'])assert.ok(shader.vertexShader.includes(s),s);
+for(const s of ['vLevel=_level','vFogDepth*=.3'])assert.ok(shader.vertexShader.includes(s),s);
 for(const s of ['skyWin=facade','roughnessFactor=mix(roughnessFactor,.2,skyWin)','totalEmissiveRadiance*=skyLit'])assert.ok(shader.fragmentShader.includes(s),s);
 
 // Northstar keeps its lots, names and colliders, with the new heights.
 globalThis.document={createElement:()=>({getContext:()=>({fillRect(){},fillText(){}})})};
 const buildings=[],obstacles=[],traffic=[],C={road:mat,walk:mat,grass:mat};
 createNorthWorld({scene:new THREE.Scene(),visualKit:{treeModel:()=>new THREE.Group(),atmosphere:{registerGlow(){},addStreetLight(){}}},cube(){},C,obstacles,buildings,car(){traffic.push({});},traffic,trafficControllers:[],addCornerSignal(){},characters:{create(){}}});
-for(const [i,t] of TOWERS.entries()){const b=buildings.find(q=>q.id===t.id);assert.ok(b.skyscraper&&b.skylineModel);assert.equal(b.height,SKYLINE_TOWERS[i].height);
-  assert.ok(obstacles.some(o=>Math.abs(o.minX-(t.x-(t.w+4)/2))<1e-9&&Math.abs(o.maxZ-(t.z+(t.d+4)/2))<1e-9),t.name+' collider');}
+for(const [i,t] of TOWERS.entries()){const b=buildings.find(q=>q.id===t.id),s=SKYLINE_TOWERS[i];assert.ok(b.skyscraper&&b.skylineModel);assert.equal(b.height,s.height);
+  assert.ok(obstacles.some(o=>Math.abs(o.minX-(t.x-(s.footprint[0]+4)/2))<1e-9&&Math.abs(o.maxZ-(t.z+s.offset[1]+(s.footprint[1]+4)/2))<1e-9),t.name+' collider');}
 assert.equal(buildings.filter(b=>CITY_BLOCKS.some(c=>c.x===b.x&&c.z===b.z)).length,CITY_BLOCKS.length);
 
 // Game wiring.

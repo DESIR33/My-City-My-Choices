@@ -83,9 +83,12 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   // towers above are San Francisco downtown towers from northstar-skyline.js (stand-in
   // blocks of the same height until the models stream in).
   for(const [i,t] of TOWERS.entries()){
-    const {x,z,w,d}=t,podium=7.2,height=SKYLINE_TOWERS[i].height;box(stone,x,-.07,z,w+4,.3,d+4);box(dark,x,.23,z,w+2,podium,d+2);box(glass[i%3],x,1,z+d/2+1.02,w-2,5,.08);box(silver,x,0,z+d/2+1.08,2.2,3.2,.1);box(gold,x,3.3,z+d/2+1.2,5,.2,.8);
-    box(stone,x,podium+.23,z,w+2.4,.35,d+2.4);label(t.name.toUpperCase(),x,4.5,z+d/2+1.15,w-3,1.1);
-    solid(x,z,w+4,d+4);buildings.push({...t,height,skyscraper:true,skylineModel:true,shop:false});cube(scene,x,.07,z+d/2+8,4,.14,12,C.walk,false);
+    // The podium wraps the tower's real footprint; the front face, entrance and name
+    // stay where the lot always had them.
+    const {x,z,w,d}=t,podium=7.2,{height,footprint:[fw,fd],offset:[,dz]}=SKYLINE_TOWERS[i],cz=z+dz;
+    box(stone,x,-.07,cz,fw+4,.3,fd+4);box(dark,x,.23,cz,fw+2,podium,fd+2);box(glass[i%3],x,1,z+d/2+1.02,Math.min(w,fw)-2,5,.08);box(silver,x,0,z+d/2+1.08,2.2,3.2,.1);box(gold,x,3.3,z+d/2+1.2,5,.2,.8);
+    box(stone,x,podium+.23,cz,fw+2.4,.35,fd+2.4);label(t.name.toUpperCase(),x,4.5,z+d/2+1.15,Math.min(w,fw)-3,1.1);
+    solid(x,cz,fw+4,fd+4);buildings.push({...t,z:cz,w:fw,d:fd,height,skyscraper:true,skylineModel:true,shop:false});cube(scene,x,.07,z+d/2+8,4,.14,12,C.walk,false);
   }
   for(const [i,b] of CITY_BLOCKS.entries()){
     const {x,z,w,d,height}=b;box(brick[i%3],x,.1,z,w,height,d);box(stone,x,height,z,w+.5,.35,d+.5);box(dark,x,.3,z+d/2+.1,w-1,2.7,.16);for(const s of [-1,1])box(glass[i%3],x+s*w*.27,.7,z+d/2+.2,w*.32,2,.06);box(gold,x,3.3,z+d/2+.7,w,.22,1.4);

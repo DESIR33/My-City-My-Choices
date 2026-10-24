@@ -20,7 +20,7 @@ export const SKYLINE_URLS=Object.freeze({towers:'./assets/city/skyline/towers.gl
 export const SKYLINE_FLOOR=3.8,SKYLINE_BAY=3.2;
 export {SKYLINE_LAYOUT};
 // Final tower heights and footprints per lot, in TOWERS order.
-export const SKYLINE_TOWERS=Object.freeze(TOWERS.map((t,i)=>{const s=SKYLINE_LAYOUT.towers.find(q=>q.lot===i);return Object.freeze({...t,lot:i,height:s.height,footprint:s.footprint});}));
+export const SKYLINE_TOWERS=Object.freeze(TOWERS.map((t,i)=>{const s=SKYLINE_LAYOUT.towers.find(q=>q.lot===i);return Object.freeze({...t,lot:i,height:s.height,footprint:s.footprint,offset:s.offset});}));
 
 export function createSkylineMaterial(){
   const m=new THREE.MeshStandardMaterial({name:'Northstar skyline',vertexColors:true,roughness:.82,metalness:0,emissive:0xffc98a});
@@ -29,13 +29,13 @@ export function createSkylineMaterial(){
       .replace('#include <common>','#include <common>\nattribute float _level;varying float vLevel;varying vec3 vSkyWorld;varying vec3 vSkyNormal;')
       .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvLevel=_level;vSkyWorld=(modelMatrix*vec4(transformed,1.0)).xyz;vSkyNormal=normalize(mat3(modelMatrix)*objectNormal);')
       // The skyline is far away: thinner haze keeps its silhouette readable.
-      .replace('#include <fog_vertex>','#include <fog_vertex>\n#ifdef USE_FOG\nvFogDepth*=.42;\n#endif');
+      .replace('#include <fog_vertex>','#include <fog_vertex>\n#ifdef USE_FOG\nvFogDepth*=.3;\n#endif');
     shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
 varying float vLevel;varying vec3 vSkyWorld;varying vec3 vSkyNormal;float skyWin=0.0,skyLit=0.0;
 float skyHash(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758.5453);}`)
       .replace('#include <color_fragment>',`#include <color_fragment>
 #ifdef USE_COLOR_ALPHA
-{float facade=step(.5,vColor.a);diffuseColor.a=1.0;
+{float facade=step(.5,vColor.a)*(1.0-smoothstep(.35,.6,abs(vSkyNormal.y)));diffuseColor.a=1.0;
  vec2 t=normalize(vec2(-vSkyNormal.z,vSkyNormal.x)+1e-5);float u=dot(vSkyWorld.xz,t)/${SKYLINE_BAY.toFixed(2)},v=vLevel/${SKYLINE_FLOOR.toFixed(2)};
  float fade=1.0-smoothstep(.35,.9,max(fwidth(u),fwidth(v)));
  vec2 f=fract(vec2(u,v));float shop=step(vLevel,4.6);
@@ -45,7 +45,7 @@ float skyHash(vec3 p){return fract(sin(dot(p,vec3(12.9898,78.233,37.719)))*43758
  vec3 glass=mix(vec3(.10,.13,.16),vec3(.36,.44,.52),clamp(vSkyNormal.y*.5+.5+id*.25,0.,1.));
  diffuseColor.rgb=mix(diffuseColor.rgb,glass,skyWin*.85);
  diffuseColor.rgb*=mix(1.0,.9+.1*step(.94,f.y),facade*fade);
- skyLit=facade*mix(.32,w*step(.58,id),fade)*step(1.5,vLevel);}
+ skyLit=facade*mix(.2,w*step(.58,id),fade)*step(1.5,vLevel);}
 #endif`)
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,.2,skyWin);')
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance*=skyLit;');
@@ -60,7 +60,7 @@ function standIn(lot,material){
   const n=g.attributes.position.count,col=new Float32Array(n*4),lev=new Float32Array(n);
   for(let i=0;i<n;i++){const facade=Math.abs(g.attributes.normal.getY(i))<.5;col.set(facade?[.84,.82,.78,1]:[.47,.48,.49,0],i*4);lev[i]=g.attributes.position.getY(i);}
   g.setAttribute('color',new THREE.BufferAttribute(col,4));g.setAttribute('_level',new THREE.BufferAttribute(lev,1));
-  const mesh=new THREE.Mesh(g,material);mesh.position.set(lot.x,0,lot.z);mesh.name='Skyline stand-in '+lot.name;mesh.castShadow=mesh.receiveShadow=true;return mesh;}
+  const mesh=new THREE.Mesh(g,material);mesh.position.set(lot.x,0,lot.z+lot.offset[1]);mesh.name='Skyline stand-in '+lot.name;mesh.castShadow=mesh.receiveShadow=true;return mesh;}
 
 export function createNorthstarSkyline({scene,visualKit}){
   const group=new THREE.Group();group.name='Northstar skyline';scene.add(group);
@@ -71,7 +71,7 @@ export function createNorthstarSkyline({scene,visualKit}){
   function installTowers(source){prepare(source);
     for(const entry of lots){const node=source.getObjectByName('tower-'+entry.lot.lot);if(!node)continue;
       // The node keeps its own (dequantizing) transform; a holder places it on the lot.
-      const holder=new THREE.Group();holder.name='Skyline tower '+entry.lot.name;holder.position.set(entry.lot.x,0,entry.lot.z);node.removeFromParent();holder.add(node);
+      const holder=new THREE.Group();holder.name='Skyline tower '+entry.lot.name;holder.position.set(entry.lot.x,0,entry.lot.z+entry.lot.offset[1]);node.removeFromParent();holder.add(node);
       node.traverse(c=>{if(c.isMesh)c.castShadow=c.receiveShadow=true;});group.add(holder);holder.updateMatrixWorld(true);entry.model=holder;entry.standIn.visible=false;}
     state.towers=lots.every(e=>e.model);return state.towers;}
   function installSkyline(source){prepare(source);source.traverse(c=>{if(c.isMesh){c.castShadow=false;c.receiveShadow=false;}});source.name='Northstar downtown skyline';group.add(source);state.skyline=true;return source;}

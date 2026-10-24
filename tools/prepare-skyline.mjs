@@ -30,7 +30,7 @@ const args=process.argv.slice(2),arg=(k,d)=>args.includes(k)?args[args.indexOf(k
 if(!FBX&&!GLB){console.error('Pass --fbx /path/to/SanFrancisco_City.fbx');process.exit(1);}
 // Crop in model units (about 0.59 km each), yaw in degrees, game placement in metres.
 const CROP=arg('--crop','-3.05,-1.85,-3.15,-1.55').split(',').map(Number),YAW=Number(arg('--yaw','0'))*Math.PI/180;
-const TALLEST=Number(arg('--tallest','326')),CENTER_X=Number(arg('--x','0')),NEAR_Z=Number(arg('--near','-1850')),OUT=arg('--out','assets/city/skyline');
+const MAX_W=48,MAX_D=58,TALLEST=Number(arg('--tallest','326')),CENTER_X=Number(arg('--x','0')),NEAR_Z=Number(arg('--near','-1850')),OUT=arg('--out','assets/city/skyline');
 
 let glb=GLB,tmp=null;
 if(!glb){const FBX2GLTF=join(dirname(createRequire(import.meta.url).resolve('fbx2gltf/package.json')),'bin',{linux:'Linux',darwin:'Darwin',win32:'Windows_NT'}[process.platform],process.platform==='win32'?'FBX2glTF.exe':'FBX2glTF');
@@ -79,14 +79,22 @@ for(const p of peaks){if(towers.length===TOWERS.length)break;if(owner[p.j*gw+p.i
   // claim the footprint plus a one-cell margin so its walls come with it
   for(const c of region){const i=c%gw,j=(c-i)/gw;for(let b=-1;b<=1;b++)for(let a=-1;a<=1;a++){const ii=i+a,jj=j+b;if(ii<0||jj<0||ii>=gw||jj>=gh)continue;const cc=jj*gw+ii;if(owner[cc]<0&&H[cc]>=12)owner[cc]=id;}}
   towers.push({id,h:p.h,peak:[cx0+(p.i+.5)*G,cz0+(p.j+.5)*G],tris:[]});}
-// A tower is every triangle reaching above half its height in its footprint, plus
-// anything lower that lies wholly inside the footprint those triangles outline.
+// Which triangles make a tower: whole separate pieces (under 120 m across) whose
+// triangles mostly sit in the tower's cells, plus, from large ground-welded pieces,
+// the triangles centred in those cells. Long slabs (over 70 m) are never tower walls.
+const centreOwner=new Int16Array(nT),lvMax=new Float32Array(nT);
+for(let t=0;t<nT;t++){let mx=0,mz=0,lv=0;for(let k=0;k<3;k++){const o=t*9+k*3;mx+=T[o]/3;mz+=T[o+2]/3;lv=Math.max(lv,levelOf(t,k)*S);}centreOwner[t]=owner[cell(mx,mz)];lvMax[t]=lv;}
+const pieces=new Map();for(let t=0;t<nT;t++){const c=comp[t];if(!pieces.has(c))pieces.set(c,{tris:[],x0:Infinity,x1:-Infinity,z0:Infinity,z1:-Infinity,votes:new Map()});const p=pieces.get(c);p.tris.push(t);
+  for(let k=0;k<3;k++){const o=t*9+k*3;p.x0=Math.min(p.x0,T[o]);p.x1=Math.max(p.x1,T[o]);p.z0=Math.min(p.z0,T[o+2]);p.z1=Math.max(p.z1,T[o+2]);}if(centreOwner[t]>=0)p.votes.set(centreOwner[t],(p.votes.get(centreOwner[t])||0)+1);}
+const span=t=>{let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(let k=0;k<3;k++){const o=t*9+k*3;a=Math.min(a,T[o]);b=Math.max(b,T[o]);c=Math.min(c,T[o+2]);d=Math.max(d,T[o+2]);}return Math.max(b-a,d-c)*S;};
 const claimed=new Int16Array(nT).fill(-1);
-for(let t=0;t<nT;t++){let mx=0,mz=0,lv=0;for(let k=0;k<3;k++){const o=t*9+k*3;mx+=T[o]/3;mz+=T[o+2]/3;lv=Math.max(lv,levelOf(t,k)*S);}const o=owner[cell(mx,mz)];if(o>=0&&lv>=Math.max(40,towers[o].h*.5)){claimed[t]=o;towers[o].tris.push(t);}}
-for(const tw of towers){let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;for(const t of tw.tris)for(let k=0;k<3;k++){const o=t*9+k*3;x0=Math.min(x0,T[o]);x1=Math.max(x1,T[o]);z0=Math.min(z0,T[o+2]);z1=Math.max(z1,T[o+2]);}tw.box=[x0,x1,z0,z1];}
-const m2=2/S;for(let t=0;t<nT;t++){if(claimed[t]>=0)continue;let lv=0;for(let k=0;k<3;k++)lv=Math.max(lv,levelOf(t,k)*S);if(lv<=1.5)continue;
-  for(const tw of towers){const [x0,x1,z0,z1]=tw.box;let inside=true;for(let k=0;k<3&&inside;k++){const o=t*9+k*3;inside=T[o]>=x0-m2&&T[o]<=x1+m2&&T[o+2]>=z0-m2&&T[o+2]<=z1+m2;}if(inside){claimed[t]=tw.id;tw.tris.push(t);break;}}}
+for(const p of pieces.values()){const size=Math.max(p.x1-p.x0,p.z1-p.z0)*S;
+  if(size<=120){let best=-1,n=0;for(const [o,v] of p.votes)if(v>n){n=v;best=o;}if(best>=0&&n*2>=p.tris.length)for(const t of p.tris)if(lvMax[t]>1.5&&span(t)<=70){claimed[t]=best;towers[best].tris.push(t);}}
+  else for(const t of p.tris){const o=centreOwner[t];if(o>=0&&lvMax[t]>1.5&&span(t)<=70){claimed[t]=o;towers[o].tris.push(t);}}}
 console.log('towers',towers.map(t=>Math.round(t.h)).join(' '));
+if(args.includes('--debug2')){const ext=new Map();for(let t=0;t<nT;t++){const c=comp[t];if(!ext.has(c))ext.set(c,[Infinity,-Infinity,Infinity,-Infinity,0]);const e=ext.get(c);e[4]++;for(let k=0;k<3;k++){const o=t*9+k*3;e[0]=Math.min(e[0],T[o]);e[1]=Math.max(e[1],T[o]);e[2]=Math.min(e[2],T[o+2]);e[3]=Math.max(e[3],T[o+2]);}}
+ for(const tw of towers.slice(0,4)){const m=new Map();for(const t of tw.tris)m.set(comp[t],(m.get(comp[t])||0)+1);console.log('tower',tw.h|0,[...m].map(([c,n])=>{const e=ext.get(c);return n+'/'+e[4]+'@'+Math.round(Math.max(e[1]-e[0],e[3]-e[2])*S)+'m';}).join(' '));}}
+if(args.includes('--debug')){for(const tw of towers.slice(0,3)){const ext=tw.tris.map(t=>{let a=Infinity,b=-Infinity,c=Infinity,d=-Infinity;for(let k=0;k<3;k++){const o=t*9+k*3;a=Math.min(a,T[o]);b=Math.max(b,T[o]);c=Math.min(c,T[o+2]);d=Math.max(d,T[o+2]);}return Math.max(b-a,d-c)*S;}).sort((x,y)=>y-x);console.log(tw.h|0,tw.tris.length,'cells',[...owner].filter(o=>o===tw.id).length,'largest tris m',ext.slice(0,8).map(v=>v|0).join(','));}}
 
 // ---- shared attribute building ----
 const hash=n=>{n=Math.imul(n^0x9e3779b9,0x85ebca6b);n^=n>>>13;n=Math.imul(n,0xc2b2ae35);return ((n^n>>>16)>>>0)/4294967296;};
@@ -94,7 +102,7 @@ const FACADES=[[226,220,206],[214,204,184],[196,182,154],[186,190,194],[164,170,
 const ROOF=[[120,122,124],[142,140,134],[104,108,112]],STREET=[86,88,92];
 function attributes(list,place){// place(x,z) in metres relative to the model -> [gx,gz] ; returns typed arrays
   const n=list.length,pos=new Float32Array(n*9),nor=new Float32Array(n*9),col=new Uint8Array(n*12),lev=new Float32Array(n*3),rot=place.rot||0,c=Math.cos(rot),s=Math.sin(rot);
-  list.forEach((t,q)=>{const nn=normalOf(t),facade=Math.abs(nn[1])<.75;let above=0;
+  list.forEach((t,q)=>{const nn=normalOf(t),facade=Math.abs(nn[1])<.45;let above=0;
     for(let k=0;k<3;k++){const o=t*9+k*3,y=Math.max(0,levelOf(t,k)*S);above=Math.max(above,y);const [gx,gz]=place(T[o]*S,T[o+2]*S);pos.set([gx,y,gz],q*9+k*3);lev[q*3+k]=y;nor.set([nn[0]*c-nn[2]*s,nn[1],nn[0]*s+nn[2]*c],q*9+k*3);}
     const h=hash(comp[t]),tint=!facade&&above<2.5?STREET:facade?FACADES[Math.floor(h*FACADES.length)]:ROOF[Math.floor(h*ROOF.length)];
     for(let k=0;k<3;k++)col.set([tint[0],tint[1],tint[2],facade?255:0],q*12+k*4);});
@@ -118,10 +126,15 @@ order.forEach((tw,rank)=>{const lot=lots[rank];
   let sx=0,sy=0;for(const t of tw.tris){const n=normalOf(t);if(Math.abs(n[1])>.4)continue;const a=Math.atan2(n[2],n[0])*4;sx+=Math.cos(a)*n[3];sy+=Math.sin(a)*n[3];}
   const rot=-Math.atan2(sy,sx)/4;const c=Math.cos(rot),s=Math.sin(rot);
   let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;for(const t of tw.tris)for(let k=0;k<3;k++){const o=t*9+k*3,x=T[o]*S,z=T[o+2]*S,rx=x*c-z*s,rz=x*s+z*c;x0=Math.min(x0,rx);x1=Math.max(x1,rx);z0=Math.min(z0,rz);z1=Math.max(z1,rz);}
-  const fw=x1-x0,fd=z1-z0,k=Math.min(1.25,(lot.w+3)/fw,(lot.d+3)/fd),mx=(x0+x1)/2,mz=(z0+z1)/2;
-  const place=(x,z)=>{const rx=x*c-z*s,rz=x*s+z*c;return [(rx-mx)*k,(rz-mz)*k];};place.rot=rot;
-  const a=attributes(tw.tris,place);let height=0;for(let q=0;q<a.count*3;q++)height=Math.max(height,a.pos[q*3+1]);
-  towerParts.push(['tower-'+lot.i,a]);towerLayout.push({lot:lot.i,name:lot.name,height:+height.toFixed(1),footprint:[+(fw*k).toFixed(1),+(fd*k).toFixed(1)],fit:+k.toFixed(3),triangles:a.count});});
+  // Long side runs north-south. Real size where it fits the lot's space (MAX_W by
+  // MAX_D between the neighbouring buildings and streets), otherwise scaled down evenly.
+  // Height shrinks by the square root of that factor, keeping towers slender but
+  // not pencil-thin. The front face stays where the lot's entrance and name are.
+  let rotQ=rot,fw=x1-x0,fd=z1-z0,mx=(x0+x1)/2,mz=(z0+z1)/2;if(fw>fd){rotQ=rot+Math.PI/2;[fw,fd]=[fd,fw];[mx,mz]=[-mz,mx];}
+  const cq=Math.cos(rotQ),sq=Math.sin(rotQ),k=Math.min(1,MAX_W/fw,MAX_D/fd),ky=Math.sqrt(k),front=lot.d/2,dz=front-fd*k/2;
+  const place=(x,z)=>{const rx=x*cq-z*sq,rz=x*sq+z*cq;return [(rx-mx)*k,(rz-mz)*k];};place.rot=rotQ;
+  const a=attributes(tw.tris,place);for(let q=0;q<a.count*3;q++){a.pos[q*3+1]*=ky;a.lev[q]*=ky;}let height=0;for(let q=0;q<a.count*3;q++)height=Math.max(height,a.pos[q*3+1]);
+  towerParts.push(['tower-'+lot.i,a]);towerLayout.push({lot:lot.i,name:lot.name,height:+height.toFixed(1),footprint:[+(fw*k).toFixed(1),+(fd*k).toFixed(1)],offset:[0,+dz.toFixed(2)],fit:+k.toFixed(3),triangles:a.count});});
 towerLayout.sort((a,b)=>a.lot-b.lot);
 
 // ---- downtown skyline: everything else, turned by YAW and placed north of Northstar ----
