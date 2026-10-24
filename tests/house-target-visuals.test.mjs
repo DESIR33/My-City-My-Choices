@@ -11,7 +11,7 @@ const q=new Proxy({},{get:()=>()=>{}});globalThis.document={createElement:()=>({
 const scene=new THREE.Scene(),obstacles=[],home=createLandmarkHouse({scene,visualKit:Object.fromEntries(['wood','brick','siding','roofing','masonry'].map(k=>[k,c=>new THREE.MeshStandardMaterial({color:c})])),obstacles,groundSurfaces:[]});
 const open={...home.state,front:true,rear:true,garage:true,bedroom1:true,bedroom2:true,bathroom:true};home.restore(open);
 const eye=a=>({x:a.x+.1,y:a.y+1.8,z:a.z+.1}),at=(x,z,y=H.ground)=>({x:H.x+x,y,z:H.z+z});
-for(const action of home.actions.filter(a=>a.kind!=='door')){
+for(const action of home.actions.filter(a=>a.kind!=='door'&&a.kind!=='garageDoor')){
  const point=houseTargetPoint(home,{targetId:action.id},action,eye(action));assert.ok(point,'Every real object approach supports a clear nearby marker: '+action.id);assert.equal(point.x,action.x);assert.equal(point.z,action.z);assert.equal(point.y,action.y+.035);
 }
 const tv=home.actions.find(a=>a.id==='tv'),wardrobe=home.actions.find(a=>a.id==='wardrobe'),guide={targetId:'wardrobe'},hall=at(1.5,2,H.upper),camera=eye(hall);

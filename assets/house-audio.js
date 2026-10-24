@@ -13,6 +13,8 @@ export function houseActionSound(id,state={}){
  if(['fridge','oven','cabinet'].includes(id))return [noise(.045,id==='cabinet'?.2:.12,state[id]?850:420)];
  if(['curtains','wardrobe','seat','rest','bedding','books'].includes(id))return [noise(.032,id==='curtains'?.32:.2,id==='books'?1800:800)];
  if(['tap','shower'].includes(id))return state[id]?[noise(.025,.06,2200),noise(.025,.14,1600)]:[noise(.03,.055,1600)];
+ if(id==='doorbell')return [tone(659,.045,.35),tone(523,.035,.55)];
+ if(id==='garage-door')return [noise(.035,.4,450)];
  if(id==='washer')return [tone(state.washer?440:220,.03,.14)];
  if(id==='tv')return [tone(state.tv?440+110*Math.max(0,Math.min(2,Number.isInteger(state.channel)?state.channel:0)):180,.025,.14)];
  if(id==='toilet')return [noise(.05,.65,650)];

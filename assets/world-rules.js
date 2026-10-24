@@ -52,7 +52,7 @@ export function communityDriveway(home){
 }
 // Leave a second garage bay and the front walk open beside each resident car.
 export const COMMUNITY_PARKED_CARS=Object.freeze([0,3,6,9,12,15,18,21].map((index,i)=>{
- const home=COMMUNITY_HOMES[index],p=communityPoint(home,-home.w*.23-1.55,home.d/2+4.2);
+ const home=COMMUNITY_HOMES[index],p=communityPoint(home,-home.w*.23+(index===0?-1.55:1.55),home.d/2+4.2);
  return Object.freeze({...p,id:'resident-'+home.id,homeId:home.id,heading:home.heading+(i%2?Math.PI:0)});
 }));
 export function communityRoadRect(road,extra=0){const half=road.halfWidth+extra;return {minX:Math.min(road.x1,road.x2)-half,maxX:Math.max(road.x1,road.x2)+half,minZ:Math.min(road.z1,road.z2)-half,maxZ:Math.max(road.z1,road.z2)+half};}
