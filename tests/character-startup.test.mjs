@@ -16,7 +16,7 @@ test('Mobile characters hydrate only nearby, during active play, one actor at a 
   const bytes=await readFile(new URL('../assets/characters/'+new URL(url).pathname.split('/').at(-1),import.meta.url));return new Response(bytes,{headers:{'Content-Length':String(bytes.length)}});
  };
  try{
-  const scene=new THREE.Scene(),errors=[],characters=createCharacterSystem(scene,{groundHeight:()=>0,baseURL:'https://models.invalid/',detailRadius:40,detailConcurrency:1,onError:(m,e)=>errors.push(e)});
+  const scene=new THREE.Scene(),errors=[],characters=createCharacterSystem(scene,{groundHeight:()=>0,baseURL:'https://models.invalid/',detailRadius:40,detailConcurrency:1,drawRadius:160,detailDrawRadius:70,detailDrawLimit:8,residencyRadius:220,onError:(m,e)=>errors.push(e)});
   const player=characters.create({x:0,z:0,model:'neighbor'}),near=characters.create({x:3,z:0,model:'neighbor'}),far=characters.create({x:500,z:500,model:'casual'});
   assert.equal(requests.length,0,'Constructing all city actors starts no detailed downloads');
   characters.update(0,player);assert.equal(requests.length,0,'Paused first-frame/setup cannot start model loading');
@@ -26,6 +26,20 @@ test('Mobile characters hydrate only nearby, during active play, one actor at a 
   characters.update(1/60,player);await characters.ready();assert.equal(near.userData.character.ready,true,'A nearby second actor uses the shared template');
   assert.equal(requests.filter(u=>u.endsWith(MODELS.neighbor.file)).length,1);assert.equal(far.userData.character.loading,undefined);
   player.position.set(500,0,500);characters.update(1/60,player);assert.ok(far.userData.character.loading);releases.shift()();await characters.ready();assert.equal(far.userData.character.ready,true);
+  characters.update(1/60,player);const nearData=near.userData.character,farData=far.userData.character;
+  assert.equal(nearData.renderRoot.parent,null,'Distant loaded rigs leave the scene graph so matrix traversal stops');
+  assert.equal(nearData.renderRoot.visible,false,'Leaving a district hides its previously loaded non-frustum-culled skeletons');
+  const frozen=nearData.mixer.time;for(let i=0;i<30;i++)characters.update(1/60,player);assert.equal(nearData.mixer.time,frozen,'Distant skeletons stop CPU animation');
+  const extras=Array.from({length:12},(_,i)=>characters.create({x:500+i,z:500,model:'neighbor'}));
+  for(let i=0;i<16;i++){characters.update(1/60,player);await characters.ready();}
+  assert.equal(characters.actors.filter(a=>a.visible&&a.userData.character.renderRoot.visible&&a.userData.character.detailRoot.visible).length,8,'A global rich-character cap holds even after all nearby actors load');
+  const coldGeometry=farData.source.getObjectByProperty('isMesh',true).geometry,sharedGeometry=player.userData.character.source.getObjectByProperty('isMesh',true).geometry;let coldDisposals=0,sharedDisposals=0;
+  coldGeometry.addEventListener('dispose',()=>coldDisposals++);sharedGeometry.addEventListener('dispose',()=>sharedDisposals++);
+  const buffers=new Set();for(const a of characters.actors)a.userData.character.renderRoot.traverse(o=>{if(o.isMesh)buffers.add(o.geometry);});
+  for(let i=0;i<30;i++){player.position.set(i%2?0:500,0,i%2?0:500);characters.update(1/60,player);}
+  assert.ok(coldDisposals>0,'Leaving a district releases its exclusive GPU geometry');assert.equal(sharedDisposals,0,'An active player protects the template shared with distant actors');
+  assert.equal(nearData.renderRoot.visible,true);assert.equal(nearData.renderRoot.parent,near,'Returning restores the same rig under its actor');assert.equal(farData.renderRoot.visible,false);assert.equal(near.position.x,3,'Rendering gates do not move people or their interaction targets');
+  for(const a of characters.actors)a.userData.character.renderRoot.traverse(o=>{if(o.isMesh)assert.ok(buffers.has(o.geometry),'Repeated travel reuses loaded geometry');});
   assert.deepEqual(errors,[]);
  }finally{globalThis.fetch=oldFetch;globalThis.document=oldDocument;globalThis.createImageBitmap=oldBitmap;globalThis.self=oldSelf;globalThis.ProgressEvent=oldProgress;}
 });

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight,bridgePitch} from './world-rules.js';
+import {SKYLINE_TOWERS} from './northstar-skyline.js';
 export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters}){
   const unit=new THREE.BoxGeometry(1,1,1),batches=new Map(),dummy=new THREE.Object3D();
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
@@ -33,7 +34,7 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
     const last=(zs.length-1)*4;indices.push(0,2,1,1,2,3,last,last+1,last+2,last+1,last+3,last+2);
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));g.setIndex(indices);g.computeVertexNormals();const m=new THREE.Mesh(g,stone);m.name=name;m.castShadow=m.receiveShadow=true;scene.add(m);supports.push(m);return m;
   }
-  for(const [from,to] of [[-165,BRIDGE.south],[BRIDGE.north,-1150]]){const center=(from+to)/2,length=Math.abs(to-from);cube(scene,0,.01,center,15,.05,length,C.road,false);for(const s of [-1,1])cube(scene,s*9.3,.07,center,3,.14,length,C.walk,false);}
+  for(const [from,to] of [[-165,BRIDGE.south],[BRIDGE.north,-1150]]){const center=(from+to)/2,length=Math.abs(to-from);cube(scene,0,.01,center,15,.05,length,C.road,false);const walkEnd=to===-1150?-1141.5:to;for(const s of [-1,1])cube(scene,s*9.3,.07,(from+walkEnd)/2,3,.14,Math.abs(walkEnd-from),C.walk,false);}
   const bridgeAsphalt=visualKit.pbr?.surface('asphalt',0x3d4448)||C.road.clone();bridgeAsphalt.polygonOffset=true;bridgeAsphalt.polygonOffsetFactor=-1;bridgeAsphalt.polygonOffsetUnits=-2;
   bridgeSurfaces.push(strip(0,15,0,bridgeAsphalt));
   for(const s of [-1,1]){
@@ -74,16 +75,20 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(const x of NORTH_CITY.avenues)cube(scene,x,.01,-1462.5,15,.05,665,C.road,false);
   for(const z of NORTH_CITY.streets)cube(scene,0,.01,z,480,.05,15,C.road,false);
   for(const x of NORTH_CITY.avenues)for(const s of [-1,1]){let start=-1795;for(const z of [...NORTH_CITY.streets,-1130]){if(z-8.5>start)cube(scene,x+s*9.3,.07,(start+z-8.5)/2,3,.14,z-8.5-start,C.walk,false);start=z+8.5;}}
-  for(const z of NORTH_CITY.streets)for(const s of [-1,1]){let start=-240;for(const x of [...NORTH_CITY.avenues,240]){if(x-8.5>start)cube(scene,(start+x-8.5)/2,.07,z+s*9.3,x-8.5-start,.14,3,C.walk,false);start=x+8.5;}}
+  for(const z of NORTH_CITY.streets)for(const s of [-1,1]){let start=-240;for(const x of [...NORTH_CITY.avenues,240]){if(x-8.5>start){const end=x-8.5;if(z===-1150&&s===1&&start<8.5&&end>-8.5){if(start<-8.5)cube(scene,(start-8.5)/2,.07,z+s*9.3,-8.5-start,.14,3,C.walk,false);if(end>8.5)cube(scene,(8.5+end)/2,.07,z+s*9.3,end-8.5,.14,3,C.walk,false);}else cube(scene,(start+end)/2,.07,z+s*9.3,end-start,.14,3,C.walk,false);}start=x+8.5;}}
   for(const x of NORTH_CITY.avenues)for(const z of NORTH_CITY.streets){const controller={ix:x,iz:z,offset:(Math.abs(x+z)%5),heads:[],pedestrians:[]};trafficControllers.push(controller);for(const [sx,sz] of [[1,1],[-1,-1],[1,-1],[-1,1]])addCornerSignal(x,z,sx,sz,controller);for(const s of [-1,1])for(let k=-5;k<=5;k++){box(white,x+k*1.3,.063,z+s*8.3,.55,.015,3);box(white,x+s*8.3,.063,z+k*1.3,3,.015,.55);}}
   for(const x of NORTH_CITY.avenues)for(let z=-1780;z<-1135;z+=12)if(!NORTH_CITY.streets.some(n=>Math.abs(n-z)<12))for(const s of [-1,1])box(roadPaint,x+s*.15,.063,z,.11,.015,5);
   for(const z of NORTH_CITY.streets)for(let x=-230;x<235;x+=12)if(!NORTH_CITY.avenues.some(n=>Math.abs(n-x)<12))for(const s of [-1,1])box(roadPaint,x,.063,z+s*.15,5,.015,.11);
+  // Tower lots keep their stone base, podium, entrance, name and collider. The
+  // towers above are San Francisco downtown towers from northstar-skyline.js (stand-in
+  // blocks of the same height until the models stream in).
   for(const [i,t] of TOWERS.entries()){
-    const {x,z,w,d,height}=t,podium=7.2,tier=height*.7;box(stone,x,-.07,z,w+4,.3,d+4);box(dark,x,.23,z,w+2,podium,d+2);box(glass[i%3],x,1,z+d/2+1.02,w-2,5,.08);box(silver,x,0,z+d/2+1.08,2.2,3.2,.1);box(gold,x,3.3,z+d/2+1.2,5,.2,.8);
-    box(glass[i%3],x,podium,z,w,tier-podium,d);box(glass[(i+1)%3],x,tier,z,w-6,height-tier,d-6);
-    for(let y=podium;y<height;y+=3.4){const upper=y>=tier,ww=w-(upper?6:0),dd=d-(upper?6:0);box(i%3===0?gold:silver,x,y,z,ww+.18,.16,dd+.18);for(const s of [-1,1])for(let k=-ww/2+2;k<ww/2;k+=3.2){box(dark,x+k,y,z+s*(dd/2+.06),.11,3.2,.12);if((Math.floor(y)+Math.floor(k)+i)%7===0)box(warm,x+k,y+.5,z+s*(dd/2+.13),1.6,2,.04);}for(const s of [-1,1])for(let k=-dd/2+2;k<dd/2;k+=3.2)box(dark,x+s*(ww/2+.06),y,z+k,.12,3.2,.11);}
-    box(stone,x,height,z,w-5,.45,d-5);box(dark,x,height+.45,z,9,2.5,9);if(i%3===1){box(stone,x,height+3,z,5,7,5);box(silver,x,height+10,z,.25,9,.25);}label(t.name.toUpperCase(),x,4.5,z+d/2+1.15,w-3,1.1);
-    solid(x,z,w+4,d+4);buildings.push({...t,skyscraper:true,shop:false});cube(scene,x,.07,z+d/2+8,4,.14,12,C.walk,false);
+    // The podium wraps the tower's real footprint; the front face, entrance and name
+    // stay where the lot always had them.
+    const {x,z,w,d}=t,podium=7.2,{height,footprint:[fw,fd],offset:[,dz]}=SKYLINE_TOWERS[i],cz=z+dz;
+    box(stone,x,-.07,cz,fw+4,.3,fd+4);box(dark,x,.23,cz,fw+2,podium,fd+2);box(glass[i%3],x,1,z+d/2+1.02,Math.min(w,fw)-2,5,.08);box(silver,x,0,z+d/2+1.08,2.2,3.2,.1);box(gold,x,3.3,z+d/2+1.2,5,.2,.8);
+    box(stone,x,podium+.23,cz,fw+2.4,.35,fd+2.4);label(t.name.toUpperCase(),x,4.5,z+d/2+1.15,Math.min(w,fw)-3,1.1);
+    solid(x,cz,fw+4,fd+4);buildings.push({...t,z:cz,w:fw,d:fd,height,skyscraper:true,skylineModel:true,shop:false});cube(scene,x,.07,z+d/2+8,4,.14,12,C.walk,false);
   }
   for(const [i,b] of CITY_BLOCKS.entries()){
     const {x,z,w,d,height}=b;box(brick[i%3],x,.1,z,w,height,d);box(stone,x,height,z,w+.5,.35,d+.5);box(dark,x,.3,z+d/2+.1,w-1,2.7,.16);for(const s of [-1,1])box(glass[i%3],x+s*w*.27,.7,z+d/2+.2,w*.32,2,.06);box(gold,x,3.3,z+d/2+.7,w,.22,1.4);
@@ -98,8 +103,10 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   box(brick[2],220,.1,-1210,22,8,20);box(stone,220,8.1,-1210,23,.4,21);label('NORTHSTAR MOTORS',220,4,-1199.9,20,1);solid(220,-1210,22,20);buildings.push({x:220,z:-1210,w:22,d:20,height:8.5,shop:false});
   cube(scene,201,.07,-1177,22,.14,16,C.walk,false);for(const z of [-1182,-1172]){box(rail,194,.21,z,.13,3.9,.13);box(rail,204,.21,z,.13,3.9,.13);}box(gold,199,4.11,-1177,13,.3,14);box(stone,194,.21,-1177,1.1,1.4,.65);box(dark,194,1.61,-1177,.85,.6,.5);solid(194,-1177,1.1,.65);label('FUEL & SERVICE',199,4.25,-1169.9,12,.7);
   // Street trees occupy block interiors and never overlap a road or an entrance.
-  for(const t of TOWERS)for(const s of [-1,1])scene.add(visualKit.treeModel(t.x+s*40,t.z-30,.95));
-  for(let x=-228;x<=228;x+=38){scene.add(visualKit.treeModel(x,-1780,1));scene.add(visualKit.treeModel(x,-1120,1));}
+  const roadsideTrees=[];
+  function streetTree(x,z,size){const connector=Math.abs(x)<14&&z>=-1150&&z<=-165,avenue=NORTH_CITY.avenues.some(n=>Math.abs(x-n)<13)&&z>=-1808&&z<=-1117,crossing=NORTH_CITY.streets.some(n=>Math.abs(z-n)<13)&&x>=-253&&x<=253;if(connector||avenue||crossing)return;roadsideTrees.push({x,z,size});scene.add(visualKit.treeModel(x,z,size));}
+  for(const t of TOWERS)for(const s of [-1,1])streetTree(t.x+s*40,t.z-30,.95);
+  for(let x=-228;x<=228;x+=38){streetTree(x,-1780,1);streetTree(x,-1120,1);}
   for(const z of NORTH_CITY.streets)for(const x of [-222,-94,26,214])lamp(x,z-10.5);
   // CPU cars stay within their own district instead of wrapping back to Maple Street.
   for(let i=0;i<4;i++){const x=NORTH_CITY.avenues[i],speed=i%2?-8:8;car(x+(speed>0?-2.4:2.4),-1700+i*94,[0x293f51,0x8f4336,0xb8aea0,0xd3a43a][i],speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1790,max:-1136});}
@@ -107,5 +114,5 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   for(const x of [-2.4,2.4]){const speed=x<0?11:-11;car(x,x<0?-380:-940,0x466b72,speed>0?0:Math.PI,true,speed);Object.assign(traffic.at(-1),{min:-1134,max:-176});}
   for(let i=0;i<8;i++){const t=TOWERS[i*2];characters.create({x:t.x-24,z:t.z+44,model:'crowd'});}
   for(const [material,items] of batches){const mesh=new THREE.InstancedMesh(unit,material,items.length);for(const [i,p] of items.entries()){dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation||0,0);if(p.quaternion)dummy.quaternion.copy(p.quaternion);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Northstar city architecture';scene.add(mesh);}
-  return {towers:TOWERS,buildings:CITY_BLOCKS,water,bridge:{surfaces:bridgeSurfaces,markings,supports}};
+  return {roadsideTrees,towers:TOWERS,buildings:CITY_BLOCKS,water,bridge:{surfaces:bridgeSurfaces,markings,supports}};
 }

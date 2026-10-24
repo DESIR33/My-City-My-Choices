@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {createFlamingoHotel} from './flamingo-hotel.js';
 import {createPalmGrove} from './palm-trees.js';
-import {COAST_CITY,COAST_BUILDINGS,COAST_MOTORS,COAST_INFO,coastGroundHeight} from './world-rules.js';
+import {COAST_CITY,COAST_BUILDINGS,COAST_MOTORS,COAST_INFO,RONDA,coastGroundHeight} from './world-rules.js';
 
 // Original procedural architecture and palms; no external imagery or models.
 export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,addCrossingPedestrian,characters,seats,groundSurfaces,groundHeight=coastGroundHeight,mobile=false}) {
@@ -163,6 +163,19 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
   // Legible arrival signs, beach information, and a practical fuel stop.
   for(const z of [420,850]){for(const x of [-7.7,7.7])box(dark,x,.07,z,.13,6.2,.13);box(dark,0,6.27,z,15.6,.14,.14);sign('SUNSHORE CITY  SOUTH ↓',0,5.55,z- .1,12,1.2,Math.PI);}
   sign('SUNSHORE · OCEAN DRIVE',-2,5.6,1052,20,1.5,Math.PI,'#285f65');
+  // Readable from either direction of travel. Keep posts on the planting side
+  // of the sidewalks, never in the road or the crossing to the cliff town.
+  const rondaSigns=[];
+  for(const x of [0,COAST_CITY.avenues[0]])for(const side of [-1,1]){
+    const z=RONDA.link.z+side*24,px=x-14,yaw=side<0?Math.PI:0;
+    box(dark,px,.21,z,.16,4.6,.16);solid(px,z,.16,.16,'wayfinding');
+    const face=sign(side<0?'RONDA  →':'←  RONDA',px,4.15,z,7.5,1.3,yaw,'#285f65');
+    face.name='Ronda direction sign';face.userData.destination='ronda';rondaSigns.push(face);
+  }
+  {const x=(RONDA.link.minX+RONDA.link.maxX)/2,z=RONDA.link.z+12;
+    box(dark,x,.02,z,.18,4.6,.18);solid(x,z,.18,.18,'wayfinding');
+    const face=sign('RONDA · CLIFF TOWN',x,4.1,z,10,1.4,Math.PI/2,'#66523c');
+    face.name='Ronda arrival sign';face.userData.destination='ronda';rondaSigns.push(face);}
   box(wood,28,.21,1091,.14,2.6,2.4);sign('BEACH ACCESS',27.9,2.2,1091,2.1,.7,-Math.PI/2);sign('SUNSHORE BEACH',25,2.4,1083,10,1,Math.PI);
   for(const z of COAST_CITY.streets)sign('BEACH →',12,2.1,z+5,3.4,.65,Math.PI/2);
   cube(scene,-18,.07,1114,18,.14,22,paving,false);box(stucco[1],-27,.21,1105,9,4.5,12);solid(-27,1105,9,12);
@@ -181,6 +194,6 @@ export function createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car
     items.forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.rotation,0);dummy.scale.set(p.w,p.h,p.d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
     mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();mesh.name='Sunshore architecture and street furniture';scene.add(mesh);
   }
-  return {floors:flamingo?.floors||[],inside:p=>flamingo?.inside(p)||false,interior:p=>flamingo?.interior(p)||null,nearestElevator:p=>flamingo?.nearestElevator(p)||null,isRiding:()=>flamingo?.isRiding()||false,rideTo:(index,actor)=>flamingo?.rideTo(index,actor)||false,floorY:()=>flamingo?.floorY()??.21,buildings:COAST_BUILDINGS,palms,palmGrove,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
+  return {rondaSigns,floors:flamingo?.floors||[],inside:p=>flamingo?.inside(p)||false,interior:p=>flamingo?.interior(p)||null,nearestElevator:p=>flamingo?.nearestElevator(p)||null,isRiding:()=>flamingo?.isRiding()||false,rideTo:(index,actor)=>flamingo?.rideTo(index,actor)||false,floorY:()=>flamingo?.floorY()??.21,buildings:COAST_BUILDINGS,palms,palmGrove,ocean,beach,guardrails:obstacles.filter(o=>o.kind==='guardrail'),
     update(dt,eye){flamingo?.update(dt,eye);palmGrove.update(dt,eye);waterTime.value+=dt;foamMap.offset.y=waterTime.value*.008;foams.forEach((foam,i)=>{foam.position.x=130+i*2+Math.sin(waterTime.value*.3+i)*.6;foam.material.opacity=.24+Math.sin(waterTime.value*.7+i)*.07;});for(const w of walkers){w.actor.position.z+=w.dir*w.speed*dt;if(w.actor.position.z>2020){w.actor.position.z=2020;w.dir=-1;}if(w.actor.position.z<1105){w.actor.position.z=1105;w.dir=1;}}}};
 }

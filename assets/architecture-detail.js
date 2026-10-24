@@ -10,6 +10,8 @@ export function createArchitectureDetail({scene,buildings,materials,groundHeight
  let roofUnits=0,facadePanels=0;
  buildings.forEach((b,index)=>{
   if(b.residential)return; // Pitched homes already have complete roofs and facade detail.
+  // Modelled skyline towers carry their own roofs and crowns.
+  if(b.skylineModel)return;
   const {x,z,w,d}=b,h=b.height;if(![x,z,w,d,h].every(Number.isFinite)||h<9)return;
   const rooftop=h+(b.coastal?2.1:b.skyscraper?.46:.36),parapetY=h+.42;
   if(!b.skyscraper&&!b.coastal)for(const side of [-1,1]){box(stone,x,parapetY,z+side*(d/2-.12),w,.42,.22);box(stone,x+side*(w/2-.12),parapetY,z,.22,.42,d);}

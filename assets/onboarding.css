@@ -10,3 +10,5 @@
 @media(max-height:520px){.setupHeader{padding-top:12px}.setupHeader>p{display:none}.setupHeader h1{font-size:23px;margin:5px 0 10px}.setupSteps{padding-bottom:10px}.setupBody{padding-top:14px}.setupFooter{padding-top:8px;padding-bottom:10px}}
 
 @media(any-pointer:coarse){#intro,.intro .onboarding{backdrop-filter:none;-webkit-backdrop-filter:none}#intro{background-image:linear-gradient(155deg,#193a30,#0b1d1a)!important}#intro .onboarding{box-shadow:none}}
+
+.setupBackup+.setupBackup{margin-left:16px}
