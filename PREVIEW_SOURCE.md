@@ -1,14 +1,11 @@
 # Playtest source and project context
 
-Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the current implementation, roadmap, evidence and known differences between GitHub and the private playtest. Update it in every change commit, following [AGENTS.md](AGENTS.md).
+Read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) before editing and update it in every change commit, following [AGENTS.md](AGENTS.md).
 
 - Repository: https://github.com/DESIR33/My-City-My-Choices
-- Private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site
-- Audited repository baseline: `9bd9dc2d87270f7f265fdfe7ea43542c36508bc1`, through merged PR #75. Before editing, private Site version 77/source `3a164e3245b4648b99529669ea9ef7542ce002a7` matched all 287 runtime files.
-- Current candidate addresses the persistent mobile coastal report with bounded character draw/animation/GPU residency, a shorter mobile horizon and distant hotel interior gating. Local Crash report works before 3D startup and preserves bounded prior-run technical evidence. v77 authored cars and save guards remain; no physical crash-resolution claim. Open #70 stays separate. Exact source/deployment/PR outcomes belong in the handoff.
-- GitHub serves root `index.html` / `assets/`; the separate hosted source uses `dist/index.html` / `dist/assets/`.
-- Both candidate runtime layouts contain 288 shipped files, including original binary models and compressed textures. Native story/geometry/asset tests and isolated phone-width objective/touch checks do not establish rendered GPU appearance or physical-device performance. This QA browser cannot initialize WebGL. The standalone setup explains that graphics failure; no fresh rendered full-game success is claimed.
-- Run `npm run check:parity -- /absolute/path/to/site-checkout` to compare the complete runtime inventory and hashes, including binary assets. It is read-only and does not copy, authenticate or deploy. Non-runtime docs/tests differ intentionally. Full game CI runs native regressions and checker unit cases, not a private-Site comparison.
-- Documentation-only changes do not imply a new deployed game version. Use exact commit/archive/deployment evidence for future publication claims.
-
-Earlier navigation/courier validation notes described a historical snapshot. Current gameplay and verification limits are maintained in the context document.
+- Owner-private playtest: https://my-city-choices-play.jvazquez2022.chatgpt.site
+- This publication synchronizes main through merged #82, including repaired #70/#76/#77/#78/#80, Northstar skyline, airport and Metro Red Line. The previous Site v80 snapshot matched GitHub `f58e11c36bf04e83d6eed6a0a484cefa8b1ea42e`; it lacked the later merged features. Exact deployment/source/version evidence belongs in the PR and final handoff.
+- GitHub serves root `index.html`/`assets/`; Sites uses `dist/index.html`/`dist/assets/`. Preserve original binary assets and existing hosting identity/audience. Tests use layout-specific paths.
+- Run `npm test` in both checkouts and `npm run check:parity -- /absolute/path/to/site-checkout` before publication. Parity compares the complete inventory/hashes and does not copy or deploy. CI does not independently access the private Site.
+- Node/native tests do not establish rendered GPU appearance, audio balance, total memory or actual iPhone stability. The previously reported mobile crashes and Sunshore boulevard obstruction remain unconfirmed. Never erase the owner's saves to test them.
+- Documentation-only changes do not require redeployment. Runtime publication must use the exact verified source/archive.
