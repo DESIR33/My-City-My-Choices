@@ -141,6 +141,7 @@ import {createGraphicsRecovery,showGraphicsUnavailable} from "./assets/graphics-
 import {createCoastWorld} from "./assets/coast-world.js";
 import {createRondaWorld,loadRondaScans,RONDA_THINK} from "./assets/ronda-world.js";
 import {createNorthWorld} from "./assets/north-world.js";
+import {createNorthstarSkyline} from "./assets/northstar-skyline.js";
 import {MAPLE_GROVE,MAPLE_ROADS,MAPLE_COMMONS,COMMUNITY_PARKED_CARS,mapleOnRoad,mapleTrafficBounds,plazaReserved,withinRect,COMMUNITY_HOMES,COMMUNITY_ROADS,communityDriveway,communityRoadRect,communityReserved,COAST_CITY,RONDA,COAST_BUILDINGS,COAST_MOTORS,COAST_INFO,coastGroundHeight,southResponseRoute,NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,worldWalkable,worldDrivable,onBridge,bridgeHeight,bridgePitch,districtName,northResponseRoute} from "./assets/world-rules.js";
 import {freshLearning,restoreLearning,recordAttempt,refreshStatus,skillState,pickSkill,applyPlacement,levelFor} from "./assets/learning/mastery.js";
 import {generateQuestion,BUSINESS_SKILLS,skillById} from "./assets/learning/skills.js";
@@ -391,6 +392,10 @@ const interiorVisitors=[
 function updateInteriorVisitors(dt){for(const visitor of interiorVisitors){if(!visitor.paused)stepVisitor(visitor.state,dt);visitor.actor.position.x=visitor.state.x;visitor.actor.position.z=visitor.state.z;}}
 const cafeActivity=createCafeActivity({scene,characters,civicWorld,onReady:p=>{notify("Cafe ticket "+p.ticket+" is ready. Collect it at the counter.");saveGame();}});
 const northWorld=createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters});
+// Northstar's San Francisco towers and downtown skyline stream in after startup;
+// stand-in towers of the same height show until then. Phones skip the far skyline.
+const northSkyline=createNorthstarSkyline({scene,visualKit});globalThis.northSkyline=northSkyline;
+(mobileGraphics?northSkyline.loadTowers():northSkyline.load()).catch(error=>console.warn('Skyline models unavailable; keeping the stand-in towers.',error));
 const coastWorld=createCoastWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,addCrossingPedestrian,characters,seats:civicWorld.seats,groundSurfaces,groundHeight,mobile:mobileGraphics});
 // Ronda sits west of Sunshore, joined by the link road on Sunshore's 1400 street.
 const rondaWorld=createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobile:mobileGraphics});globalThis.rondaWorld=rondaWorld;
