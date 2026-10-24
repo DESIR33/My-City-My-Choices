@@ -83,9 +83,9 @@ export function bridgeHeight(z){
 }
 export function onBridge(x,z){return Math.abs(x)<=BRIDGE.walkHalfWidth&&z<=BRIDGE.south&&z>=BRIDGE.north;}
 export function bridgePitch(x,z,heading){return onBridge(x,z)?Math.atan2(bridgeHeight(z-1)-bridgeHeight(z+1),2)*Math.cos(heading):0;}
-export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityReserved(x,z))return true;if(rondaWalkable(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
-export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(communityDrivable(x,z))return true;if(communityReserved(x,z))return false;if(rondaDrivable(x,z))return true;if(mapleOnRoad(x,z,-.02))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
-export function districtName(z,x=0){if(communityReserved(x,z))return MAPLE_GROVE.name;if(x<RONDA.maxX+.5&&z>=RONDA.minZ-60&&z<=RONDA.maxZ+60)return RONDA.name;return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
+export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(airportWalkable(x,z))return true;if(communityReserved(x,z))return true;if(rondaWalkable(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
+export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(airportDrivable(x,z))return true;if(communityDrivable(x,z))return true;if(communityReserved(x,z))return false;if(rondaDrivable(x,z))return true;if(mapleOnRoad(x,z,-.02))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
+export function districtName(z,x=0){if(communityReserved(x,z))return MAPLE_GROVE.name;if(withinRect(x,z,AIRPORT.bounds))return AIRPORT.name;if(x<RONDA.maxX+.5&&z>=RONDA.minZ-60&&z<=RONDA.maxZ+60)return RONDA.name;return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
 export function northResponseRoute(start,target){
   const points=[{x:start.x,z:start.z},{x:130,z:start.z},{x:130,z:-30},{x:120,z:-30},{x:120,z:-120},{x:0,z:-120}];
   if(target.z>-1120){points.push({x:0,z:target.z+(target.z<-120?8:-8)});return points;}
@@ -97,6 +97,39 @@ export function northResponseRoute(start,target){
 // and joined by its bridges. The town plateau is at y=0; the gorge and the valley
 // beyond the western escarpment drop about 100 m. Only the plateau, the bridge
 // decks and the link road from Sunshore's 1400 street are walkable.
+// Northstar Airport, north-east of Northstar City (north is negative Z). Runway 09/27
+// runs east-west; arrivals and departures use runway 27 (westbound) so climbing jets
+// never cross the downtown skyline. Landside (roads, parking, plaza, terminal halls)
+// is open to the player; the airside (apron, taxiways, runway) is fenced off.
+export const AIRPORT=Object.freeze({name:'Northstar Airport',
+  bounds:Object.freeze({minX:430,maxX:3200,minZ:-3100,maxZ:-1700}),
+  runway:Object.freeze({z:-2700,x0:700,x1:2700,halfWidth:22.5,threshold:2650,touchdown:2480,elevation:0}),
+  taxiway:Object.freeze({z:-2560,x0:740,x1:2680,halfWidth:11.5}),
+  connectors:Object.freeze([760,1900,2640]),
+  taxilane:Object.freeze({z:-2400,x0:1000,x1:1500,halfWidth:11.5}),apronLink:1500,
+  apron:Object.freeze({minX:1000,maxX:1500,minZ:-2470,maxZ:-2200}),
+  terminal:Object.freeze({x:1150,z:-2100,landside:-1985,airside:-2152}),
+  // Stands, nose-in toward the terminal. A2 and A3 use the terminal model's own two
+  // jet bridges; A1 and A4 get built bridges; B1 and B2 are remote stands.
+  stands:Object.freeze([{id:'A1',x:1062,maxSpan:40,bridge:'built'},{id:'A2',x:1119,maxSpan:40,bridge:'model'},{id:'A3',x:1177,maxSpan:40,bridge:'model'},{id:'A4',x:1245,maxSpan:66,bridge:'built'},{id:'B1',x:1335,maxSpan:82},{id:'B2',x:1425,maxSpan:82}].map(Object.freeze)),standNoseZ:-2209,
+  tower:Object.freeze({x:1700,z:-2330}),landmark:Object.freeze({x:915,z:-1878}),
+  road:Object.freeze({z:-1750,x0:240,x1:1256,halfWidth:7.5}),
+  loop:Object.freeze({west:1052,east:1248,curb:-1962,halfWidth:7}),
+  parking:Object.freeze({minX:1066,maxX:1234,minZ:-1940,maxZ:-1772}),
+  landside:Object.freeze({minX:780,maxX:1262,minZ:-1985,maxZ:-1742}),
+  hall:Object.freeze({minX:1062,maxX:1238,minZ:-2062,maxZ:-1985}),
+  corridor:Object.freeze({minX:1136,maxX:1164,minZ:-2120,maxZ:-2062}),
+  lounge:Object.freeze({minX:1040,maxX:1265,minZ:-2152,maxZ:-2120}),
+  entrance:Object.freeze({minX:1124,maxX:1176})});
+// Inside the terminal (departures hall, gate corridor or gate lounge).
+export function airportInside(x,z,margin=0){const A=AIRPORT;return withinRect(x,z,A.hall,margin)||withinRect(x,z,A.corridor,margin)||withinRect(x,z,A.lounge,margin);}
+export function airportWalkable(x,z){const A=AIRPORT,R=A.road;if(Math.abs(z-R.z)<=R.halfWidth+2&&x>=R.x0&&x<=R.x1)return true;
+  if(withinRect(x,z,A.landside))return z<A.landside.minZ+.6?x>A.entrance.minX&&x<A.entrance.maxX:true;
+  if(withinRect(x,z,A.hall)&&z>A.hall.maxZ-.6)return x>A.entrance.minX&&x<A.entrance.maxX;
+  return airportInside(x,z);}
+export function airportDrivable(x,z){const A=AIRPORT,R=A.road,L=A.loop;if(Math.abs(z-R.z)<R.halfWidth&&x>=R.x0&&x<=R.x1)return true;
+  if((Math.abs(x-L.west)<L.halfWidth||Math.abs(x-L.east)<L.halfWidth)&&z<=R.z&&z>=L.curb-L.halfWidth)return true;
+  if(Math.abs(z-L.curb)<L.halfWidth&&x>=L.west-L.halfWidth&&x<=L.east+L.halfWidth)return true;return withinRect(x,z,A.parking);}
 export const RONDA=Object.freeze({name:'Ronda',minX:-700,maxX:-300,minZ:1150,maxZ:1850,cliffX:-700,gorge:Object.freeze({minZ:1478,maxZ:1522,eastX:-330}),valleyY:-100,
   bridges:Object.freeze([Object.freeze({id:'puente-nuevo',name:'Puente Nuevo',x:-520,halfWidth:6.2}),Object.freeze({id:'puente-viejo',name:'Puente Viejo',x:-410,halfWidth:2.6})]),
   link:Object.freeze({z:1400,minX:-310,maxX:-252,halfWidth:7.5}),roads:Object.freeze({ew:Object.freeze([1400,1650]),ns:Object.freeze([-520,-345])})});

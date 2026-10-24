@@ -255,6 +255,18 @@ Open **World map → Ronda · Puente Nuevo**. From Sunshore's west avenue, the m
 
 Every 10 minutes of play (time spent in menus or with the tab hidden does not count), an airliner crosses the sky about 340–540 m up, passing 150–500 m to one side of the player, and a toast says "Look up!". The four planes come from owner-supplied FBX models and are repainted in fictional liveries (Maple Air, Sunshore Airways, Northstar Air, Ronda Skyways) with no real airline names or logos. They carry red, green and white navigation lights, a flashing red beacon and white strobes, and a distant engine roar pans with the camera. Each model (about 14k triangles, under 250 KB) downloads only when its first flight starts. `tools/prepare-airplanes.mjs` rebuilds them; `tests/air-traffic.test.mjs` covers the models, timing, flight paths, lights, sound and wiring.
 
+## Northstar Airport
+
+Open **World map → Northstar Airport**, or drive to the end of Northstar's last street (`z=-1750`) and keep going east. The airport sits north-east of Northstar City, clear of the downtown skyline.
+
+- **Landside:** an access road, a loop road with a terminal curb and canopy, a parking lot and a plaza around an arched 1960s-style landmark with its old control tower.
+- **Terminal:** the outside is the owner's terminal model. Walk through the main doors into the departures hall with check-in islands, a departures board that follows the city clock, an information desk, a café and a newsstand. A corridor with a security frame and moving walkways (they carry you while you walk) leads to the gate lounge, whose glass wall looks over the apron.
+- **Airside (fenced):** runway 09/27 with real-style markings and lights (edge, threshold, approach, PAPI, taxiway), a parallel taxiway, six stands with jet bridges, the control tower, hangars, a fire station, a fuel farm and a windsock.
+- **Flights:** while you are within about 2.4 km, one plane moves at a time: arrivals fly a 3-degree approach onto runway 27, touch down, taxi and park at a gate; departures push back, taxi, take off and turn north. City flyovers pause while you are at the airport.
+- **Learn:** at the departures board, the plane-spotting window, the information desk, a moving walkway and the landmark, press the action key for a fact and a maths question (time, speed, saving for a ticket, airport jobs).
+
+`tools/prepare-airport.mjs` builds the terminal, tower, landmark and travelator models; `tools/prepare-airplanes.mjs` adds two jets from the gate scene to the fictional-livery fleet. `tests/airport.test.mjs` covers the models, rules, routes, walkways, lessons, flight paths, stands and operations.
+
 ## Maple Cafe service and building interiors
 
 Maple Cafe has eight varied customers and a cashier. Customers pay from separate cent-based wallets, queue at the register, wait while the cashier moves to the espresso machine, receive their order, reserve a chair, eat or drink, and leave. Four patrons start dining indoors and on the terrace; arrivals keep the cafe active. Cash gestures, brewing steam, handover cups, consumption poses, and a live service board make the stages visible. Several cafe seats remain available to the player.
