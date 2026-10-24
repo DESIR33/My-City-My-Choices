@@ -8,6 +8,7 @@ export const AIRPLANE_FLEET=Object.freeze([
   "length": 33.89,
   "span": 35.65,
   "height": 12.07,
+  "gear": -0.2,
   "triangles": 13998,
   "lights": {
    "left": [
@@ -50,6 +51,7 @@ export const AIRPLANE_FLEET=Object.freeze([
   "length": 37.42,
   "span": 35.65,
   "height": 11.9,
+  "gear": -4.44,
   "triangles": 14000,
   "lights": {
    "left": [
@@ -92,6 +94,7 @@ export const AIRPLANE_FLEET=Object.freeze([
   "length": 56.74,
   "span": 60.88,
   "height": 17.02,
+  "gear": -0.97,
   "triangles": 13924,
   "lights": {
    "left": [
@@ -134,6 +137,7 @@ export const AIRPLANE_FLEET=Object.freeze([
   "length": 72.97,
   "span": 79.71,
   "height": 24.22,
+  "gear": -7.49,
   "triangles": 13986,
   "lights": {
    "left": [
@@ -165,6 +169,92 @@ export const AIRPLANE_FLEET=Object.freeze([
     0,
     -1.14,
     36.48
+   ]
+  }
+ },
+ {
+  "id": "grove-express",
+  "name": "Grove Express",
+  "source": "m5.fbx#1",
+  "url": "./assets/airplanes/grove-express.glb",
+  "length": 41.73,
+  "span": 34.69,
+  "height": 12.93,
+  "gear": -3.18,
+  "triangles": 13996,
+  "lights": {
+   "left": [
+    17.35,
+    1.04,
+    -8.62
+   ],
+   "right": [
+    -17.35,
+    1.04,
+    -8.62
+   ],
+   "tail": [
+    0,
+    0.43,
+    -20.87
+   ],
+   "beaconTop": [
+    0,
+    2.21,
+    2.09
+   ],
+   "beaconBottom": [
+    0,
+    -3.18,
+    2.09
+   ],
+   "nose": [
+    0,
+    -0.65,
+    20.87
+   ]
+  }
+ },
+ {
+  "id": "rivergate-airlines",
+  "name": "Rivergate Airlines",
+  "source": "m5.fbx#2",
+  "url": "./assets/airplanes/rivergate-airlines.glb",
+  "length": 62.78,
+  "span": 60.9,
+  "height": 18.42,
+  "gear": -0.25,
+  "triangles": 13999,
+  "lights": {
+   "left": [
+    30.45,
+    6.81,
+    -11.45
+   ],
+   "right": [
+    -30.45,
+    6.81,
+    -11.45
+   ],
+   "tail": [
+    0,
+    0.65,
+    -31.39
+   ],
+   "beaconTop": [
+    0,
+    3.33,
+    3.14
+   ],
+   "beaconBottom": [
+    0,
+    0,
+    3.14
+   ],
+   "nose": [
+    0,
+    -0.98,
+    31.39
    ]
   }
  }

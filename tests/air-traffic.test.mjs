@@ -8,9 +8,10 @@ import {FLYOVER_INTERVAL,FLIGHT,planFlight,flightPosition,createAirTraffic} from
 import {TOWERS} from '../assets/world-rules.js';
 
 const file=p=>new URL('../'+p,import.meta.url);
-// Fleet: four planes in fictional liveries, small compressed models, nose along +Z.
-assert.equal(AIRPLANE_FLEET.length,4);assert.deepEqual(AIRPLANE_FLEET.map(p=>p.name),['Maple Air','Sunshore Airways','Northstar Air','Ronda Skyways']);
-const realBrands=/emirates|american|qatar|\blot\b|hk ?express|oneworld|dreamliner/i;
+// Fleet: six planes in fictional liveries (four airliner files plus two jets from the gate scene), nose along +Z.
+assert.equal(AIRPLANE_FLEET.length,6);assert.deepEqual(AIRPLANE_FLEET.map(p=>p.name),['Maple Air','Sunshore Airways','Northstar Air','Ronda Skyways','Grove Express','Rivergate Airlines']);
+assert.ok(AIRPLANE_FLEET.every(p=>p.gear<0&&p.gear>-8),'wheel bottoms sit below each model origin');
+const realBrands=/emirates|american|qatar|\blot\b|hk ?express|oneworld|dreamliner|canjet|tuifly|delta/i;
 assert.ok(!realBrands.test(await readFile(file('assets/airplanes/fleet.js'),'utf8')),'no real airline names in the fleet data');
 const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 for(const plane of AIRPLANE_FLEET){const bytes=await readFile(file(plane.url.slice(2)));assert.ok(bytes.length<400e3,plane.id+' under 400 KB');
@@ -20,7 +21,7 @@ for(const plane of AIRPLANE_FLEET){const bytes=await readFile(file(plane.url.sli
   const box=new THREE.Box3().setFromObject(gltf.scene),size=box.getSize(new THREE.Vector3());let colours=0;gltf.scene.traverse(c=>{if(c.isMesh)colours+=c.geometry.attributes.color?1:0;});assert.equal(colours,1);
   assert.ok(Math.abs(size.z-plane.length)<.3&&Math.abs(size.x-plane.span)<.3,plane.id+' nose along +Z, wings along X');assert.ok(box.max.z>-box.min.z*.8,'nose forward of centre');
   assert.ok(plane.lights.left[0]>0&&plane.lights.right[0]<0&&plane.lights.tail[2]<0,'red left (+X), green right (-X), white tail');}
-assert.ok(AIRPLANE_FLEET[0].span<AIRPLANE_FLEET[3].span,'smallest to largest');
+assert.ok(AIRPLANE_FLEET[0].span<AIRPLANE_FLEET[3].span,'smallest to largest among the first four');
 
 // Flight plans: pass beside the player, high above the tallest tower, inside the view range.
 let seed=7;const random=()=>(seed=(seed*16807)%2147483647)/2147483647;
@@ -53,6 +54,6 @@ for(let i=0;i<5;i++)broken.update(.25,{position:at});await new Promise(r=>setTim
 // Game wiring: play-time updates, a kid-friendly notice and the engine sound.
 const index=await readFile(file('index.html'),'utf8'),audio=await readFile(file('assets/city-audio.js'),'utf8');
 assert.match(index,/const airTraffic=createAirTraffic\(\{scene,onFlyover:plane=>notify\('Look up! A '\+plane\.name\+' jet is flying over the city\.'\)\}\);/);
-assert.match(index,/airTraffic\.update\(dt,\{position:player\.position\}\)/);assert.match(index,/aircraft:airTraffic\.sound\(camera\)/);
+assert.match(index,/airTraffic\.update\(dt,\{position:player\.position,quiet:nearAirport\(player\.position\)\}\)/);assert.match(index,/const a=airTraffic\.sound\(camera\),b=airportOps\.sound\(camera\)/);
 assert.match(audio,/aircraft:loop\('ambience','noise',420,true\)/);assert.match(audio,/s\.aircraft/);
 console.log('Air traffic passed: four fictional-livery airliners, flights every 10 minutes of play, high safe paths, lights, sound and wiring.');

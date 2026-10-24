@@ -1,4 +1,4 @@
-import {COMMUNITY_ROADS,MAPLE_STREETS,NORTH_CITY,COAST_CITY,RONDA,worldDrivable,worldWalkable} from './world-rules.js';
+import {COMMUNITY_ROADS,MAPLE_STREETS,NORTH_CITY,COAST_CITY,RONDA,AIRPORT,worldDrivable,worldWalkable} from './world-rules.js';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z),lerp=(a,b,t)=>({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t});
 const key=p=>p.x.toFixed(2)+','+p.z.toFixed(2);
 class Heap{constructor(){this.a=[]}push(v){const a=this.a;a.push(v);let i=a.length-1;while(i){let p=(i-1)>>1;if(a[p].score<=v.score)break;a[i]=a[p];i=p;}a[i]=v;}pop(){const a=this.a,r=a[0],v=a.pop();if(a.length){let i=0;while(i*2+1<a.length){let c=i*2+1;if(c+1<a.length&&a[c+1].score<a[c].score)c++;if(a[c].score>=v.score)break;a[i]=a[c];i=c;}a[i]=v;}return r;}get length(){return this.a.length}}
@@ -29,6 +29,12 @@ export function createCityNetwork(mode='drive'){
   const west=COAST_CITY.avenues[0]-(mode==='drive'?0:15);line({x:west,z:a},{x:d,z:a},{x:c,z:a},{x:-660,z:a});line({x:-660,z:b},{x:c,z:b},{x:d,z:b},{x:-302,z:b});
   line({x:c,z:1180},{x:c,z:a},{x:c,z:b},{x:c,z:1820});line({x:d,z:1180},{x:d,z:a},{x:d,z:g.minZ-3});line({x:d,z:g.maxZ+3},{x:d,z:b},{x:d,z:1820});
   if(mode!=='drive')for(const s of [-1,1])link({x:COAST_CITY.avenues[0]-9.3,z:a+s*9.3},{x:west,z:a});}
+ // Northstar Airport: the access road leaves Northstar's last street at the east
+ // avenue; the loop road serves the terminal curb. On foot, the road shoulder leads to
+ // the landside plaza, the main doors, the departures hall, the corridor and the gates.
+ {const A=AIRPORT,east=NORTH_CITY.avenues.at(-1),z=A.road.z,L=A.loop,line=(...ps)=>{for(let i=1;i<ps.length;i++)link(ps[i-1],ps[i]);};
+  if(mode==='drive'){line({x:east,z},{x:L.west,z},{x:L.east,z});line({x:L.west,z},{x:L.west,z:L.curb},{x:A.terminal.x,z:L.curb},{x:L.east,z:L.curb},{x:L.east,z});}
+  else{const s=z+9.3;line({x:east+9.3,z:s},{x:L.west-10,z:s},{x:L.west-10,z:A.landside.minZ+10},{x:A.terminal.x,z:A.landside.minZ+10},{x:A.terminal.x,z:A.landside.minZ-6},{x:A.terminal.x-8,z:A.hall.minZ+20},{x:A.terminal.x,z:A.hall.minZ-2},{x:A.terminal.x,z:A.lounge.maxZ-4});}}
  return {nodes,edges,adj,mode};
 }
 function project(p,a,b){const dx=b.x-a.x,dz=b.z-a.z,t=dx*dx+dz*dz===0?0:Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));return {...lerp(a,b,t),t};}
