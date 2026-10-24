@@ -40,7 +40,7 @@ const FLIGHTS=[['NA 214','New York','A2'],['MA 108','Toronto','A1'],['SA 377','M
 export function departuresBoard(hour){const base=Math.floor(((hour%24)+24)%24*60/15)*15;return FLIGHTS.slice(0,8).map(([flight,to,gate],i)=>{const t=base+20+i*25,h=Math.floor(t/60)%24,m=t%60,clock=((h+11)%12+1)+':'+String(m).padStart(2,'0')+(h<12?' AM':' PM');
   const status=i===0?'Boarding':i===3?'Delayed 20 min':i===1?'Gate open':'On time';return {time:clock,flight,to,gate,status};});}
 
-export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfaces,mobile=false,parkedCar=null,getHour=()=>12,loader=null}){
+export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfaces,mobile=false,parkedCar=null,getHour=()=>12,loader=null,characters=null}){
   const A=AIRPORT,root=new THREE.Group();root.name='Northstar Airport';scene.add(root);
   // World-space boxes for camera collision and rain shelter (instanced batches are otherwise skipped).
   const cameraBoxes=[];root.userData.architectureBoxes=cameraBoxes;const camBox=(x,y,z,w,h,d)=>cameraBoxes.push({minX:x-w/2,maxX:x+w/2,minY:y,maxY:y+h,minZ:z-d/2,maxZ:z+d/2});
@@ -158,6 +158,9 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
     seatRows.forEach(([x,z,ry],i)=>{o.rotation.set(0,ry,0);o.position.set(x,.47,z);o.updateMatrix();cushion.setMatrixAt(i,o.matrix);o.position.set(x-Math.sin(ry)*.21,.78,z-Math.cos(ry)*.21);o.updateMatrix();back.setMatrixAt(i,o.matrix);o.position.set(x,.21,z);o.updateMatrix();frame.setMatrixAt(i,o.matrix);});
     interior.add(cushion,back,frame);}
 
+  // Travellers: queueing at check-in, reading the board, waiting at the gates (fewer on phones).
+  if(characters?.create){const spots=[[1078.4,-2006,Math.PI],[1078.4,-2009,Math.PI],[1115.6,-2006,Math.PI],[1184.4,-2007,Math.PI],[1221.6,-2006,Math.PI],[1146,-2046,Math.PI],[1155,-2044,Math.PI],[1100,-2140,0],[1205,-2141,0],[1162,-2146,0],[1060,-2128,Math.PI/2],[1240,-2128,-Math.PI/2]];
+    for(const [i,[x,z,turn]] of spots.entries()){if(mobile&&i%3)continue;characters.create({x,z,model:'crowd',turn,ambient:true});}}
   // ---------- airside: runway, taxiways, apron ----------
   const R=A.runway,TW=A.taxiway,TL=A.taxilane,AP=A.apron;
   cube(root,(R.x0+R.x1)/2,-.08,R.z,R.x1-R.x0+100,.12,R.halfWidth*2,C.road,false);

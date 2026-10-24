@@ -30,8 +30,9 @@ const ctx=new Proxy({},{get:()=>()=>{},set:()=>true});globalThis.document={creat
 const {createAirportWorld,AIRPORT_PLACES,AIRPORT_FACTS,AIRPORT_THINK,TRAVELATORS,travelatorAt,departuresBoard,BELT_SPEED}=await import('../assets/airport-world.js');
 const m=new THREE.MeshStandardMaterial(),C={road:m,walk:m,grass:m},cube=(p,x,y,z,w,h,d,mat)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y+h/2,z);p.add(o);return o;};
 const fake=()=>{const g=new THREE.Group();g.add(new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({name:'body'})));return g;};
-const glows=[],scene=new THREE.Scene(),obstacles=[],ground=[];let cars=0;
-const world=createAirportWorld({scene,visualKit:{atmosphere:{registerGlow:(mt,o)=>glows.push(o),addStreetLight(){}}},cube,C,obstacles,groundSurfaces:ground,parkedCar:()=>cars++,getHour:()=>15.5,loader:{loadAsync:async()=>({scene:fake()})}});
+const glows=[],scene=new THREE.Scene(),obstacles=[],ground=[],people=[];let cars=0;
+const world=createAirportWorld({scene,visualKit:{atmosphere:{registerGlow:(mt,o)=>glows.push(o),addStreetLight(){}}},cube,C,obstacles,groundSurfaces:ground,parkedCar:()=>cars++,characters:{create:o=>people.push(o)},getHour:()=>15.5,loader:{loadAsync:async()=>({scene:fake()})}});
+assert.ok(people.length>=10&&people.every(p=>worldWalkable(p.x,p.z)&&airportInside(p.x,p.z)&&!obstacles.some(o=>p.x>o.minX-.3&&p.x<o.maxX+.3&&p.z>o.minZ-.3&&p.z<o.maxZ+.3)),'travellers stand inside, clear of furniture');
 assert.ok(cars>=10&&glows.length>=3&&ground.some(g=>g.inside)&&world.root.userData.architectureBoxes.length>12,'cars, night glow, floors and camera/rain boxes');
 const walkValid=createWalkValidator(obstacles),route=(a,b)=>{const r=planCityRoute(a,b,{mode:'walk',walkValid});return r&&r.points.every((p,i)=>!i||lineClear(r.points[i-1],p,walkValid))?r:null;};
 assert.ok(route({x:1150,z:-1960},{x:1150,z:-2140}),'walk from the curb through the hall and corridor to the gates');
@@ -80,7 +81,7 @@ assert.ok(!ops.group.children.includes(leaving),'the departure leaves');assert.e
 
 // Game wiring.
 const index=await readFile(file('index.html'),'utf8');
-assert.match(index,/const airportWorld=createAirportWorld\(\{scene,visualKit,cube,C,obstacles,groundSurfaces,mobile:mobileGraphics,getHour:\(\)=>cityTime\.hour,parkedCar:/);
+assert.match(index,/const airportWorld=createAirportWorld\(\{scene,visualKit,cube,C,obstacles,groundSurfaces,characters,mobile:mobileGraphics,getHour:\(\)=>cityTime\.hour,parkedCar:/);
 assert.match(index,/const airportOps=createAirportOps\(\{scene,library:airTraffic\.library,onEvent:/);
 assert.match(index,/airportWorld\.update\(dt,\{position:player\.position\}\);airportOps\.update\(dt,\{position:player\.position\}\);/);
 assert.match(index,/const belt=airportWorld\.conveyor\(player\.position\)/);assert.match(index,/near\.kind==="airport"/);assert.match(index,/airport:\{name:'Northstar Airport'/);assert.match(index,/setCityDestination\(\\'airport\\'\)/);

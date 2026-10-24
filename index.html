@@ -414,7 +414,7 @@ const rondaWorld=createRondaWorld({scene,visualKit,obstacles,groundSurfaces,mobi
 const airTraffic=createAirTraffic({scene,onFlyover:plane=>notify('Look up! A '+plane.name+' jet is flying over the city.')});globalThis.airTraffic=airTraffic;
 // Northstar Airport, north-east of Northstar City: landside, terminal interior and a
 // fenced airside where planes land, taxi, park and take off (models stream in nearby).
-const airportWorld=createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfaces,mobile:mobileGraphics,getHour:()=>cityTime.hour,parkedCar:(x,z,heading)=>{const vehicle=car(x,z,0,heading);vehicle.position.y=.02;vehicle.userData.airportParked=true;return vehicle;}});globalThis.airportWorld=airportWorld;
+const airportWorld=createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfaces,characters,mobile:mobileGraphics,getHour:()=>cityTime.hour,parkedCar:(x,z,heading)=>{const vehicle=car(x,z,0,heading);vehicle.position.y=.02;vehicle.userData.airportParked=true;return vehicle;}});globalThis.airportWorld=airportWorld;
 const airportOps=createAirportOps({scene,library:airTraffic.library,onEvent:e=>{if(districtName(player.position.z,player.position.x)!==AIRPORT.name)return;notify(e.kind==='arrival'?'Look east! A '+e.plane.name+' jet is landing on runway 27.':e.plane.name+' is pushing back from gate '+e.stand.id+' for take-off.');}});globalThis.airportOps=airportOps;
 const nearAirport=p=>Math.hypot(p.x-AIRPORT_CENTRE.x,p.z-AIRPORT_CENTRE.z)<OPS_RANGE;
 createRushTrafficPool(traffic,car,{mobile:mobileGraphics});
