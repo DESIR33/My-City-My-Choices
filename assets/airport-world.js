@@ -67,6 +67,8 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   // ---------- ground ----------
   cube(root,2050,-.5,-2200,2300,.41,1000,C.grass,false);// x 900..3200, z -1700..-2700 (Northstar's grass covers west of 900)
   cube(root,1815,-.5,-2900,2770,.41,400,C.grass,false);// x 430..3200, z -2700..-3100
+  // Open country around the airport so the ground never ends in view (approach and climb-out areas).
+  cube(root,1500,-.52,-3650,4800,.41,1100,C.grass,false);cube(root,3800,-.52,-2400,1200,.41,1400,C.grass,false);
   const road=(x,z,w,d)=>cube(root,x,-.08,z,w,.1,d,C.road,false),pave=(x,z,w,d,y=-.06)=>cube(root,x,y,z,w,.1,d,C.walk,false);
   // Landside: access road, loop, curb, parking, sidewalks and plaza.
   road((A.road.x0+A.road.x1)/2,A.road.z,A.road.x1-A.road.x0,A.road.halfWidth*2);
