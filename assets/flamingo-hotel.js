@@ -743,6 +743,7 @@ export function createFlamingoHotel({scene, building, obstacles, groundSurfaces,
       else if (position.x > front+.8 || position.x < back-1 || Math.abs(position.z-bz) > hz+1) cutaway = false;
     }
     shell.visible = entrance.visible = true;
+    interior.visible = !mobile || !!position && Math.hypot(position.x-bx,position.z-bz)<70;
     const approach = position && Math.abs(position.z-bz) < 2.4 && position.x > front-1.2 && position.x < front+8;
     const entranceTarget = (approach || cutaway) ? 1 : 0;
     entranceOpen += (entranceTarget-entranceOpen)*Math.min(1, dt*4.5);
