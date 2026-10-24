@@ -6,7 +6,9 @@ Last updated: 2026-10-24 (America/New_York). Maintained project handoff, product
 
 ## Integration status
 
-Conflict repair order is #76 → #77 → #78 → #70 → #80. Main through `251ba7f4dc5f0ce44abdef84e8297bdfaf0ed275` (#79 skyline) is incorporated. #70 combines its painted/furnished interiors with #78 household interactions and save contracts; it is stacked on #78 to keep review scope focused. No PR is merged to main by this repair. Private Site v80 remains unchanged, so GitHub now intentionally includes newer skyline/interior assets absent from that deployment. Publish a separately validated combined source when requested.
+Conflict repairs preserve both feature histories in this sequence: #76 → #77 → #78 → #70 → #80. Main through #79's skyline and #76's mobile work is incorporated. GitHub now marks #76, #77 and #78 merged; #77/#78 were merged to their stacked feature bases, so the resolved #70/#80 source also carries their changes forward. The remaining #70 and #80 PRs target main directly; merge #70 before #80. Both are conflict-free against the checked main `fd1663c7b9ef081ab65cfa2143e7ced4cd2ae004`. No PR was merged by the conflict-repair task and no force push was used.
+
+#70 combines painted/furnished interiors with #78 household interactions and optional save fields. #80 includes that resolved source plus flyovers. The final combined runtime passes 148/148 native tests across 93 files, and Game regression/Project context CI checks pass on every repaired feature head. This final documentation-only follow-up records the base adjustment after observing the earlier PR merges; it changes no runtime. Private Site v80 remains unchanged, intentionally behind GitHub's newer skyline/interior/aircraft assets. Physical-device/GPU/audio acceptance is still outstanding.
 
 ## Start here
 
@@ -540,6 +542,12 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-24 — Record final PR bases after concurrent merges
+
+- GitHub marked #76/#77/#78 merged while the remaining repairs completed. Retarget #70 and #80 from feature bases to main so their combined tested source reaches the main branch. Preserve ancestry and recommend #70 before #80; no branch history is rewritten and the repair task does not merge PRs itself.
+- Git merge-tree checks against main `fd1663c7b9ef081ab65cfa2143e7ced4cd2ae004` produce exactly the tested #70 and #80 trees with no conflicts or extra runtime changes. Context policy passes all nine nonempty change commits against main. All repaired heads' game/context CI checks pass; final runtime remains the 148/148 tested source. This follow-up changes context only and does not require redeployment or another full gameplay run. Site v80 and device-verification limits are unchanged.
+
 
 ### 2026-10-24 — Resolve #80 flyovers with the complete integrated game
 
