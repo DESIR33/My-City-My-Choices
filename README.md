@@ -244,6 +244,10 @@ Open **World map → Ronda · Puente Nuevo**. From Sunshore's west avenue, the m
 
 `tests/ronda.test.mjs` builds the district in Node and checks the gorge and escarpment rules, both bridges, clear streets, the scan files and credits, the landmark lessons, driving and walking routes and the game wiring.
 
+## Airliners overhead
+
+Every 10 minutes of play (time spent in menus or with the tab hidden does not count), an airliner crosses the sky about 340–540 m up, passing 150–500 m to one side of the player, and a toast says "Look up!". The four planes come from owner-supplied FBX models and are repainted in fictional liveries (Maple Air, Sunshore Airways, Northstar Air, Ronda Skyways) with no real airline names or logos. They carry red, green and white navigation lights, a flashing red beacon and white strobes, and a distant engine roar pans with the camera. Each model (about 14k triangles, under 250 KB) downloads only when its first flight starts. `tools/prepare-airplanes.mjs` rebuilds them; `tests/air-traffic.test.mjs` covers the models, timing, flight paths, lights, sound and wiring.
+
 ## Maple Cafe service and building interiors
 
 Maple Cafe has eight varied customers and a cashier. Customers pay from separate cent-based wallets, queue at the register, wait while the cashier moves to the espresso machine, receive their order, reserve a chair, eat or drink, and leave. Four patrons start dining indoors and on the terrace; arrivals keep the cafe active. Cash gestures, brewing steam, handover cups, consumption poses, and a live service board make the stages visible. Several cafe seats remain available to the player.

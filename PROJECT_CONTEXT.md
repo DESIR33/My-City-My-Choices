@@ -328,6 +328,7 @@ Running tap/shower water shares one fixed filtered-noise layer; the washer uses 
 | `onboarding.js`, `onboarding.css` | Renderer-independent setup steps, goal catalogue/amount previews, validated saved-story discovery, readiness/failure and responsive/focus behavior; onboarding/story-flow tests |
 | `first-steps.js`, `objective-markers.js` | First-story distance/action cues and camera-aware world markers; first-steps/objective-markers/story-flow tests |
 | `world-rules.js` | District bounds, bridge/coast heights, roads, community lots and shared playable constraints; world/navigation/community tests |
+| `air-traffic.js`, `assets/airplanes/` | Flyover airliners: 10-minute play-time schedule, flight planning/positions, lazy model loading, navigation lights, engine-sound sample; generated `fleet.js`; air-traffic tests; built by `tools/prepare-airplanes.mjs` |
 | `north-world.js`, `coast-world.js`, `flamingo-hotel.js` | Northern/coastal construction, interiors, elevator and surface contracts; north/coast/bridge tests |
 | `planned-community.js`, `residential-doors.js`, `community-addresses.js`, `community-plaza.js` | Lots, plaques, dynamic doors, address destinations, landscaping and plaza/playground; community/address/door tests |
 | `house-rules.js`, `landmark-house.js`, `home-life.js` | Stable property state, multi-level geometry, reachable-object choices/state labels, household actions, tenure/projects/guide; landmark-house/house-interactions/home-life/story-flow tests |
@@ -521,6 +522,15 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-24 — Airliners fly over the city every 10 minutes of play
+
+- Request: the owner supplied four airliner FBX models and asked for airplanes flying in the air every 10 minutes of play.
+- Source assets: SketchUp/3ds Max exports in metres (two single-aisle jets, a twin-aisle jet and a double-deck jet, 31k–127k triangles). They carried real airline liveries modelled as geometry and colours, and referenced logo images that were not supplied.
+- Implemented: `tools/prepare-airplanes.mjs` repaints every plane by region in a fictional livery (white fuselage, grey belly/wings, coloured fin and cheatline: Maple Air, Sunshore Airways, Northstar Air, Ronda Skyways), keeps windows/glass/tyres dark, removes painted lettering, orients nose +Z about the fuselage axis, simplifies to about 14k triangles and writes meshopt GLBs plus `fleet.js` (sizes, light positions). `assets/air-traffic.js` counts play time from the game's `dt` (zero while blocked), launches one flight per 600 s, cycles the fleet, loads a model on its first flight, flies a straight line 4.4 km long at 78 m/s (about 56 s) passing 150–500 m beside the player, starting 340–460 m up and climbing gently; navigation lights, beacon and strobes are screen-sized points; thinner fog on the plane. `index.html` updates it in the animation loop, shows a "Look up!" toast and feeds `airTraffic.sound(camera)` to a new panned `aircraft` ambience loop in `city-audio.js` (quieter indoors, respects mute and ambience volume).
+- Compatibility: no save change; the 10-minute clock is per session and restarts on reload. City audio now has eleven fixed loops (house-audio test updated); rain remains the last loop.
+- Validation: new `tests/air-traffic.test.mjs` (fleet files, no real airline names in data or GLBs, decoded orientation/size, flight geometry over 200 random plans, timer with paused time, fleet rotation, load failure, sound, wiring). Full `npm test` passed. Standalone SwiftShader renders from the ground by day and night.
+- Limits: from the ground a plane is small (about 30–60 px wide) and pale against a bright hazy sky, as in real life; landing gear stays extended as modelled. If the Northstar skyline PR (#79) merges, its tallest tower (about 270 m) is still below the 340 m minimum. Device performance and GPU look unverified; Site parity unverified.
 
 ### 2026-10-23 — Bound coastal rendering and restore authored mobile cars
 
