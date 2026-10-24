@@ -21,7 +21,7 @@ export const FIRE_EXTINGUISHER_SPOTS=Object.freeze([
   {id:'house-101-kitchen',place:'101 Maple Grove kitchen',...house(6.59,-5),floor:.3,nx:-1,nz:0},
   {id:'house-101-utility',place:'101 Maple Grove utility garage',...house(-.91,4.7),floor:.3,nx:-1,nz:0},
   {id:'house-139-kitchen',place:'139 Willow Way kitchen',...communityPoint(home139,2.2,-home139.d/2+.25),floor:.3,nx:0,nz:home139.heading?-1:1},
-  {id:'house-139-garage',place:'139 Willow Way garage',...communityPoint(home139,-home139.w/2+.25,3.6),floor:.3,nx:home139.heading?-1:1,nz:0},
+  {id:'house-139-garage',place:'139 Willow Way garage',...communityPoint(home139,-home139.w/2+.25,5.2),floor:.3,nx:home139.heading?-1:1,nz:0},
   {id:'maple-cafe',place:'Maple Cafe, beside the counter',x:-19.3,z:-35.2,floor:.21,nx:-1,nz:0},
   {id:'maple-bakery',place:'Maple Bakery, beside the counter',x:-35.3,z:-93.5,floor:.21,nx:-1,nz:0},
   {id:'thread-and-sole',place:'Thread & Sole back wall',x:CLOTHING_STORE.x-2.5,z:20.3,floor:.21,nx:0,nz:1},

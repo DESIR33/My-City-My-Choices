@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import {footContactLift} from './character-grounding.js';
+import {footContactLift,advanceJumpPose} from './character-grounding.js';
 import { characterFacingYaw } from './character-controls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { MODELS, crowdModel } from './character-roster.js';
@@ -350,7 +350,15 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       else if(!data.renderRoot.visible&&data.ready)data.renderRoot.removeFromParent();
       data.detailRoot.visible=rich;data.fallback.visible=!rich;
       if(!actor.visible||!data.renderRoot.visible)continue;
-      actor.position.y=actor===player&&actor.userData.vertical?.managed?actor.userData.vertical.y:groundHeight(x,z);
+      actor.position.y=actor===player&&actor.userData.vertical?.managed?actor.userData.vertical.y:groundHeight(x,z,actor.position.y);
+      const jumping=advanceJumpPose(data.jumpPose||(data.jumpPose={}),data.riding||data.seated||data.resting?null:actor.userData.vertical,dt);
+      // The lightweight mobile fallback must lie on the mattress too, including
+      // while the detailed rig is still loading or has been released at distance.
+      const fallback=data.fallback;fallback.rotation.x=data.resting?-Math.PI/2:0;fallback.position.y=0;
+      for(const i of [2,4])fallback.children[i].rotation.x=jumping.thigh;
+      for(const i of [3,5])fallback.children[i].rotation.x=jumping.arm;
+      if(data.resting){actor.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(fallback,true);fallback.position.y+=actor.position.y+data.resting.height-bounds.min.y;}
+      else fallback.position.y=-jumping.crouch;
       if(data.loadDetail&&dt>0&&player&&actor.position.distanceTo(player.position)<=detailRadius&&detailActive<detailConcurrency)data.loadDetail();
       if(!data.ready||!rich)continue;
       // Face the direction of travel from world-space movement so turnarounds and crossing paths
@@ -366,8 +374,8 @@ export function createCharacterSystem(scene, { groundHeight = ()=>-.07, onError 
       if(data.interactive&&player&&actor!==player&&data.speed<.15&&actor.position.distanceTo(player.position)<5){const angle=Math.atan2(player.position.x-x,player.position.z-z),delta=Math.atan2(Math.sin(angle-actor.rotation.y),Math.cos(angle-actor.rotation.y));actor.rotation.y+=delta*Math.min(1,dt*3);}
       data.phase+=dt;data.mixer.update(dt);if(data.resting)restingPose(actor,data);else if(data.seated)seatedPose(actor,data);else if(data.visual)data.visual.position.y=0;actor.updateMatrixWorld(true);
       if(data.riding)ridingPose(actor,data);else if(!data.resting)activityPose(actor,data);
-      if(!data.riding&&!data.seated&&!data.resting&&actor.userData.vertical?.grounded===false){for(const bone of data.jumpBones||[])bone.rotation.x+=/Calf$/.test(bone.name)?.45:/Thigh$/.test(bone.name)?-.25:-.18;actor.updateMatrixWorld(true);}
-      if(!data.riding&&!data.seated&&!data.resting&&actor.userData.vertical?.grounded!==false&&data.contacts?.length){actor.updateMatrixWorld(true);const points=data.contacts.map(({bone,soleDepth})=>({...bone.getWorldPosition(new THREE.Vector3()),soleDepth}));data.visual.position.y+=footContactLift(points,groundHeight);actor.updateMatrixWorld(true);}
+      if(!data.riding&&!data.seated&&!data.resting){for(const bone of data.jumpBones||[])bone.rotation.x+=/Calf$/.test(bone.name)?jumping.calf:/Thigh$/.test(bone.name)?jumping.thigh:jumping.arm;if(data.visual)data.visual.position.y-=jumping.crouch;actor.updateMatrixWorld(true);}
+      if(!data.riding&&!data.seated&&!data.resting&&actor.userData.vertical?.grounded!==false&&data.contacts?.length){actor.updateMatrixWorld(true);const points=data.contacts.map(({bone,soleDepth})=>({...bone.getWorldPosition(new THREE.Vector3()),soleDepth}));data.visual.position.y+=footContactLift(points,(x,z)=>groundHeight(x,z,actor.position.y));actor.updateMatrixWorld(true);}
       if(data.anchors)for(const frame of data.anchors)updateAnchor(actor,frame);
     }
   }

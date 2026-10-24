@@ -38,7 +38,7 @@ for(const dir of [-1,1]){
 }
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 const code=html.slice(html.indexOf('function vehicleCanOccupy('),html.indexOf('function updateMove('));
-const context={vehicleFootprint,worldDrivable,rectanglesOverlap,obstacles,traffic:[],vehicleRefs,driving:null,lastVehicleHit:null};vm.createContext(context);vm.runInContext(code,context);
+const context={groundHeight:()=>.06,vehicleFootprint,worldDrivable,rectanglesOverlap,obstacles,traffic:[],vehicleRefs,driving:null,lastVehicleHit:null};vm.createContext(context);vm.runInContext(code,context);
 for(const x of COAST_CITY.avenues)for(const z of COAST_CITY.streets)for(const heading of [0,Math.PI/2,Math.PI,3*Math.PI/2])assert.equal(context.vehicleCanOccupy(x,z,heading),true,'Shipped collision handler clears junction '+x+','+z);
 const drive=planCityRoute({x:-242.4,z:1080},{x:-520,z:1444,parking:{x:-520,z:1400}},{mode:'drive'});
 assert.ok(drive&&drive.points.every((p,i)=>!i||lineClear(drive.points[i-1],p,worldDrivable)));

@@ -14,7 +14,7 @@ const scene=new THREE.Scene(),obstacles=[],groundSurfaces=[];
 const community=createPlannedCommunity({scene,visualKit,obstacles,groundSurfaces,buildings:[]});
 scene.updateMatrixWorld(true);
 const home=COMMUNITY_HOMES.find(h=>h.address===139);assert.equal(home.id,'maple-grove-20');assert.equal(home.street,'Willow Way');
-assert.equal(community.furnishedInteriors.length,1);const furnishing=community.furnishedInteriors[0];assert.equal(furnishing.homeId,home.id);assert.equal(furnishing.rooms.length,4);
+assert.equal(community.furnishedInteriors.length,2);const furnishing=community.furnishedInteriors[0];assert.equal(furnishing.homeId,home.id);assert.equal(furnishing.rooms.length,4);
 for(const id of ['sofa','coffee-table','media-console','kitchen-counter','oven-counter','refrigerator','kitchen-island','dining-table','guest-bed','nightstand','dresser','garage-workbench'])assert.ok(furnishing.fixtures.some(f=>f.id===id),id+' is real furnished geometry');
 assert.equal(furnishing.fixtures.filter(f=>f.id.startsWith('dining-chair')).length,4);
 const point=(x,z)=>({...communityPoint(home,x,z),y:.3});
