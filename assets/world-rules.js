@@ -71,7 +71,10 @@ export const NORTH_MOTORS=Object.freeze({x:194,z:-1177});
 export const RIVER=Object.freeze({south:-550,north:-770,waterLevel:-1.6});
 export const BRIDGE=Object.freeze({south:-350,north:-970,deck:8,roadHalfWidth:7.5,walkHalfWidth:11.1});
 export const TOWERS=Object.freeze(Array.from({length:15},(_,i)=>({id:'north-tower-'+i,x:[-120,0,120][i%3],z:-1210-Math.floor(i/3)*120,w:34+(i%3)*3,d:36+(i%2)*4,height:[88,126,104,142,96,158,114,186,132,98,148,120,166,110,138][i],use:['Offices','Apartments','Hotel'][i%3],name:['Hudson Exchange','Northstar Residences','Grand River Hotel','Atlas Financial','Parkview Apartments','Meridian House','Foundry Studios','Northstar Tower','Crescent Hotel','Broadway Works','Skyline Homes','Harbor Suites','Union Center','Garden Residences','Crown Plaza'][i]})));
-export const CITY_BLOCKS=Object.freeze(TOWERS.flatMap((t,i)=>[-1,1].map((side,j)=>({x:t.x+side*37,z:t.z+30,w:19,d:23,height:12+(i+j)%4*4,use:['Restaurant','Apartments','Bookshop','Office','Deli','Theater'][(i*2+j)%6],name:['RIVER TABLE','PARKSIDE HOMES','NORTHSTAR BOOKS','STUDIO & CO.','BROADWAY DELI','THE LYRIC'][(i*2+j)%6]}))));
+// Ground kept clear for the metro's Northstar Central station and its plaza entrance
+// (tests/metro.test.mjs checks it covers metro-line.js). Blocks there give way.
+export const METRO_CENTRAL_RESERVE=Object.freeze({minX:48,maxX:94,minZ:-1492,maxZ:-1401});
+export const CITY_BLOCKS=Object.freeze(TOWERS.flatMap((t,i)=>[-1,1].map((side,j)=>({x:t.x+side*37,z:t.z+30,w:19,d:23,height:12+(i+j)%4*4,use:['Restaurant','Apartments','Bookshop','Office','Deli','Theater'][(i*2+j)%6],name:['RIVER TABLE','PARKSIDE HOMES','NORTHSTAR BOOKS','STUDIO & CO.','BROADWAY DELI','THE LYRIC'][(i*2+j)%6]}))).filter(b=>{const R=METRO_CENTRAL_RESERVE;return b.x+b.w/2<=R.minX||b.x-b.w/2>=R.maxX||b.z+b.d/2<=R.minZ||b.z-b.d/2>=R.maxZ;}));
 // Smooth grade transitions meet both the flat approach and the river span with
 // zero slope. The 200 m approaches keep the peak grade below six percent.
 export function bridgeHeight(z){
