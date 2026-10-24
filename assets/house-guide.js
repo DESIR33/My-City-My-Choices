@@ -13,7 +13,7 @@ export const HOUSE_ROOMS=Object.freeze([
 ].map(room=>Object.freeze({...room,items:Object.freeze(room.items)})));
 const names={sofa:'Sofa',tv:'TV',oven:'Oven',tap:'Kitchen tap',cabinet:'Kitchen drawers',fridge:'Refrigerator','dining-front':'Front dining chair','dining-back':'Back dining chair','dining-side':'Side dining chair',washer:'Washing machine',workbench:'Tool kit',supplies:'Laundry & storage',bed1:'Main bed',bed2:'Second bed',wardrobe:'Wardrobe',books:'Bedside books','desk-chair':'Study chair',desk:'Study lamp','bath-sink':'Bathroom basin',shower:'Shower',toilet:'Toilet',curtains:'Bedroom curtains',lights0:'Downstairs lights',lights1:'Upstairs lights','home-plans':'Home keys & daily review'};
 export const houseGuideFloor=p=>(p?.y||0)>H.upper-.65?1:0;
-export function houseGuideEntries(home){return (home?.actions||[]).filter(a=>a.kind!=='door').map(a=>({id:a.id,name:names[a.id]||a.title,floor:a.floor,x:a.x,y:a.y,z:a.z,room:HOUSE_ROOMS.find(r=>r.items.includes(a.id))}));}
+export function houseGuideEntries(home){return (home?.actions||[]).filter(a=>a.kind!=='door'&&a.kind!=='garageDoor').map(a=>({id:a.id,name:names[a.id]||a.title,floor:a.floor,x:a.x,y:a.y,z:a.z,room:HOUSE_ROOMS.find(r=>r.items.includes(a.id))}));}
 export function restoreHouseGuide(value,home){const targetId=typeof value?.targetId==='string'&&houseGuideEntries(home).some(a=>a.id===value.targetId)?value.targetId:null;return {targetId};}
 export function houseRoomAt(p){
  if(!p||![p.x,p.z,p.y??0].every(Number.isFinite)||!houseInside(p))return null;

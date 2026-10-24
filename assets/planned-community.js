@@ -88,11 +88,11 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     const plaster=material(0xe6dfd1),fabric=material(0x829387,.96),linen=material(0xe2d8c2,.98),walnut=visualKit.wood(0x795e46),counter=material(0xd4d0c5),steel=material(0x909c9c,.3,.5);
     const record={homeId:home.id,address:home.address+' '+home.street,rooms:['Living room','Kitchen & dining','Guest bedroom','Garage'],fixtures:[]};furnishedInteriors.push(record);
     const front=home.d/2,half=home.w/2;
-    const piece=(x,y,z,w,h,d,mat)=>box(root,x,y,z,w,h,d,mat,false);
+    const sx=home.w/14.6,sz=home.d/12.8;const piece=(x,y,z,w,h,d,mat)=>box(root,x*sx,y,z*sz,w*sx,h,d*sz,mat,false);
     function fixture(id,x,z,w,d,y,h,mat){
-      const mesh=piece(x,y,z,w,h,d,mat);mesh.name='139 · '+id;
-      const collider=solid(home,x,z,w,d,'community-furniture');Object.assign(collider,{houseId:home.id,fixtureId:id,minY:y,maxY:y+h});
-      record.fixtures.push({id,...communityPoint(home,x,z),y,w,d,collider});return mesh;
+      const mesh=piece(x,y,z,w,h,d,mat);mesh.name=home.address+' · '+id;
+      const collider=solid(home,x*sx,z*sz,w*sx,d*sz,'community-furniture');Object.assign(collider,{houseId:home.id,fixtureId:id,minY:y,maxY:y+h});
+      if(id==='guest-bed')collider.maxY=1.01;record.fixtures.push({id,...communityPoint(home,x*sx,z*sz),y,w:w*sx,d:d*sz,collider});return mesh;
     }
     // Inner plaster faces and full-height room dividers; openings align with
     // the existing front/garage/patio leaves and keep a clear central route.
@@ -100,8 +100,8 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     lowerWall(root,home,'x',-front+.14,-half,half,plaster,[{a:home.w*.24-.85,b:home.w*.24+.85,top:2.85}]);
     for(const side of [-1,1])lowerWall(root,home,'z',side*(half-.14),-front+.14,front-.14,plaster);
     lowerWall(root,home,'z',-.2,-front+.25,front-.25,plaster,[{a:-4.2,b:-2.7,top:2.7},{a:2.2,b:3.7,top:2.7}]);
-    lowerWall(root,home,'x',1.2,-half+.25,-.2,plaster);
-    piece(0,3.13,0,home.w-.5,.025,home.d-.5,plaster);
+    lowerWall(root,home,'x',.8,-half+.25,-.2,plaster,[{a:-1.9,b:-.2,top:3.18}]);
+
     // Living room: a complete sofa, coffee table, media console and TV.
     piece(4.8,.302,1.65,3.4,.012,3.3,material(0xb8a58c));
     fixture('sofa',4.8,.05,2.8,1.05,.3,.4,fabric);piece(4.8,.7,-.43,2.8,.66,.16,fabric);
@@ -124,7 +124,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     piece(-4.6,.3,-5.83,2.1,1.2,.12,walnut);for(const x of [-5.12,-4.08])piece(x,.96,-5.4,.8,.14,.45,trim);
     fixture('nightstand',-6.25,-4.9,.65,.65,.3,.6,walnut);piece(-6.25,.9,-4.9,.3,.5,.3,linen);
     fixture('dresser',-5,-.2,2.1,.65,.3,.92,walnut);for(const y of [.52,.8,1.08])piece(-5,y,.14,1.95,.025,.025,trim);
-    fixture('garage-workbench',-5.6,1.8,2,.65,.3,.9,walnut);piece(-5.6,1.2,1.8,2.06,.06,.72,counter);
+    fixture('garage-workbench',-6.6,3.1,.65,2,.3,.9,walnut);piece(-6.6,1.2,3.1,.72,.06,2.06,counter);
     // Trim and framed art finish the inner walls without new textures/lights.
     for(const z of [-1,1]){piece(7.03,.3,z*3.2,.045,.12,5.7,trim);piece(7.02,1.3,z*3.2,.07,.9,1.15,walnut);piece(6.975,1.35,z*3.2,.025,.8,1.02,fabric);}
   }
@@ -136,12 +136,19 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     surface(home,0,(rear+frontLot)/2,home.lotWidth-.12,frontLot-rear,.025,grass,'grass',-.055);
     if(home.id!=='maple-grove-1'){
     // Keep the slab below the finished floor: equal .30 m top faces flickered.
-    box(root,0,-.055,0,w+.34,.325,d+.34,foundation);box(root,0,3.18,0,w,3.22,d,p.siding);
+    box(root,0,-.055,0,w+.34,.325,d+.34,foundation);
+    // Hollow second storey with a genuine stairwell in the upper slab.
+    for(const [x,z,ww,dd] of [[(-w/2-1.8)/2,0,w/2-1.8,d],[w/4,0,w/2,d],[-.9,(-front-.8)/2,1.8,front-.8],[-.9,(front+4.9)/2,1.8,Math.max(.1,front-4.9)]])box(root,x,3.33,z,ww,.12,dd,wood);
+    box(root,0,6.4,0,w,.12,d,trim);
+    for(const [x,z,ww,dd] of [[-w/2,0,.22,d],[w/2,0,.22,d],[0,front,w,.22],[0,-front,w,.22]]){box(root,x,3.45,z,ww,2.95,dd,p.siding);Object.assign(solid(home,x,z,ww,dd,'upper-wall'),{houseId:home.id,minY:3.45,maxY:6.4});}
+    for(let step=0;step<18;step++){const z=4.6-(step+.5)*.3,top=.3+(step+1)*.175;box(root,-.9,.3,z,1.5,top-.3,.3,wood);}
+    for(const x of [-1.7,-.1])for(let k=0;k<10;k++){const z=4.6-k*.54,y=.3+k*.315;box(root,x,y,z,.055,.85,.055,metal,false);}
+
     lowerWall(root,home,'x',front,-w/2,w/2,p.brick,[{a:garageX-3,b:garageX+3,top:2.85},{a:doorX-.85,b:doorX+.85,top:2.85}]);
     lowerWall(root,home,'x',-front,-w/2,w/2,p.siding,[{a:w*.24-.85,b:w*.24+.85,top:2.85}]);
     for(const side of [-1,1])lowerWall(root,home,'z',side*w/2,-front,front,p.brick);
     surface(home,0,0,w-.22,d-.22,.3,visualKit.wood(0x988160),'wood',.22);
-    if(home.id==='maple-grove-20')furnish139(root,home);
+    if(home.id==='maple-grove-20'||home.address===144)furnish139(root,home);
     box(root,0,3.04,front+.08,w+.08,.17,.15,trim);box(root,0,6.27,front+.08,w+.16,.13,.15,trim);
     for(const side of [-1,1]){box(root,side*(w/2+.07),.3,front,.13,6.1,.15,trim,false);box(root,side*(w/2+.16),.24,-front+.4,.09,6.1,.09,metal,false);}
     const turn=home.plan===2?Math.PI/2:0;gable(root,0,0,turn?d+1:w+1,turn?w+1:d+1,6.4,home.plan===3?2.45:2.12,p.roof,p.siding,turn);
@@ -157,7 +164,7 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
     surface(home,porchX,front+.87,w*.40,1.65,.3,concrete,'concrete',.14);surface(home,doorX,front+1.94,1.65,.65,.17,concrete,'concrete',.08);surface(home,doorX,front+2.53,1.7,.6,.09,concrete,'concrete',.025);
     for(const x of [w*.08,w*.48]){box(root,x,.3,front+1.42,.18,2.65,.18,trim);solid(home,x,front+1.42,.22,.22,'porch-post');}box(root,porchX,3.02,front+.88,w*.44,.16,2.05,trim);box(root,porchX,3.18,front+.88,w*.45,.12,2.15,p.roof);
     for(const x of [garageX-3.3,doorX+.94]){box(root,x,2.03,front+.19,.2,.42,.18,dark,false);box(root,x,2.1,front+.29,.14,.23,.08,porchLight,false);}
-    }else doorSystem.add(home,'garage',{x:garageX,z:front+.18,width:5.98,height:2.5,material:p.door});
+    }
     const drive=communityDriveway(home);surface(null,(drive.minX+drive.maxX)/2,(drive.minZ+drive.maxZ)/2,drive.maxX-drive.minX,drive.maxZ-drive.minZ,drive.top,concrete,'concrete',.025);
     for(let localZ=front+3;localZ<Math.abs(home.roadZ-home.z)-7.3;localZ+=3.2)box(root,garageX,.081,localZ,6.5,.003,.018,foundation,false);
     const walkEnd=Math.abs(home.roadZ-home.z)-9.1,walkStart=front+2.7;surface(home,doorX,(walkStart+walkEnd)/2,1.55,walkEnd-walkStart,.085,concrete,'concrete',.025);
@@ -210,6 +217,10 @@ export function createPlannedCommunity({scene,visualKit,obstacles,buildings,grou
   }
   addressMap.needsUpdate=true;doorSystem.finalize();
   const sofaSets=createSofaSets({scene,homes:COMMUNITY_HOMES,solid});
-  function interior(p){const home=homes.find(h=>h.id!=='maple-grove-1'&&Math.abs(p.x-h.x)<h.w/2-.15&&Math.abs(p.z-h.z)<h.d/2-.15);return home?{minX:home.x-home.w/2+.22,maxX:home.x+home.w/2-.22,minZ:home.z-home.d/2+.22,maxZ:home.z+home.d/2-.22,ceiling:3.18}:null;}
-  return {homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,furnishedInteriors,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:(dt,p)=>{doorSystem.update(dt,p);sofaSets.update(p);},sofaSets,interior,fenced:homes.filter(h=>h.fenced).length};
+  function containing(p){return homes.find(h=>h.id!=='maple-grove-1'&&Math.abs(p.x-h.x)<h.w/2-.15&&Math.abs(p.z-h.z)<h.d/2-.15);}
+  function local(h,x,z){const sign=h.heading===0?1:-1;return {x:(x-h.x)*sign,z:(z-h.z)*sign};}
+  function floorAt(x,z,y=.3){const h=containing({x,z});if(!h)return null;const q=local(h,x,z);if(q.x>=-1.65&&q.x<=-.15&&q.z>=-.8&&q.z<=4.6)return .3+Math.max(0,Math.min(18,Math.ceil((4.6-q.z)/.3-1e-8)))*.175;const bed=furnishedInteriors.find(f=>f.homeId===h.id)?.fixtures.find(f=>f.id==='guest-bed');if(y<2.8&&bed&&Math.abs(x-bed.x)<bed.w/2&&Math.abs(z-bed.z)<bed.d/2&&y>=.93)return 1.01;return y>2.8?3.45:.3;}
+  function garageDrivable(x,z){const h=homes.find(h=>h.id!=='maple-grove-1'&&Math.abs(x-h.x)<h.w/2&&Math.abs(z-h.z)<h.d/2+.4);if(!h)return false;const q=local(h,x,z);return q.x>=h.w*-.23-2.85&&q.x<=-2.15&&q.z>=.87&&q.z<=h.d/2+.4;}
+  function interior(p){const home=containing(p);if(!home)return null;const q=local(home,p.x,p.z),stairs=q.x>=-1.7&&q.x<=-.1&&q.z>=-1&&q.z<=4.9;return {minX:home.x-home.w/2+.22,maxX:home.x+home.w/2-.22,minZ:home.z-home.d/2+.22,maxZ:home.z+home.d/2-.22,ceiling:stairs||p.y>2.8?6.4:3.18};}
+  return {floorAt,garageDrivable,homes,roads:COMMUNITY_ROADS,gateways,landscapePockets,architectureBatches,addressPlaques,furnishedInteriors,doors:doorSystem.doors,nearestDoor:doorSystem.nearest,actDoor:doorSystem.act,update:(dt,p)=>{doorSystem.update(dt,p);sofaSets.update(p);},sofaSets,interior,fenced:homes.filter(h=>h.fenced).length};
 }

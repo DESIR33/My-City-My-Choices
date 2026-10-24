@@ -15,7 +15,7 @@ const community=createPlannedCommunity({scene,visualKit,obstacles,groundSurfaces
 const landmark=createLandmarkHouse({scene,visualKit,obstacles,groundSurfaces});
 const blocked=(x,z)=>obstacles.some(o=>o.houseId||o.vehicleOnly?houseObstacleBlocks(o,x,z,.3):x>o.minX-.5&&x<o.maxX+.5&&z>o.minZ-.5&&z<o.maxZ+.5);
 const valid=createWalkValidator(obstacles);
-assert.equal(community.doors.length,79,'Every neighboring front/patio/garage and the model-home garage has a real working leaf');
+assert.equal(community.doors.length,78,'Every neighboring front/patio/garage has a real working leaf');
 assert.equal(community.addressPlaques.length,27);assert.equal(new Set(community.addressPlaques.map(p=>p.address)).size,27);
 for(const plaque of community.addressPlaques){const home=COMMUNITY_HOMES.find(h=>h.id===plaque.homeId);assert.equal(plaque.address,home.address+' '+home.street);assert.equal(plaque.heading,home.heading);assert.ok(Math.abs(plaque.position.z-home.z)>home.d/2,'Numbers mount outside the front wall');assert.ok(plaque.face.material.emissiveMap,'Numbers remain legible after dark');}
 for(const door of community.doors){
@@ -32,6 +32,6 @@ for(const door of community.doors){
   assert.equal(community.actDoor(door.id,p).ok,true);for(let i=0;i<120;i++)community.update(1/60,p);assert.equal(blocked(door.center.x,door.center.z),true);
 }
 assert.equal(landmark.nearest({...MODEL_HOME.entry,y:.3})?.actionLabel,'Open door');assert.equal(landmark.act('front',MODEL_HOME.entry).ok,true);landmark.update(1,MODEL_HOME.entry);assert.equal(landmark.nearest({...MODEL_HOME.entry,y:.3})?.actionLabel,'Close door');
-for(const home of community.homes.filter(h=>h.id!==MODEL_HOME.id)){const room=community.interior({x:home.x,z:home.z,y:.3});assert.ok(room&&room.ceiling===3.18,'A real ground-floor shell supports entry and indoor camera clipping');}
+for(const home of community.homes.filter(h=>h.id!==MODEL_HOME.id)){const room=community.interior({x:home.x,z:home.z,y:.3});assert.ok(room&&room.ceiling>=3.18,'A real ground-floor shell supports entry and indoor camera clipping');}
 const boxes=cameraArchitectureBoxes(scene);assert.ok(!boxes.some(b=>b.minX<COMMUNITY_HOMES[1].x&&b.maxX>COMMUNITY_HOMES[1].x&&b.minZ<COMMUNITY_HOMES[1].z&&b.maxZ>COMMUNITY_HOMES[1].z&&b.minY<1&&b.maxY>2),'Hollow homes do not retain a solid camera-blocking body');
-console.log('Residential entry passed: 79 animated doors, both house orientations, real collision gaps, safe closing, live navigation, indoor shells, and 27 unique illuminated front-wall plaques.');
+console.log('Residential entry passed: 78 animated community doors plus the landmark garage, both house orientations, real collision gaps, safe closing, live navigation, indoor shells, and 27 unique illuminated front-wall plaques.');

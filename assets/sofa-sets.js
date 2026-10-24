@@ -11,10 +11,10 @@ export const SOFA_SET_LAYOUT=Object.freeze({
   pieces:{sectional:{min:[-1.746,-.001,-1.652],max:[1.258,.93,-.659]},chaise:{min:[.173,-.005,-1.513],max:[1.466,.542,.016]},armchair:{min:[-3.501,0,1.181],max:[-2.591,.852,1.96]},'side-table':{min:[1.955,.006,-1.352],max:[2.373,.428,.548]},'coffee-table':{min:[-1.557,.009,.678],max:[-.042,.634,1.6]},'end-table':{min:[-2.327,.003,-1.382],max:[-1.927,1.057,-.967]}}
 });
 // 101 is the separately furnished landmark and 139 already has its own living room.
-export const SOFA_SET_SKIP=Object.freeze(['maple-grove-1','maple-grove-20']);
+export const SOFA_SET_SKIP=Object.freeze(['maple-grove-1','maple-grove-20','maple-grove-22']);
 export const SOFA_FLOOR=.3,SOFA_VISIBLE_DISTANCE=34;
 
-export function sofaSetHomes(homes){return homes.filter(h=>!SOFA_SET_SKIP.includes(h.id)).filter((h,i)=>i%2===0);}
+export function sofaSetHomes(homes){return homes.filter(h=>!['maple-grove-1','maple-grove-20'].includes(h.id)).filter((h,i)=>i%2===0&&!SOFA_SET_SKIP.includes(h.id));}
 
 // House-local placement: against the right-hand (non-garage) wall, sofa facing the
 // street windows, leaving 1.7 m clear inside the front door.
