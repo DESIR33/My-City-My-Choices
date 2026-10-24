@@ -138,7 +138,8 @@ order.forEach((tw,rank)=>{const lot=lots[rank];
 towerLayout.sort((a,b)=>a.lot-b.lot);
 
 // ---- downtown skyline: everything else, turned by YAW and placed north of Northstar ----
-const rest=[];for(let t=0;t<nT;t++)if(claimed[t]<0)rest.push(t);
+// Large sloped sheets (over 70 m, neither wall nor flat roof) are model artefacts.
+const rest=[];for(let t=0;t<nT;t++){if(claimed[t]>=0)continue;const ny=Math.abs(normalOf(t)[1]);if(span(t)>70&&ny>.2&&ny<.9)continue;rest.push(t);}
 const ccx=(cx0+cx1)/2*S,ccz=(cz0+cz1)/2*S,cy=Math.cos(YAW),sy2=Math.sin(YAW);
 const turn=(x,z)=>{const rx=x-ccx,rz=z-ccz;return [rx*cy-rz*sy2,rx*sy2+rz*cy];};turn.rot=YAW;
 const sky=attributes(rest,turn);let minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;for(let q=0;q<sky.count*3;q++){minX=Math.min(minX,sky.pos[q*3]);maxX=Math.max(maxX,sky.pos[q*3]);minZ=Math.min(minZ,sky.pos[q*3+2]);maxZ=Math.max(maxZ,sky.pos[q*3+2]);}

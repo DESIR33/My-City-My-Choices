@@ -17,7 +17,7 @@ export const SKYLINE_LAYOUT=Object.freeze({
    "maxZ": -1850
   },
   "top": 268.6,
-  "triangles": 84161
+  "triangles": 84151
  },
  "towers": [
   {
