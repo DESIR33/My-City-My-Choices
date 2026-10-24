@@ -267,6 +267,17 @@ Open **World map → Northstar Airport**, or drive to the end of Northstar's las
 
 `tools/prepare-airport.mjs` builds the terminal, tower, landmark and travelator models; `tools/prepare-airplanes.mjs` adds two jets from the gate scene to the fictional-livery fleet. `tests/airport.test.mjs` covers the models, rules, routes, walkways, lessons, flight paths, stands and operations.
 
+## Northstar Metro (Red Line)
+
+An elevated light-rail line crosses the big city from end to end and continues to the airport. It starts at **Rivergate** at the south edge of Northstar, runs above the `x=60` avenue through **Midtown**, **Northstar Central** and **Uptown**, curves east above the last street to **North Gate**, follows the airport road to **Landmark Plaza** and turns north to **Northstar Airport** in front of the terminal. Open **World map → Northstar Central · Red Line metro** for directions.
+
+- **Stations:** six stops with two side platforms, glass platform gates that open with the train doors, canopies, benches, ticket machines, next-train displays and open stairs to the street (a red Ⓜ totem marks each one). **Northstar Central** is the big station: a glass vault over the Red Line platforms (1 and 2) and a two-track intercity terminus (platforms 3 and 4, buffer stops at the concourse) that is built and waiting for future trains. The owner's subway entrance stands on the plaza south of the hall, signed as the future lower intercity concourse.
+- **Trains:** three two-section cars (the owner's light-rail model, repainted in the Red Line livery) run a timetable: they accelerate, cruise up to 16 m/s, slow for curves and stations, dwell about 20 seconds with the doors open on the platform side, and change ends at both terminals. A train comes about every 4 minutes in each direction.
+- **Ride:** wait on a platform and press the action key at an open door, pick your stop, and the train carries you there. While riding, press the action key to change your stop, get off at an open station or switch between the outside view and a window seat. You step out onto the platform at your stop. Trains arriving at Rivergate (platform 2) and the airport (platform 1) end their trip, so the board tells you to use the other platform.
+- **Learn:** each station has a fact and a maths question (ticket versus weekly pass, headways, speed, the cost of driving and parking). A youth pass rides free; the boarding panel shows what an adult fare and a weekly pass cost.
+
+`tools/prepare-metro.mjs` builds the train (doors split out so they slide open) and the entrance from the owner's files. `tests/metro.test.mjs` covers the models, line, stations, floors and stairs, walking rules, timetable, boarding, riding, getting off and the game wiring.
+
 ## Maple Cafe service and building interiors
 
 Maple Cafe has eight varied customers and a cashier. Customers pay from separate cent-based wallets, queue at the register, wait while the cashier moves to the espresso machine, receive their order, reserve a chair, eat or drink, and leave. Four patrons start dining indoors and on the terrace; arrivals keep the cafe active. Cash gestures, brewing steam, handover cups, consumption poses, and a live service board make the stages visible. Several cafe seats remain available to the player.

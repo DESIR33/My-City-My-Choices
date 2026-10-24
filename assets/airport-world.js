@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {nearMetro} from './metro-line.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {AIRPORT,airportInside} from './world-rules.js';
@@ -87,9 +88,9 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   box(M.cream,1150,6,-1977,160,.6,14);camBox(1150,6,-1977,160,.6,14);box(M.light,1150,5.95,-1977,150,.08,10);
   sign('DEPARTURES  ✈  ALL GATES',1150,7.2,-1969.9,40,2.2,0,{bg:'#13233a',fg:'#ffffff'});
   sign('NORTHSTAR AIRPORT  ✈  →',262,4.2,-1741,14,2.2,0,{bg:'#0e5a3a'});box(M.steel,256,0,-1741.1,.3,3.6,.3);box(M.steel,268,0,-1741.1,.3,3.6,.3);
-  for(let x=A.road.x0+30;x<A.road.x1;x+=45)for(const s of [-1,1]){const z=A.road.z+s*(A.road.halfWidth+1.5);box(M.steel,x,0,z,.22,8,.22);box(M.light,x,8,z-s*1,.5,.25,1.6);visualKit.atmosphere?.addStreetLight?.({x,y:8,z:z-s*1,groundY:.02});}
+  for(let x=A.road.x0+30;x<A.road.x1;x+=45)for(const s of [-1,1]){if(nearMetro(x,A.road.z+s*9,0))continue;const z=A.road.z+s*(A.road.halfWidth+1.5);box(M.steel,x,0,z,.22,8,.22);box(M.light,x,8,z-s*1,.5,.25,1.6);visualKit.atmosphere?.addStreetLight?.({x,y:8,z:z-s*1,groundY:.02});}
   // Parked cars in the lot (a few on phones).
-  if(parkedCar){let n=0;for(const z of [-1802,-1862,-1922])for(let x=A.parking.minX+9;x<A.parking.maxX-6&&n<(mobile?6:18);x+=12){if(((x*7+z)|0)%3===0)continue;parkedCar(x,z,z<-1900?Math.PI:0);n++;}}
+  if(parkedCar){let n=0;for(const z of [-1802,-1862,-1922])for(let x=A.parking.minX+9;x<A.parking.maxX-6&&n<(mobile?6:18);x+=12){if(((x*7+z)|0)%3===0||nearMetro(x,z,9))continue;parkedCar(x,z,z<-1900?Math.PI:0);n++;}}
   // Plaza benches and planters around the landmark.
   for(const [x,z] of [[870,-1790],[950,-1790],[1010,-1830],[1010,-1930],[850,-1960]]){box(M.wood,x,.45,z,4,.12,1.2);box(M.seatFrame,x,0,z,3.6,.45,.2);solid(x,z,4,1.2,'airport-bench');}
 

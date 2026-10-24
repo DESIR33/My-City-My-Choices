@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {NORTH_CITY,NORTH_MOTORS,RIVER,BRIDGE,TOWERS,CITY_BLOCKS,bridgeHeight,bridgePitch} from './world-rules.js';
 import {SKYLINE_TOWERS} from './northstar-skyline.js';
+import {ENTRANCE,nearMetro} from './metro-line.js';
 export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car,traffic,trafficControllers,addCornerSignal,characters}){
   const unit=new THREE.BoxGeometry(1,1,1),batches=new Map(),dummy=new THREE.Object3D();
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
@@ -12,7 +13,9 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   }
   // Two banks leave the full river channel open under the elevated crossing.
   cube(scene,0,-.42,225,1800,.35,1550,C.grass,false); // south bank ends at the new coastline: -550 … 1000
-  cube(scene,0,-.42,-1735,1800,.35,1930,C.grass,false); // north bank: -2700 … -770
+  // North bank: -2700 … -770, with a hole for the stairwell of the metro's future lower concourse entrance.
+  {const H=ENTRANCE.hole,x0=-900,x1=900,z0=-2700,z1=-770,slab=(a,b,c,d)=>cube(scene,(a+b)/2,-.42,(c+d)/2,b-a,.35,d-c,C.grass,false);
+    slab(x0,x1,z0,H.minZ);slab(x0,x1,H.maxZ,z1);slab(x0,H.minX,H.minZ,H.maxZ);slab(H.maxX,x1,H.minZ,H.maxZ);}
   const waterGeometry=new THREE.PlaneGeometry(1800,220,90,18),positions=waterGeometry.attributes.position;
   for(let i=0;i<positions.count;i++)positions.setZ(i,.045*Math.sin(positions.getX(i)*.17+positions.getY(i)*.11));waterGeometry.computeVertexNormals();
   const water=new THREE.Mesh(waterGeometry,new THREE.MeshPhysicalMaterial({color:0x245d70,metalness:.35,roughness:.27,clearcoat:1,clearcoatRoughness:.2}));water.rotation.x=-Math.PI/2;water.position.set(0,RIVER.waterLevel,-660);water.receiveShadow=true;water.name='Rivergate River';scene.add(water);
@@ -104,7 +107,7 @@ export function createNorthWorld({scene,visualKit,cube,C,obstacles,buildings,car
   cube(scene,201,.07,-1177,22,.14,16,C.walk,false);for(const z of [-1182,-1172]){box(rail,194,.21,z,.13,3.9,.13);box(rail,204,.21,z,.13,3.9,.13);}box(gold,199,4.11,-1177,13,.3,14);box(stone,194,.21,-1177,1.1,1.4,.65);box(dark,194,1.61,-1177,.85,.6,.5);solid(194,-1177,1.1,.65);label('FUEL & SERVICE',199,4.25,-1169.9,12,.7);
   // Street trees occupy block interiors and never overlap a road or an entrance.
   const roadsideTrees=[];
-  function streetTree(x,z,size){const connector=Math.abs(x)<14&&z>=-1150&&z<=-165,avenue=NORTH_CITY.avenues.some(n=>Math.abs(x-n)<13)&&z>=-1808&&z<=-1117,crossing=NORTH_CITY.streets.some(n=>Math.abs(z-n)<13)&&x>=-253&&x<=253;if(connector||avenue||crossing)return;roadsideTrees.push({x,z,size});scene.add(visualKit.treeModel(x,z,size));}
+  function streetTree(x,z,size){const connector=Math.abs(x)<14&&z>=-1150&&z<=-165,avenue=NORTH_CITY.avenues.some(n=>Math.abs(x-n)<13)&&z>=-1808&&z<=-1117,crossing=NORTH_CITY.streets.some(n=>Math.abs(z-n)<13)&&x>=-253&&x<=253;if(connector||avenue||crossing||nearMetro(x,z,8))return;roadsideTrees.push({x,z,size});scene.add(visualKit.treeModel(x,z,size));}
   for(const t of TOWERS)for(const s of [-1,1])streetTree(t.x+s*40,t.z-30,.95);
   for(let x=-228;x<=228;x+=38){streetTree(x,-1780,1);streetTree(x,-1120,1);}
   for(const z of NORTH_CITY.streets)for(const x of [-222,-94,26,214])lamp(x,z-10.5);
