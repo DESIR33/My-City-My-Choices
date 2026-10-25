@@ -1,3 +1,4 @@
+import {startupFailure} from './onboarding.js';
 // Keep the large inline runtime inert on phones until setup is complete. This
 // module has no Three.js dependency and never reads or writes saved progress.
 export function mountCityStartup(doc,win){
@@ -7,7 +8,7 @@ export function mountCityStartup(doc,win){
   root.dataset.cityDeferred=String(mobile);root.dataset.cityState='idle';
   let injected=false,pending=null;
   const emit=()=>doc.dispatchEvent(new win.Event('city:boot-state'));
-  function fail(){root.dataset.cityState='failed';pending=null;if(!root.dataset.cityError)root.dataset.cityError='The city couldn’t finish loading. Your saved story is unchanged. Reload to try again.';emit();}
+  function fail(){root.dataset.cityState='failed';pending=null;if(!root.dataset.cityError)root.dataset.cityError=startupFailure(root.dataset.cityPhase);emit();}
   function launch(action=null){
     if(injected)return false;injected=true;pending=action;root.dataset.cityState='loading';emit();
     const script=doc.createElement('script');script.type='module';script.textContent=source.textContent;script.addEventListener('error',fail,{once:true});

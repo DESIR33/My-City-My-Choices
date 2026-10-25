@@ -52,3 +52,7 @@ test('Desktop still starts eagerly; HTML never executes the inert source itself'
  for(const mobileGraphics of [true,false]){let loaded=0;vm.runInNewContext(cars,{mobileGraphics,loadDetailedCars(){loaded++;return Promise.resolve();},loadPremiumCars(){},console});await Promise.resolve();assert.equal(loaded,mobileGraphics?0:1);}
  assert.match(runtime,/renderer\.shadowMap\.enabled=!mobileGraphics/);
 });
+
+test('Module failures retain a whitelisted startup phase without writing progress',()=>{
+ const f=fixture(true);f.get('intro').dataset.cityPhase='player';f.boot.launch('begin');f.doc.body.children[0].dispatchEvent({type:'error'});assert.match(f.get('intro').dataset.cityError,/CITY-PLAYER/);assert.equal(f.writes(),0);
+});
