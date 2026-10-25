@@ -216,7 +216,7 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   function drawBoards(position){if(!position)return;for(const info of stations){if(Math.hypot(position.x-info.frame.x,position.z-info.frame.z)>160)continue;for(const b of info.boards){
       const term=terminatesAt(b.station,b.track),list=arrivals(b.station,b.track),dest=destinationOf(b.track).name;
       const fmt=w=>w<15?'Boarding':w<60?'Arriving':Math.ceil(w/60)+' min';
-      const rows=term?[{text:'ARRIVALS ONLY',font:46},{text:'Trains end here.',font:38,color:'#ffffff'},{text:'Other platform for the city',font:34,color:'#ffffff'}]:[{text:'Ⓜ  to '+dest,font:40,color:'#ffffff'},{text:'1st  '+fmt(list[0]?.wait??0),font:46},{text:'2nd  '+fmt(list[1]?.wait??0),font:40}];
+      const rows=term?[{text:'PLATFORM '+(b.track==='A'?1:2)+' · ARRIVALS ONLY',font:34},{text:'Trains end here.',font:38,color:'#ffffff'},{text:'Ride from platform '+(b.track==='A'?2:1),font:34,color:'#ffffff'}]:[{text:'P'+(b.track==='A'?1:2)+' · to '+dest,font:38,color:'#ffffff'},{text:'1st  '+fmt(list[0]?.wait??0),font:46},{text:'2nd  '+fmt(list[1]?.wait??0),font:40}];
       const text=rows.map(r=>r.text).join('|');if(text===b.text)continue;b.text=text;for(const f of b.faces)f.tex?.draw(rows,{bg:'#11161b',fg:'#ffbf3c'});}}}
   let boardClock=0;
   function update(dt,{position}={}){dt=Number.isFinite(dt)?Math.max(0,Math.min(dt,.25)):0;time+=dt;
@@ -230,9 +230,26 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
     boardClock-=dt;if(boardClock<=0){boardClock=1;drawBoards(position);}
     if(ride){const t=trains[ride.train];if(ride.alightAt&&time>=ride.alightAt&&t.doorOpen>.6){const out=alight();if(out)onEvent({kind:'alighted',...out});}}}
   // ---------- passengers ----------
-  // The open doorway nearest a player on a platform, or null.
-  function boardable(p){if(ride||!p||![p.x,p.y,p.z].every(Number.isFinite)||Math.abs(p.y-PLATFORM_Y)>.35||metroFloorAt(p.x,p.z,p.y)!==PLATFORM_Y)return null;for(const t of trains){const s=t.state;if(!s?.doors||!s.station||s.speed!==0||t.doorOpen<.6)continue;
-      for(const d of DOORWAYS){const w=doorWorld(t,d,2.4);if(Math.hypot(p.x-w.x,p.z-w.z)<2.4){const station=stationById(s.station),term=terminatesAt(s.station,s.track);return {train:t.index,doorway:d,station,terminates:term,towards:destinationOf(s.track),stops:term?[]:stationsAhead(t),departsIn:Math.max(0,s.remaining-3)};}}}return null;}
+  // Platform context stays available while waiting and distinguishes terminal arrivals.
+  function platformAt(p){
+    if(ride||!p||![p.x,p.y,p.z].every(Number.isFinite)||Math.abs(p.y-PLATFORM_Y)>.35||metroFloorAt(p.x,p.z,p.y)!==PLATFORM_Y)return null;
+    for(const station of STATIONS){const frame=stationFrame(station),{u,v}=frame.toLocal(p.x,p.z);
+      if(Math.abs(u)>station.length/2||Math.abs(v)<PLATFORM.inner||Math.abs(v)>PLATFORM.outer)continue;
+      const track=v>0?'A':'B',terminates=terminatesAt(station.id,track),departureTrack=terminates?(track==='A'?'B':'A'):track;
+      const wait=arrivals(station.id,track)[0]?.wait??0;
+      return {station,track,platform:track==='A'?1:2,u,v,terminates,towards:destinationOf(departureTrack),departurePlatform:departureTrack==='A'?1:2,wait};
+    }return null;
+  }
+  // Interact from the safe platform alongside the car; no need to enter the tracks
+  // or hunt a small circular trigger at a door. The nearest actual door is retained.
+  function boardable(p){const platform=platformAt(p);if(!platform)return null;
+    for(const t of trains){const s=t.state;if(!s?.doors||s.station!==platform.station.id||s.track!==platform.track||s.speed!==0||t.doorOpen<.6)continue;
+      const frame=stationFrame(platform.station),center=frame.toLocal(t.group.position.x,t.group.position.z);
+      if(Math.abs(platform.u-center.u)>trainSpec.length/2+.5)continue;
+      const doorway=DOORWAYS.reduce((a,b)=>{const wa=doorWorld(t,a,2.4),wb=doorWorld(t,b,2.4);return Math.hypot(p.x-wa.x,p.z-wa.z)<Math.hypot(p.x-wb.x,p.z-wb.z)?a:b;});
+      return {train:t.index,doorway,station:platform.station,terminates:platform.terminates,towards:platform.towards,stops:platform.terminates?[]:stationsAhead(t),departsIn:Math.max(0,s.remaining-3)};
+    }return null;
+  }
   function board(trainIndex,destination,actor=me()){
     if(!Number.isInteger(trainIndex)||!actor?.position||!stationIds.has(destination))return false;
     const b=boardable(actor.position);if(!b||b.train!==trainIndex||b.terminates||!b.stops.some(s=>s.id===destination))return false;
@@ -257,6 +274,6 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   const mapPoints=CENTRELINE.filter((q,i)=>i%10===0||i===CENTRELINE.length-1);
   function mapSvg(mx,mz){return '<polyline points="'+mapPoints.map(q=>mx(q.x).toFixed(1)+','+mz(q.z).toFixed(1)).join(' ')+'" fill="none" stroke="#e0343a" stroke-width="3"/>'+STATIONS.map(st=>'<circle cx="'+mx(st.at[0]).toFixed(1)+'" cy="'+mz(st.at[1]).toFixed(1)+'" r="2.6" fill="#fff"/>').join('')+'<text x="'+(mx(100)+6).toFixed(1)+'" y="'+(mz(-1760)-4).toFixed(1)+'" fill="#ff8b8f" font-size="11">Ⓜ RED LINE</text>';}
   function drawMinimap(ctx,px,pz){ctx.strokeStyle='#e0343a';ctx.lineWidth=2.5;ctx.beginPath();mapPoints.forEach((q,i)=>i?ctx.lineTo(px(q.x),pz(q.z)):ctx.moveTo(px(q.x),pz(q.z)));ctx.stroke();ctx.fillStyle='#ffffff';for(const st of STATIONS){ctx.beginPath();ctx.arc(px(st.at[0]),pz(st.at[1]),2.6,0,Math.PI*2);ctx.fill();}}
-  return {root,trains,stations,gates,boards,columns,streetTotems,models,loadModels,update,arrivals,boardable,board,alight,carry,changeDestination,rideInfo,setView,floorAt,walk,nearestStation,nearestLandmark,
+  return {root,trains,stations,gates,boards,columns,streetTotems,models,loadModels,update,arrivals,boardable,board,alight,carry,changeDestination,rideInfo,setView,floorAt,walk,platformAt,nearestStation,nearestLandmark,
     mapSvg,drawMinimap,isRiding:()=>!!ride,safePoint:p=>metroSafePoint(p,!!ride),get time(){return time;},set time(v){time=v;},batches:meshes,entrance:entranceGroup,stops:STOPS};
 }

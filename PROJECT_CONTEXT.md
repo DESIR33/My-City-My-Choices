@@ -1,14 +1,14 @@
 # My City, My Choices — project context
 
-Last updated: 2026-10-25 (UTC). Maintained project handoff, product brief, architecture guide, decision record and change ledger.
+Last updated: 2026-10-24 (America/New_York). Maintained project handoff, product brief, architecture guide, decision record and change ledger.
 
 **Read this document before changing the project. Update it in every change commit, including fixes, assets, configuration, tests and documentation.** See [Maintenance contract](#maintenance-contract). This is the current-state guide; Git history and linked PRs retain implementation detail and earlier states.
 
 ## Integration status
 
-Baseline is main `7e51d3255b713d889d23f217a3c004e335be4908` through merged #85, matching private v83/source `73bfda5f48685ecc4b1304a11805d848ffca2a97`. Airport-clock and metro/player initialization corrections remain. The current Rivergate/performance patch addresses the owner's screenshots: street-level parked cars incorrectly blocked elevated platform walking and offered driving prompts upstairs; metro M totems occupied stair approaches.
+Baseline is main `2f9c26f` through merged #86, matching owner-private v84/source `43fd0242193d1ccc7e3006910882a614c8788a2e`. Startup ordering, elevated-platform collision, off-stair metro signs and bounded detail work remain. The current boarding patch responds to the owner being unable to enter at Rivergate: the old circular door triggers left outer-platform and between-door positions without any boarding action, while the opposite terminal platform accepts arrivals only.
 
-Parked-car collision and driving discovery now respect actor height, preserving street collision. All station M totems move beside the approaches. Desktop character hydration/residency is bounded, detailed fleet work starts only in active play and yields between installations, and vehicle materials reuse the sky reflection instead of capturing six full-city views. Remove an unused approximately 190,000-element metro startup array. No save schema, ownership, fare or economy changes. These are source/native-verified corrections; physical-device frame rate, complete freeze resolution and rendered GPU acceptance remain unverified.
+Boarding now works from the same safe platform alongside a stopped, sufficiently open train. Platform context is available while waiting and beyond the car, identifies platform/direction and directs Rivergate arrivals to departure platform 1 on the west side via the street crossing. Destination choice and touch/keyboard interactions remain. Moving/closed trains, wrong height, track space and arrivals-only terminal boarding remain rejected. No save, fare, economy, asset or dependency changes. Actual-device/GPU acceptance remains open; previous performance reductions do not prove all freezes are resolved.
 
 ## Start here
 
@@ -128,6 +128,8 @@ In the furnished house, E / the touch action opens a compact chooser when multip
 A selected object also gets a small stationary mint floor ring and diamond at its real approach point when nearby. It is visible only on the same floor, within six meters, with clear player/camera sightlines against the household collision boxes and moving door leaves. The camera must stay between that floor and ceiling. It hides during stairs/jumps beyond the floor tolerance, outside, menus/background, driving/riding, sitting/resting and Focus view. Canceling/completing the existing guide or restoring an invalid target hides it automatically. It indicates where to stand, not an outline of the furniture, a walking path or an automatic interaction. Existing text/map guidance still works when the marker is hidden.
 
 ## World and landmarks
+
+Metro boarding: interact from the same platform alongside the train, rather than walking onto the tracks or finding a small circular door trigger. The train must be stopped with doors sufficiently open. Platform prompts and station displays identify platform number/direction and expected wait. At Rivergate, platform 1 (west side) departs toward the airport; platform 2 is arrivals-only. Use the stairs and street crossing to switch sides. Airport has the reverse terminal arrangement. Platform info explains the boarding control for touch or keyboard and destination selection. Walking, timetable, youth fares and safe saved recovery remain unchanged.
 
 World units are approximately meters; X is east/west, north is negative Z, south positive Z. This is a continuous fictional world, not a georeferenced real city.
 
@@ -547,6 +549,14 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-24 — Make Rivergate boarding discoverable from the platform
+
+- Request/evidence: owner cannot enter a train at Rivergate after the platform collision patch. Native reproduction shows no boarding action at the outer side of the departure platform beside a real open train, or centrally between its door trigger circles. The existing tests only waited beside one Midtown doorway. Rivergate also has an arrivals-only platform that must remain distinct from departures; the old generic facts prompt did not explain how to board while waiting.
+- Behavior: determine the actor's actual platform, require the stopped/open train on the same station and track, and allow interaction alongside the car across the full platform width. Keep the nearest authored doorway, destination menu and immediate physical revalidation on selection. Add a waiting/platform-info action, touch/keyboard instructions, platform numbers/directions on station displays and explicit west-side platform 1 guidance at Rivergate. Correct terminal wording to use the departing destination. No walking onto rails or across the track gap is enabled.
+- Safety/compatibility: retain finite-coordinate/floor/height checks, partially closed or moving train rejection, terminal arrivals-only refusal, served-stop validation, alighting rules and existing timetable. No save keys/migration, economy/fare, runtime dependencies or binary asset changes. Previous startup/mobile/detail and household work remains.
+- Validation: expanded native scene regression covers all seven stations on both tracks at nine alongside-car positions, valid boarding/alighting, terminal refusal, out-of-car guidance, street-height rejection and moving/partly open door rejection. Real story handlers cover touch waiting information, arrivals guidance, boarding prompt precedence, destination menu and its boarding callback. Both complete layouts pass 156/156 cases across 98 test files, all 318 runtime sources match, and executable syntax, context-policy and whitespace checks pass. No rendered WebGL or physical-device acceptance; this QA environment cannot initialize gameplay WebGL.
+
 
 ### 2026-10-25 — Clear Rivergate platform/stairs and bound background detail work
 

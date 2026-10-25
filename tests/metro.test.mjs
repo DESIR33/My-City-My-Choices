@@ -106,6 +106,27 @@ assert.equal(metroFloorAt(player.position.x,player.position.z,PLATFORM_Y),PLATFO
 // Terminus platforms: arriving trains end their trip.
 {const air=STATIONS.at(-1),A=stationFrame(air),d=A.toWorld(DOORWAYS[1],4.3);player.position.set(d.x,PLATFORM_Y,d.z);let b=null;for(let i=0;i<4000&&!b;i++){metro.update(.25,{});b=metro.boardable(player.position);}assert.ok(b?.terminates,'airport platform 1 is arrivals only');assert.equal(metro.board(b.train,'rivergate'),false,'cannot board an arrivals-only train');}
 
+// Rivergate report: the old circular door triggers missed the outer half of the
+// platform and the space between doors. Board from the safe platform alongside
+// each stopped car, while preserving terminal, height and door checks.
+for(const station of STATIONS)for(const track of ['A','B']){
+ const stop=TIMETABLE.events.find(e=>e.type==='dwell'&&e.stop.station===station.id&&e.stop.track===track),frame=stationFrame(station),side=track==='A'?1:-1;
+ metro.time=stop.t0+5;metro.trains[0].doorOpen=0;for(let i=0;i<5;i++)metro.update(.25,{});
+ const terminal=(station.id==='rivergate'&&track==='B')||(station.id==='airport'&&track==='A');
+ for(const u of [-13,0,13])for(const v of [4.1,6.2,8.4]){
+  const p=frame.toWorld(u,side*v);player.position.set(p.x,PLATFORM_Y,p.z);
+  const platform=metro.platformAt(player.position),b=metro.boardable(player.position);
+  assert.equal(platform.station.id,station.id);assert.equal(platform.platform,track==='A'?1:2);assert.equal(platform.terminates,terminal);
+  assert.equal(b?.train,0,station.id+' '+track+' boarding visible across platform at '+u+','+v);assert.equal(b.terminates,terminal);
+ }
+ if(!terminal){const b=metro.boardable(player.position);assert.ok(metro.board(0,b.stops[0].id));assert.ok(metro.alight(),'can step back onto same platform');}
+ else assert.equal(metro.board(0,track==='A'?'rivergate':'airport'),false,'arrival-only terminal still rejects boarding');
+ const edge=frame.toWorld(19,side*6);player.position.set(edge.x,PLATFORM_Y,edge.z);assert.equal(metro.boardable(player.position),null,'not beside this car');assert.ok(metro.platformAt(player.position),'guidance still available beyond car');
+ const road=frame.toWorld(0,side*6);player.position.set(road.x,0,road.z);assert.equal(metro.platformAt(player.position),null,'no elevated platform action from road');
+ player.position.y=PLATFORM_Y;metro.trains[0].doorOpen=.4;assert.equal(metro.boardable(player.position),null,'closed or partly opening door remains unavailable');
+ metro.trains[0].doorOpen=1;metro.trains[0].state.speed=1;assert.equal(metro.boardable(player.position),null,'moving trains remain unavailable');
+}
+
 // Game wiring.
 const html=await readFile(file('index.html'),'utf8');
 for(const re of [/createMetroWorld\(\{scene,visualKit,obstacles,mobile:mobileGraphics,player:\(\)=>player,/,/const metroFloor=globalThis\.metroWorld\?\.floorAt\(x,z,referenceY\)/,/const metroStep=globalThis\.metroWorld\?\.walk\(player\.position,x,z\)/,
