@@ -1,8 +1,9 @@
+import {AIRPORT,NORTH_CITY,SKYVIEW_PATHS,METRO_GREENWAYS} from './world-rules.js';
 // Northstar Metro: an elevated light-rail line. Geometry, stations and timetable only
 // (no Three.js), shared by the world builder, the rules and the tests.
-// The line runs over the median of Northstar's x=60 avenue from the south edge of the
-// city, curves east over the z=-1750 street and the airport road, and curves north over
-// the airport parking lot to end in front of the terminal. Two tracks: A on the left of
+// The line starts east of Northstar's driving grid at x=280 from the south edge of the
+// city on its own eastern greenway, follows the north-side airport greenway,
+// and ends west of the terminal loop road. Two tracks: A on the left of
 // the outbound direction (towards the airport), B on the right. Trains run a loop:
 // out on A, reverse on the tail track past the airport station and cross to B, back on
 // B, reverse on the south tail and cross to A. The cars are symmetric with a cab at
@@ -12,7 +13,7 @@ export const TRAIN=Object.freeze({length:27.5,doorZ:[-6.45,6.45],maxSpeed:16,cur
 export const PLATFORM=Object.freeze({inner:3.7,outer:8.7,stairInner:7.9,stairOuter:9.7,landing:2.5,stairRun:15.5});
 
 // Centreline: straight legs joined by 30 m arcs, sampled every metre.
-const LEGS=[[60,-1100],[60,-1750],[1150,-1750],[1150,-1950]];
+const LEGS=[[280,-1100],[280,-1782],[1028,-1782],[1028,-1950]];
 function buildCentreline(step=1){
   const pts=[];const push=(x,z)=>{const last=pts.at(-1);if(!last||Math.hypot(last.x-x,last.z-z)>1e-6)pts.push({x,z});};
   const r=CURVE_RADIUS;let start={x:LEGS[0][0],z:LEGS[0][1]};
@@ -36,13 +37,13 @@ export function lineAt(s){const P=CENTRELINE;s=Math.max(0,Math.min(LINE_LENGTH,s
 export function projectToLine(x,z){let best=null;for(const p of CENTRELINE){const d=Math.hypot(p.x-x,p.z-z);if(!best||d<best.d)best={s:p.s,d};}return best;}
 
 export const STATIONS=Object.freeze([
-  {id:'rivergate',name:'Rivergate',at:[60,-1210],length:40,kind:'stop',area:'South Northstar, by the bridge road'},
-  {id:'midtown',name:'Midtown',at:[60,-1330],length:40,kind:'stop',area:'Offices and apartments'},
-  {id:'central',name:'Northstar Central',at:[60,-1453],length:60,kind:'central',area:'Main station and future intercity hall'},
-  {id:'uptown',name:'Uptown',at:[60,-1570],length:40,kind:'stop',area:'Hotels and shops'},
-  {id:'northgate',name:'North Gate',at:[130,-1750],length:40,kind:'stop',area:'North edge of the city'},
-  {id:'plaza',name:'Landmark Plaza',at:[905,-1750],length:40,kind:'stop',area:'Airport landmark and plaza'},
-  {id:'airport',name:'Northstar Airport',at:[1150,-1880],length:40,kind:'terminal',area:'Terminal and parking'}].map(s=>Object.freeze({...s,s:projectToLine(...s.at).s})));
+  {id:'rivergate',name:'Rivergate',at:[280,-1210],length:40,kind:'stop',area:'South Northstar, by the bridge road'},
+  {id:'midtown',name:'Midtown',at:[280,-1330],length:40,kind:'stop',area:'Offices and apartments'},
+  {id:'central',name:'Northstar Central',at:[280,-1453],length:60,kind:'central',area:'Main station and future intercity hall'},
+  {id:'uptown',name:'Uptown',at:[280,-1570],length:40,kind:'stop',area:'Hotels and shops'},
+  {id:'northgate',name:'North Gate',at:[350,-1782],length:40,kind:'stop',area:'North edge of the city'},
+  {id:'plaza',name:'Landmark Plaza',at:[905,-1782],length:40,kind:'stop',area:'Airport landmark and plaza'},
+  {id:'airport',name:'Northstar Airport',at:[1028,-1880],length:40,kind:'terminal',area:'Terminal and parking'}].map(s=>Object.freeze({...s,s:projectToLine(...s.at).s})));
 export const METRO_COLOR='#d8262b',LINE_NAME='Red Line';
 export const stationById=id=>STATIONS.find(s=>s.id===id)||null;
 
@@ -82,11 +83,11 @@ export function metroWalk(from,x,z){const y=from.y??0,here=metroFloorAt(from.x,f
 export function stationFootprint(station,pad=0){const L=station.length/2,F=stationFrame(station),C=CENTRAL,v0=station.kind==='central'?C.grandStair[0]:-PLATFORM.stairOuter,u1=station.kind==='central'?L+C.concourse:L+PLATFORM.landing;
   const pts=[[-L-PLATFORM.landing-pad,v0-pad],[u1+pad,v0-pad],[u1+pad,PLATFORM.stairOuter+pad],[-L-PLATFORM.landing-pad,PLATFORM.stairOuter+pad]].map(([u,v])=>F.toWorld(u,v));
   return {minX:Math.min(...pts.map(p=>p.x)),maxX:Math.max(...pts.map(p=>p.x)),minZ:Math.min(...pts.map(p=>p.z)),maxZ:Math.max(...pts.map(p=>p.z))};}
-export function nearMetro(x,z,clear=7){if(x<20||x>1200||z>-1080||z<-1970)return false;const p=projectToLine(x,z);if(p.d<clear)return true;return STATIONS.some(st=>{const f=stationFootprint(st,2);return x>=f.minX&&x<=f.maxX&&z>=f.minZ&&z<=f.maxZ;});}
+export function nearMetro(x,z,clear=7){if(x<20||x>1200||z>-1080||z<-1970)return false;const p=projectToLine(x,z);if(p.d<clear||METRO_GREENWAYS.some(r=>x>=r.minX&&x<=r.maxX&&z>=r.minZ&&z<=r.maxZ))return true;return STATIONS.some(st=>{const f=stationFootprint(st,2);return x>=f.minX&&x<=f.maxX&&z>=f.minZ&&z<=f.maxZ;});}
 export function metroReserved(b){return STATIONS.some(st=>{const f=stationFootprint(st,2);return b.x+b.w/2>f.minX&&b.x-b.w/2<f.maxX&&b.z+b.d/2>f.minZ&&b.z-b.d/2<f.maxZ;});}
 // The owner's subway-entrance model marks the future lower intercity concourse, on the
 // plaza south of Central. The ground keeps a hole for its stairwell.
-export const ENTRANCE=Object.freeze({x:82,z:-1409,yaw:0,hole:Object.freeze({minX:80.85,maxX:83.15,minZ:-1408.45,maxZ:-1403.7}),kiosk:Object.freeze({minX:80.75,maxX:83.45,minZ:-1408.55,maxZ:-1403.6})});
+export const ENTRANCE=Object.freeze({x:302,z:-1409,yaw:0,hole:Object.freeze({minX:300.85,maxX:303.15,minZ:-1408.45,maxZ:-1403.7}),kiosk:Object.freeze({minX:300.75,maxX:303.45,minZ:-1408.55,maxZ:-1403.6})});
 
 // ---------------- loop path and timetable ----------------
 // The loop as a list of samples {x,z,yaw,track,s,stop} for the train centre.
@@ -140,3 +141,14 @@ export function upcomingStations(state,count=STATIONS.length){const T=TIMETABLE,
 export function stairFoot(station){const F=stationFrame(station),[u0,u1,v0,v1,top]=stationStairs(station)[0],u=top===u0?u1+1.2:u0-1.2;return F.toWorld(u,(v0+v1)/2);}
 export function metroSafePoint(p,riding=false){const elevated=riding||((metroFloorAt(p.x,p.z,p.y??0)??0)>.6);if(!elevated)return {x:p.x,z:p.z};
   let best=STATIONS[0],d=Infinity;for(const st of STATIONS){const q=stationFrame(st),e=Math.hypot(q.x-p.x,q.z-p.z);if(e<d){d=e;best=st;}}const f=stairFoot(best);return {x:f.x,z:f.z};}
+
+export function metroGroundClear(x,z,w=1.4,d=1.4){
+ const overlaps=r=>x+w/2>r.minX&&x-w/2<r.maxX&&z+d/2>r.minZ&&z-d/2<r.maxZ;
+ const road=AIRPORT.road,loop=AIRPORT.loop;
+ const protectedRects=[...SKYVIEW_PATHS,{minX:road.x0-1,maxX:road.x1+1,minZ:road.z-road.halfWidth-3,maxZ:road.z+road.halfWidth+3},
+  ...[loop.west,loop.east].map(a=>({minX:a-loop.halfWidth-3,maxX:a+loop.halfWidth+3,minZ:loop.curb-10,maxZ:road.z+10})),
+  {minX:loop.west-10,maxX:loop.east+10,minZ:loop.curb-10,maxZ:loop.curb+10},
+  ...NORTH_CITY.streets.map(a=>({minX:NORTH_CITY.minX,maxX:NORTH_CITY.maxX,minZ:a-11,maxZ:a+11})),
+  ...NORTH_CITY.avenues.map(a=>({minX:a-11,maxX:a+11,minZ:NORTH_CITY.minZ,maxZ:NORTH_CITY.maxZ}))];
+ return !protectedRects.some(overlaps);
+}

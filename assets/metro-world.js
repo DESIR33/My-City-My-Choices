@@ -7,7 +7,7 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {METRO_MODELS} from './metro/models.js';
 import {DECK_Y,RAIL_Y,PLATFORM_Y,TRACK_OFFSET,PLATFORM,CENTRAL,ENTRANCE,LINE_LENGTH,LINE_NAME,STATIONS,STOPS,TIMETABLE,TRAIN_COUNT,
-  CENTRELINE,lineAt,stationFrame,stationLandings,stationStairs,metroSafePoint,stairHeight,metroFloorAt,metroWalk,stationById,trainState,LOOP} from './metro-line.js';
+  CENTRELINE,lineAt,stationFrame,stationLandings,stationStairs,metroSafePoint,stairHeight,metroFloorAt,metroWalk,stationById,trainState,LOOP,metroGroundClear} from './metro-line.js';
 import {NORTH_CITY,AIRPORT} from './world-rules.js';
 
 export const DOORWAYS=Object.freeze([...METRO_MODELS.train.doorways]);// doorway centres along the car (both sides)
@@ -15,7 +15,7 @@ export const METRO_FARE=Object.freeze({adult:2.75,weekPass:22,youth:0});
 export const METRO_RANGE=1600;// stream the train model when this close to the line
 export const METRO_FACTS=Object.freeze({
   rivergate:'Rivergate is the south end of the Red Line. Trains wait here a few seconds, the driver walks to the cab at the other end, and the train heads back north. Both ends of a metro train have a cab, so it never needs to turn around.',
-  midtown:'Elevated railways are built on columns above the street, so trains never wait at traffic lights. One train can carry as many people as about 150 cars, which keeps the road below less crowded.',
+  midtown:'This elevated railway follows a dedicated greenway away from driving lanes, crossing roads on clear spans so trains never wait at traffic lights. One train can carry as many people as about 150 cars, which keeps the road below less crowded.',
   central:'Northstar Central is the main station. The Red Line stops on platforms 1 and 2. Platforms 3 and 4 are already built for intercity trains to other cities. The tracks end at the concourse, so this part of the station is a terminus, like a dead-end street for trains.',
   uptown:'Metro trains run on a timetable. With three trains on the line, one arrives about every four minutes in each direction. That gap is called the headway.',
   northgate:'The train gets electricity from the wire above the track through the pantograph on its roof. When the train brakes, its motors work like generators and send power back into the wire for other trains to use.',
@@ -28,7 +28,7 @@ export const METRO_THINK=Object.freeze({
   uptown:{question:'A train comes every 4 minutes. If you just missed one, what is the longest you will wait?',answer:'About 4 minutes, the length of one headway. On average you wait half of it, about 2 minutes.'},
   northgate:{question:'A car uses about $3 of fuel for this trip plus $8 to park at the airport. A ticket costs $2.75. How much does the train save?',answer:'$3 + $8 = $11 by car. $11 − $2.75 = $8.25 saved.'},
   plaza:{question:'The train cruises at 16 m/s. How far does it go in one minute?',answer:'16 × 60 = 960 metres, almost a kilometre.'},
-  airport:{question:'The line is about 1.9 km long and a trip takes about 6 minutes. What is the average speed?',answer:'1,900 m ÷ 360 s ≈ 5.3 m/s, about 19 km/h, because stopping at stations takes time.'}});
+  airport:{question:'The line is about 1.6 km long and a trip takes about 6 minutes. What is the average speed?',answer:'1,600 m ÷ 360 s ≈ 4.4 m/s, about 16 km/h, because stopping at stations takes time.'}});
 
 const yawOf=(tx,tz)=>Math.atan2(tx,tz);
 
@@ -63,9 +63,13 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   // Two-sided sign in a station frame facing ±v.
   const stationSign=(F,text,u,v,y,w,h,opts)=>{const p=F.toWorld(u,v),a=sign(text,p.x,y,p.z,w,h,F.yaw+Math.PI/2,opts),b=sign(text,p.x,y,p.z,w,h,F.yaw-Math.PI/2,opts);return [a,b];};
 
+  const footpaths=[];
+  function path(x,z,w,d){box(M.paving,x,-.025,z,w,.05,d);footpaths.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});}
+  path(258,-1435,4,610);path(258,-1774,4,28);path(565.5,-1764,611,4);path(959.75,-1764,161.5,4);
+  for(const st of STATIONS.slice(0,4)){const F=stationFrame(st);for(const stair of stationStairs(st)){const [u0,u1,v0,v1,top]=stair,foot=top===u0?u1+1.2:u0-1.2,p=F.toWorld(foot,(v0+v1)/2);path((244+p.x)/2,p.z,p.x-244+3.4,3.4);}}
   // ---------- viaduct, columns, track and overhead wire ----------
   const stationSpan=s=>STATIONS.find(st=>Math.abs(s-st.s)<st.length/2+(st.kind==='central'?CENTRAL.concourse:PLATFORM.landing)+.5);
-  const nearRoadCross=(x,z)=>NORTH_CITY.streets.some(n=>Math.abs(z-n)<12)&&NORTH_CITY.avenues.some(n=>Math.abs(x-n)<12)||Math.abs(x-AIRPORT.loop.west)<11&&Math.abs(z-AIRPORT.road.z)<12||Math.abs(x-AIRPORT.loop.east)<11&&Math.abs(z-AIRPORT.road.z)<12;
+
   for(let s=0;s<LINE_LENGTH;){const a=lineAt(s),step=a.curved?2:8,b=lineAt(Math.min(LINE_LENGTH,s+step)),len=Math.hypot(b.x-a.x,b.z-a.z),cx=(a.x+b.x)/2,cz=(a.z+b.z)/2,yaw=yawOf(b.x-a.x,b.z-a.z),nx=Math.cos(yaw),nz=-Math.sin(yaw);
     box(M.deck,cx,DECK_Y-1.25,cz,10,1.25,len+.08,yaw);box(M.bed,cx,DECK_Y,cz,8.6,.05,len+.08,yaw);
     if(!stationSpan(s+step/2))for(const side of [-1,1]){box(M.concrete,cx+nx*side*4.85,DECK_Y,cz+nz*side*4.85,.3,1.05,len+.08,yaw);}
@@ -81,7 +85,7 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   // buffer stops at both ends
   for(const s of [.6,LINE_LENGTH-.6]){const p=lineAt(s),yaw=yawOf(p.tx,p.tz);for(const off of [-TRACK_OFFSET,TRACK_OFFSET]){box(M.red,p.x+p.nx*off,DECK_Y,p.z+p.nz*off,2.2,1.3,.5,yaw);box(M.yellow,p.x+p.nx*off,DECK_Y+1.3,p.z+p.nz*off,2.2,.12,.52,yaw);}}
   // columns with pier heads
-  const columns=[];for(let s=6;s<LINE_LENGTH-2;s+=24){const p=lineAt(s);if(nearRoadCross(p.x,p.z))continue;const yaw=yawOf(p.tx,p.tz);
+  const columns=[];for(let s=6;s<LINE_LENGTH-2;s+=24){const p=lineAt(s);if(!metroGroundClear(p.x,p.z))continue;const yaw=yawOf(p.tx,p.tz);
     box(M.concrete,p.x,0,p.z,1.3,DECK_Y-1.25,1.3,yaw);box(M.concrete,p.x,DECK_Y-2.2,p.z,7.5,.95,1.7,yaw);solid(p.x,p.z,1.4,1.4);columns.push({x:p.x,z:p.z});}
   // catenary masts between stations
   for(let s=20;s<LINE_LENGTH-10;s+=48){if(stationSpan(s))continue;const p=lineAt(s),yaw=yawOf(p.tx,p.tz);for(const side of [-1,1])box(M.steel,p.x+p.nx*side*4.6,DECK_Y,p.z+p.nz*side*4.6,.25,6.9,.25,yaw);box(M.steel,p.x,RAIL_Y+6.3,p.z,9.5,.2,.2,yaw);}
@@ -102,8 +106,8 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
       if(!central){const cv0=side*(P.inner+.15),cv1=side*(P.outer+.25);sbox(F,M.roof,-L+1,L-1,cv0,cv1,Y+3.4,.22);sbox(F,M.light,-L+2,L-2,side*(P.inner+1.6),side*(P.inner+2.1),Y+3.36,.04);camBox(F,-L+1,L-1,cv0,cv1,Y+3.4,Y+3.62);
         for(let pu=-L+2;pu<=L-2;pu+=9)sbox(F,M.steel,pu-.12,pu+.12,side*(P.outer-.4)-.12,side*(P.outer-.4)+.12,Y,3.4);}
       // under-platform supports on the sidewalk side
-      for(const pu of [-L+3,0,L-3])sbox(F,M.concrete,pu-.4,pu+.4,side*(P.outer-1.2)-.4,side*(P.outer-1.2)+.4,0,DECK_Y-.5);
-      for(const pu of [-L+3,0,L-3]){const c=F.toWorld(pu,side*(P.outer-1.2));solid(c.x,c.z,.9,.9);}
+      for(const pu of [-L+3,0,L-3]){const c=F.toWorld(pu,side*(P.outer-1.2));if(metroGroundClear(c.x,c.z,.9,.9))sbox(F,M.concrete,pu-.4,pu+.4,side*(P.outer-1.2)-.4,side*(P.outer-1.2)+.4,0,DECK_Y-.5);}
+      for(const pu of [-L+3,0,L-3]){const c=F.toWorld(pu,side*(P.outer-1.2));if(metroGroundClear(c.x,c.z,.9,.9))solid(c.x,c.z,.9,.9);}
       // station name boards facing the track and a next-train display
       for(const bu of [-L*.6,L*.6]){const c=F.toWorld(bu,side*(P.outer-.2));const s=sign(['Ⓜ  '+st.name.toUpperCase()],c.x,Y+2.6,c.z,6.2,.8,F.yaw+(side>0?-Math.PI/2:Math.PI/2),{w:1024,h:132,font:86});void s;}
       {const c=F.toWorld(-2,side*(P.inner+1.8));const b=sign(['NEXT TRAIN'],c.x,Y+2.75,c.z,3.4,1.1,F.yaw+(side>0?-Math.PI/2:Math.PI/2),{w:640,h:208,bg:'#11161b',fg:'#ffbf3c',font:46,align:'left'});const b2=sign(['NEXT TRAIN'],c.x,Y+2.75,c.z,3.4,1.1,F.yaw+(side>0?Math.PI/2:-Math.PI/2),{w:640,h:208,bg:'#11161b',fg:'#ffbf3c',font:46,align:'left'});
@@ -122,7 +126,10 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
       for(const [sv,m,h,w,lift] of [[v0+.06,M.steel,.42,.12,-.32],[v1-.06,M.steel,.42,.12,-.32],[v0+.06,M.glass,1,.03,.55],[v1-.06,M.glass,1,.03,.55],[v0+.06,M.steel,.06,.06,1.08],[v1-.06,M.steel,.06,.06,1.08]]){
         const c=F.toWorld((u0+u1)/2,sv),beam=new THREE.Mesh(unit,m);beam.position.set(c.x,Y/2+lift,c.z);beam.rotation.order='YXZ';beam.rotation.set(dir*slope,F.yaw,0);beam.scale.set(w,h,len);beam.castShadow=!mobile&&m!==M.glass;root.add(beam);}
       for(const f of [.35,.7]){const pu=low+(top-low)*f,ph=stairHeight(s,pu)-.45;sbox(F,M.steel,pu-.15,pu+.15,(v0+v1)/2-.15,(v0+v1)/2+.15,0,ph);}
-      const foot=top===u0?u1:u0,fc=F.toWorld(foot+(top===u0?1.2:-1.2),(v0+v1)/2+((v0+v1)>0?2.3:-2.3));streetTotems.push({station:st.id,...fc});
+      const foot=top===u0?u1:u0,markerU=foot+(top===u0?1.2:-1.2),markerV=(v0+v1)/2+((v0+v1)>0?2.3:-2.3);let fc=F.toWorld(markerU,markerV);
+      for(const shift of [3,-3,6,-6]){if(metroGroundClear(fc.x,fc.z,.5,.5))break;fc=F.toWorld(markerU+shift,markerV);}
+      if(!metroGroundClear(fc.x,fc.z,.5,.5))fc=F.toWorld(markerU,markerV-Math.sign(markerV)*4.2);
+      streetTotems.push({station:st.id,...fc});
       box(M.red,fc.x,0,fc.z,.3,4.2,.3,F.yaw);const t=sign(['Ⓜ'],fc.x,4.6,fc.z,1.1,1.1,F.yaw,{w:256,h:256,font:200,bg:'#c8242b'});const t2=sign(['Ⓜ'],fc.x,4.6,fc.z,1.1,1.1,F.yaw+Math.PI,{w:256,h:256,font:200,bg:'#c8242b'});void t;void t2;
       {const lc=F.toWorld(foot+(top===u0?1.2:-1.2),(v0+v1)/2+((v0+v1)>0?-1.1:1.1));sign([st.name,LINE_NAME],lc.x,3.3,lc.z,2.6,1.1,F.yaw+((v0+v1)>0?-Math.PI/2:Math.PI/2),{w:640,h:270,font:72,bg:'#1d2a33'});}
       // the high part of the stair is a wall at street level
@@ -274,6 +281,6 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   const mapPoints=CENTRELINE.filter((q,i)=>i%10===0||i===CENTRELINE.length-1);
   function mapSvg(mx,mz){return '<polyline points="'+mapPoints.map(q=>mx(q.x).toFixed(1)+','+mz(q.z).toFixed(1)).join(' ')+'" fill="none" stroke="#e0343a" stroke-width="3"/>'+STATIONS.map(st=>'<circle cx="'+mx(st.at[0]).toFixed(1)+'" cy="'+mz(st.at[1]).toFixed(1)+'" r="2.6" fill="#fff"/>').join('')+'<text x="'+(mx(100)+6).toFixed(1)+'" y="'+(mz(-1760)-4).toFixed(1)+'" fill="#ff8b8f" font-size="11">Ⓜ RED LINE</text>';}
   function drawMinimap(ctx,px,pz){ctx.strokeStyle='#e0343a';ctx.lineWidth=2.5;ctx.beginPath();mapPoints.forEach((q,i)=>i?ctx.lineTo(px(q.x),pz(q.z)):ctx.moveTo(px(q.x),pz(q.z)));ctx.stroke();ctx.fillStyle='#ffffff';for(const st of STATIONS){ctx.beginPath();ctx.arc(px(st.at[0]),pz(st.at[1]),2.6,0,Math.PI*2);ctx.fill();}}
-  return {root,trains,stations,gates,boards,columns,streetTotems,models,loadModels,update,arrivals,boardable,board,alight,carry,changeDestination,rideInfo,setView,floorAt,walk,platformAt,nearestStation,nearestLandmark,
+  return {root,trains,stations,gates,boards,columns,streetTotems,footpaths,models,loadModels,update,arrivals,boardable,board,alight,carry,changeDestination,rideInfo,setView,floorAt,walk,platformAt,nearestStation,nearestLandmark,
     mapSvg,drawMinimap,isRiding:()=>!!ride,safePoint:p=>metroSafePoint(p,!!ride),get time(){return time;},set time(v){time=v;},batches:meshes,entrance:entranceGroup,stops:STOPS};
 }

@@ -1,3 +1,4 @@
+import {createSkyviewLandscape} from './skyview-landscape.js';
 import * as THREE from 'three';
 import {nearMetro} from './metro-line.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -63,11 +64,11 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
     (Array.isArray(lines)?lines:[lines]).forEach((t,i,all)=>{g.font='bold '+font+'px Arial';g.fillText(t,align==='center'?w/2:40,h*(i+.5)/all.length,w-60);});const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return {texture:t,canvas:c,ctx:g};};
   function sign(text,x,y,z,w,h,ry=0,opts={},group=root){const {texture}=signTexture(text,opts);const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:texture,roughness:.6,emissive:0xffffff,emissiveMap:texture,emissiveIntensity:.35}));
     m.position.set(x,y,z);m.rotation.y=ry;group.add(m);return m;}
-  const flatMark=(material,x,z,w,d,y=.03,ry=0)=>box(material,x,y,z,w,.012,d,ry);
+  const flatMark=(material,x,z,w,d,y=.03,ry=0)=>box(material,x,Math.max(y,.025),z,w,.012,d,ry);
 
   // ---------- ground ----------
-  cube(root,2050,-.5,-2200,2300,.41,1000,C.grass,false);// x 900..3200, z -1700..-2700 (Northstar's grass covers west of 900)
-  cube(root,1815,-.5,-2900,2770,.41,400,C.grass,false);// x 430..3200, z -2700..-3100
+  cube(root,2050,-.48,-2200,2300,.41,1000,C.grass,false);// x 900..3200, z -1700..-2700 (Northstar's grass covers west of 900)
+  cube(root,1815,-.48,-2900,2770,.41,400,C.grass,false);// x 430..3200, z -2700..-3100
   // Open country around the airport so the ground never ends in view (approach and climb-out areas).
   cube(root,1500,-.52,-3650,4800,.41,1100,C.grass,false);cube(root,3800,-.52,-2400,1200,.41,1400,C.grass,false);
   const road=(x,z,w,d)=>cube(root,x,-.08,z,w,.1,d,C.road,false),pave=(x,z,w,d,y=-.06)=>cube(root,x,y,z,w,.1,d,C.walk,false);
@@ -76,13 +77,14 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   for(const x of [A.loop.west,A.loop.east])road(x,(A.road.z+A.loop.curb)/2,A.loop.halfWidth*2,A.road.z-A.loop.curb);
   road((A.loop.west+A.loop.east)/2,A.loop.curb,A.loop.east-A.loop.west+A.loop.halfWidth*2,A.loop.halfWidth*2);
   road((A.parking.minX+A.parking.maxX)/2,(A.parking.minZ+A.parking.maxZ)/2,A.parking.maxX-A.parking.minX,A.parking.maxZ-A.parking.minZ);
-  pave((A.landside.minX+A.landside.maxX)/2,(A.landside.minZ+A.landside.maxZ)/2,A.landside.maxX-A.landside.minX,A.landside.maxZ-A.landside.minZ,-.09);pave(1150,-1977,A.loop.east-A.loop.west+30,16);pave(905,-1866,250,240,-.07);
+  pave(1150,-1977,A.loop.east-A.loop.west+30,16);for(const x of [A.loop.west,A.loop.east])pave(x+(x===A.loop.west?-1:1)*(A.loop.halfWidth+1.2),(A.road.z+A.loop.curb)/2,2.4,A.road.z-A.loop.curb);
   for(const s of [-1,1])pave((A.road.x0+A.road.x1)/2,A.road.z+s*(A.road.halfWidth+1),A.road.x1-A.road.x0,2);
   groundSurfaces?.push({minX:A.landside.minX,maxX:A.landside.maxX,minZ:A.landside.minZ,maxZ:A.landside.maxZ,top:0,kind:'concrete',airport:true});
   // Road paint and parking stalls.
   for(let x=A.road.x0+6;x<A.road.x1-10;x+=12)flatMark(M.white,x,A.road.z,6,.18,.0);
   for(let x=A.parking.minX+6;x<A.parking.maxX-3;x+=3)for(const z of [-1792,-1812,-1852,-1872,-1912,-1932])flatMark(M.white,x,z,.12,5,.0);
   flatMark(M.white,1150,A.loop.curb+A.loop.halfWidth-.4,190,.2,.0);for(let x=1060;x<1245;x+=8)flatMark(M.yellow,x,A.loop.curb+A.loop.halfWidth-1.2,4,.15,.0);
+  for(let x=870;x<=880;x+=1.5)flatMark(M.white,x,A.road.z,.7,14.5,.025);
   // Curbside canopy and wayfinding.
   for(let x=1080;x<=1220;x+=20){box(M.steel,x,0,-1972,.5,6,.5);solid(x,-1972,.6,.6,'airport-column');}
   box(M.cream,1150,6,-1977,160,.6,14);camBox(1150,6,-1977,160,.6,14);box(M.light,1150,5.95,-1977,150,.08,10);
@@ -91,8 +93,7 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   for(let x=A.road.x0+30;x<A.road.x1;x+=45)for(const s of [-1,1]){if(nearMetro(x,A.road.z+s*9,0))continue;const z=A.road.z+s*(A.road.halfWidth+1.5);box(M.steel,x,0,z,.22,8,.22);box(M.light,x,8,z-s*1,.5,.25,1.6);visualKit.atmosphere?.addStreetLight?.({x,y:8,z:z-s*1,groundY:.02});}
   // Parked cars in the lot (a few on phones).
   if(parkedCar){let n=0;for(const z of [-1802,-1862,-1922])for(let x=A.parking.minX+9;x<A.parking.maxX-6&&n<(mobile?6:18);x+=12){if(((x*7+z)|0)%3===0||nearMetro(x,z,9))continue;parkedCar(x,z,z<-1900?Math.PI:0);n++;}}
-  // Plaza benches and planters around the landmark.
-  for(const [x,z] of [[870,-1790],[950,-1790],[1010,-1830],[1010,-1930],[850,-1960]]){box(M.wood,x,.45,z,4,.12,1.2);box(M.seatFrame,x,0,z,3.6,.45,.2);solid(x,z,4,1.2,'airport-bench');}
+  const skyview=createSkyviewLandscape({parent:root,cube,C,visualKit,obstacles,groundSurfaces});
 
   // ---------- landmark (owner's arched building and its old tower) ----------
   const L=A.landmark,lm={core:[L.x+43,L.z],tower:[L.x-81,L.z+18],feet:[[94,-3],[-8,3],[40,51],[40,-51]].map(([x,z])=>[L.x+x,L.z+z])};
@@ -252,5 +253,5 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   // Moving-walkway velocity under a walking player (m/s), or null.
   function conveyor(p){const t=travelatorAt(p);return t?{x:0,z:t.dir*BELT_SPEED}:null;}
   function nearestLandmark(p){let best=null,dist=Infinity;for(const [id,s] of Object.entries(AIRPORT_PLACES)){const d=Math.hypot(p.x-s.x,p.z-s.z);if(d<s.r&&d<dist){dist=d;best={id,name:s.name,x:s.x,z:s.z,fact:AIRPORT_FACTS[id],think:AIRPORT_THINK[id]};}}return best;}
-  return {root,interior,exterior,models,loadModels,update,conveyor,nearestLandmark,places:AIRPORT_PLACES,get inside(){return inside;},batches:meshes,board:{draw:drawBoard,mesh:boardMesh},lights:lightSets};
+  return {root,interior,exterior,skyview,models,loadModels,update,conveyor,nearestLandmark,places:AIRPORT_PLACES,get inside(){return inside;},batches:meshes,board:{draw:drawBoard,mesh:boardMesh},lights:lightSets};
 }
