@@ -65,8 +65,8 @@ assert.ok(refs.every(r=>r.group.userData.vehicleVisual.paint.envMap===environmen
 const originalFetch=globalThis.fetch,originalWarn=console.warn;
 try {
   console.warn=()=>{};
-  const senna=await readFile(new URL('../assets/vehicles/senna.glb.gz',import.meta.url));
-  globalThis.fetch=async url=>new URL(url).pathname.endsWith('senna.glb.gz')?new Response(senna):new Response('',{status:404});
+  const senna=await readFile(new URL('../assets/vehicles/senna-ready.glb.gz',import.meta.url));
+  globalThis.fetch=async url=>new URL(url).pathname.endsWith('senna-ready.glb.gz')?new Response(senna):new Response('',{status:404});
   const partial=await loadPremiumVehicleTemplates(new URL('https://vehicle-test.invalid/assets/'));
   assert.deepEqual([...partial.keys()],['senna'],'One unavailable model does not discard the other loaded asset');
   globalThis.fetch=async()=>new Response('',{status:503});
