@@ -56,7 +56,7 @@ c.METRO_FARE=(await import('../assets/metro-world.js')).METRO_FARE;
 const platform={station:{id:'rivergate',name:'Rivergate'},platform:1,departurePlatform:1,terminates:false,towards:{id:'airport',name:'Northstar Airport'},wait:90};
 metroStub.platformAt=()=>platform;run('player.position.set(54,8.72,-1210);findNear();');assert.equal(run('near.kind'),'metroPlatform');
 c.openMetroPlatform();assert.ok(doc.querySelector('#panel').innerHTML.includes('tap Board'));c.closeGamePanel();
-platform.terminates=true;platform.platform=2;run('findNear();interactNow();');assert.ok(doc.querySelector('#panel').innerHTML.includes('west side of the road'));assert.ok(doc.querySelector('#panel').innerHTML.includes('platform 1'));c.closeGamePanel();
+platform.terminates=true;platform.platform=2;run('findNear();interactNow();');assert.ok(doc.querySelector('#panel').innerHTML.includes('west side of the station greenway'));assert.ok(doc.querySelector('#panel').innerHTML.includes('platform 1'));c.closeGamePanel();
 platform.terminates=false;platform.platform=1;
 metroStub.boardable=()=>({train:0,station:platform.station,terminates:false,towards:platform.towards,stops:[{id:'midtown',minutes:1}],departsIn:12});
 run('findNear();');assert.equal(run('near.kind'),'metroBoard');run('interactNow();');assert.ok(doc.querySelector('#panel').innerHTML.includes("boardMetro(0,'midtown')"));

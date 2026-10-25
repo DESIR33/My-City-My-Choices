@@ -72,9 +72,11 @@ export const RIVER=Object.freeze({south:-550,north:-770,waterLevel:-1.6});
 export const BRIDGE=Object.freeze({south:-350,north:-970,deck:8,roadHalfWidth:7.5,walkHalfWidth:11.1});
 export const TOWERS=Object.freeze(Array.from({length:15},(_,i)=>({id:'north-tower-'+i,x:[-120,0,120][i%3],z:-1210-Math.floor(i/3)*120,w:34+(i%3)*3,d:36+(i%2)*4,height:[88,126,104,142,96,158,114,186,132,98,148,120,166,110,138][i],use:['Offices','Apartments','Hotel'][i%3],name:['Hudson Exchange','Northstar Residences','Grand River Hotel','Atlas Financial','Parkview Apartments','Meridian House','Foundry Studios','Northstar Tower','Crescent Hotel','Broadway Works','Skyline Homes','Harbor Suites','Union Center','Garden Residences','Crown Plaza'][i]})));
 // Ground kept clear for the metro's Northstar Central station and its plaza entrance
-// (tests/metro.test.mjs checks it covers metro-line.js). Blocks there give way.
-export const METRO_CENTRAL_RESERVE=Object.freeze({minX:48,maxX:94,minZ:-1492,maxZ:-1401});
+// (tests/metro.test.mjs checks it covers metro-line.js). The old city lot is restored.
+export const METRO_CENTRAL_RESERVE=Object.freeze({minX:268,maxX:314,minZ:-1492,maxZ:-1401});
 export const CITY_BLOCKS=Object.freeze(TOWERS.flatMap((t,i)=>[-1,1].map((side,j)=>({x:t.x+side*37,z:t.z+30,w:19,d:23,height:12+(i+j)%4*4,use:['Restaurant','Apartments','Bookshop','Office','Deli','Theater'][(i*2+j)%6],name:['RIVER TABLE','PARKSIDE HOMES','NORTHSTAR BOOKS','STUDIO & CO.','BROADWAY DELI','THE LYRIC'][(i*2+j)%6]}))).filter(b=>{const R=METRO_CENTRAL_RESERVE;return b.x+b.w/2<=R.minX||b.x-b.w/2>=R.maxX||b.z+b.d/2<=R.minZ||b.z-b.d/2>=R.maxZ;}));
+// Dedicated pedestrian/rail right of way, outside the downtown road grid.
+export const METRO_GREENWAYS=Object.freeze([{minX:244,maxX:322,minZ:-1810,maxZ:-1100},{minX:300,maxX:1042,minZ:-1798,maxZ:-1760}].map(Object.freeze));
 // Smooth grade transitions meet both the flat approach and the river span with
 // zero slope. The 200 m approaches keep the peak grade below six percent.
 export function bridgeHeight(z){
@@ -86,7 +88,7 @@ export function bridgeHeight(z){
 }
 export function onBridge(x,z){return Math.abs(x)<=BRIDGE.walkHalfWidth&&z<=BRIDGE.south&&z>=BRIDGE.north;}
 export function bridgePitch(x,z,heading){return onBridge(x,z)?Math.atan2(bridgeHeight(z-1)-bridgeHeight(z+1),2)*Math.cos(heading):0;}
-export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(airportWalkable(x,z))return true;if(communityReserved(x,z))return true;if(rondaWalkable(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
+export function worldWalkable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(airportWalkable(x,z)||METRO_GREENWAYS.some(r=>withinRect(x,z,r)))return true;if(communityReserved(x,z))return true;if(rondaWalkable(x,z))return true;if(Math.abs(x)<=158&&Math.abs(z)<=158)return true;if(z>=150&&z<=1082&&Math.abs(x)<=11.1)return true;if(z>=COAST_CITY.minZ&&z<=COAST_CITY.maxZ&&x>=COAST_CITY.minX&&x<=COAST_CITY.maxX)return true;if(z<=-150&&z>=-1122&&Math.abs(x)<=BRIDGE.walkHalfWidth)return true;return x>=NORTH_CITY.minX&&x<=NORTH_CITY.maxX&&z>=NORTH_CITY.minZ&&z<=NORTH_CITY.maxZ;}
 export function worldDrivable(x,z){if(!Number.isFinite(x)||!Number.isFinite(z))return false;if(airportDrivable(x,z))return true;if(communityDrivable(x,z))return true;if(communityReserved(x,z))return false;if(rondaDrivable(x,z))return true;if(mapleOnRoad(x,z,-.02))return true;if(z>=150&&z<=1080&&Math.abs(x)<7.48)return true;if(z>=1040&&z<=2080&&x>=-252&&x<7.48&&(COAST_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||COAST_CITY.streets.some(n=>Math.abs(z-n)<7.48)))return true;if(z<=-150&&z>=-1150&&Math.abs(x)<7.48)return true;return x>=-240&&x<=240&&z>=-1795&&z<=-1130&&(NORTH_CITY.avenues.some(n=>Math.abs(x-n)<7.48)||NORTH_CITY.streets.some(n=>Math.abs(z-n)<7.48));}
 export function districtName(z,x=0){if(communityReserved(x,z))return MAPLE_GROVE.name;if(withinRect(x,z,AIRPORT.bounds))return AIRPORT.name;if(x<RONDA.maxX+.5&&z>=RONDA.minZ-60&&z<=RONDA.maxZ+60)return RONDA.name;return z>=1040?'Sunshore City':z>158?'Coast Road':z<-1120?'Northstar City':z<=BRIDGE.south&&z>=BRIDGE.north?'Rivergate Bridge':z<-158?'North Road':'Maple Street';}
 export function northResponseRoute(start,target){
@@ -124,6 +126,8 @@ export const AIRPORT=Object.freeze({name:'Northstar Airport',
   corridor:Object.freeze({minX:1136,maxX:1164,minZ:-2120,maxZ:-2062}),
   lounge:Object.freeze({minX:1040,maxX:1265,minZ:-2152,maxZ:-2120}),
   entrance:Object.freeze({minX:1124,maxX:1176})});
+// Skyview's public garden: paving is bounded and kept off the access/loop roads.
+export const SKYVIEW_PATHS=Object.freeze([{minX:871,maxX:879,minZ:-1970,maxZ:-1759.6},{minX:875,maxX:958,minZ:-1842,maxZ:-1834},{minX:875,maxX:1044,minZ:-1971,maxZ:-1965},{minX:1040.5,maxX:1044,minZ:-1968,maxZ:-1760},{minX:875,maxX:910,minZ:-1803,maxZ:-1799},{minX:906,maxX:910,minZ:-1801,maxZ:-1789},{minX:875,maxX:904,minZ:-1770,maxZ:-1766},{minX:900,maxX:904,minZ:-1774,maxZ:-1768}].map(Object.freeze));
 // Inside the terminal (departures hall, gate corridor or gate lounge).
 export function airportInside(x,z,margin=0){const A=AIRPORT;return withinRect(x,z,A.hall,margin)||withinRect(x,z,A.corridor,margin)||withinRect(x,z,A.lounge,margin);}
 export function airportWalkable(x,z){const A=AIRPORT,R=A.road;if(Math.abs(z-R.z)<=R.halfWidth+2&&x>=R.x0&&x<=R.x1)return true;

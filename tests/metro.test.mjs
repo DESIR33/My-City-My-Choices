@@ -15,10 +15,10 @@ for(const [key,limit] of [['train',4e5],['entrance',7e5]]){const bytes=await rea
 const T=METRO_MODELS.train;assert.ok(Math.abs(T.length-TRAIN.length)<.1&&T.width<3&&T.triangles<20000,'a 27.5 m car');
 assert.ok(Math.abs(RAIL_Y+T.floor-PLATFORM_Y)<.01,'level boarding: car floor = platform height');
 
-// Line: from the south of Northstar, up the x=60 avenue, east over the north street and
-// the airport road, then north to the terminal.
-assert.ok(Math.abs(CENTRELINE[0].x-60)<.01&&CENTRELINE[0].z===-1100&&Math.abs(CENTRELINE.at(-1).x-1150)<.01&&CENTRELINE.at(-1).z===-1950);
-assert.ok(LINE_LENGTH>1850&&LINE_LENGTH<1950);
+// Line: a separate eastern greenway, then the north-side airport greenway
+// and a station west of the terminal loop; no longitudinal road occupation.
+assert.ok(Math.abs(CENTRELINE[0].x-280)<.01&&CENTRELINE[0].z===-1100&&Math.abs(CENTRELINE.at(-1).x-1028)<.01&&CENTRELINE.at(-1).z===-1950);
+assert.ok(LINE_LENGTH>1500&&LINE_LENGTH<1650);
 for(let i=1;i<CENTRELINE.length;i++)assert.ok(Math.hypot(CENTRELINE[i].x-CENTRELINE[i-1].x,CENTRELINE[i].z-CENTRELINE[i-1].z)<1.01,'continuous');
 assert.equal(STATIONS.length,7);assert.deepEqual(STATIONS.map(s=>s.id),['rivergate','midtown','central','uptown','northgate','plaza','airport']);
 assert.equal(STATIONS.filter(s=>s.kind==='central').length,1);
@@ -31,10 +31,10 @@ for(const st of STATIONS){const F=stationFrame(st),p=lineAt(st.s);assert.ok(!p.c
   for(const t of SKYLINE_TOWERS){const fw=t.footprint[0]+4,fd=t.footprint[1]+4,z=t.z+t.offset[1];assert.ok(f.maxX<t.x-fw/2||f.minX>t.x+fw/2||f.maxZ<z-fd/2||f.minZ>z+fd/2,st.id+' clear of '+t.name);}
   for(const b of CITY_BLOCKS)assert.ok(!metroReserved(b),st.id+' clear of '+b.name);
   void F;}
-assert.equal(CITY_BLOCKS.length,TOWERS.length*2-1,'one small block gives way to Central');
+assert.equal(CITY_BLOCKS.length,TOWERS.length*2,'Central moves outside the building grid');
 {const R=METRO_CENTRAL_RESERVE,f=stationFootprint(STATIONS[2],2),K=ENTRANCE.kiosk;assert.ok(f.minX>=R.minX&&f.maxX<=R.maxX&&f.minZ>=R.minZ&&f.maxZ<=R.maxZ&&K.minX>=R.minX&&K.maxX<=R.maxX&&K.minZ>=R.minZ&&K.maxZ<=R.maxZ,'reserve covers Central and the entrance');}
 assert.ok(STATIONS.at(-1).at[1]>AIRPORT.parking.minZ&&STATIONS.at(-1).at[1]<AIRPORT.parking.maxZ&&stairFoot(STATIONS.at(-1)).z>AIRPORT.landside.minZ,'airport station over the parking lot, in front of the terminal');
-assert.ok(nearMetro(60,-1400)&&nearMetro(700,-1750)&&!nearMetro(0,-1400)&&!nearMetro(1150,-2050));
+assert.ok(nearMetro(280,-1400)&&nearMetro(700,-1782)&&!nearMetro(60,-1400)&&!nearMetro(1150,-2050));
 
 // Floors: platforms and stairs are walkable; the tracks and the air beyond are not.
 const mid=STATIONS[1],F=stationFrame(mid),w=(u,v)=>F.toWorld(u,v);
