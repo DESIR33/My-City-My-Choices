@@ -63,6 +63,11 @@ run('findNear();');assert.equal(run('near.kind'),'metroBoard');run('interactNow(
 let boarded=false;metroStub.board=(train,destination,actor)=>{boarded=train===0&&destination==='midtown'&&!!actor;return boarded;};c.boardMetro(0,'midtown');assert.ok(boarded,'destination button reaches actual boarding handler');
 metroStub.boardable=oldBoardable;delete metroStub.platformAt;delete metroStub.board;run('player.position.set('+beforeLevelProbe.x+','+beforeLevelProbe.y+','+beforeLevelProbe.z+');findNear();');
 
+// Airport entrance uses the actual proximity prompt and interaction dispatcher.
+c.airportWorld={nearestAction:()=>({id:'entrance',name:'Terminal entrance'}),nearestLandmark:()=>null,visit:{},flights:()=>[]};
+run('player.position.set(1150,0,-1979);findNear();');assert.equal(run('near.kind'),'airportService');run('interactNow();');assert.ok(doc.querySelector('#panel').innerHTML.includes('Guide me to check-in'));c.closeGamePanel();delete c.airportWorld;
+run('player.position.set('+beforeLevelProbe.x+','+beforeLevelProbe.y+','+beforeLevelProbe.z+');findNear();');
+
 // Play through the story using the same public handlers as its buttons.
 // The main playthrough is a 6-year-old's Sprout story: the original story money.
 doc.querySelector('#onboardingGoal').value='0';doc.querySelector('#replaceStory').checked=true;

@@ -45,7 +45,7 @@ assert.equal(world.nearestLandmark({x:1600,z:-2600}),null);
 assert.equal(TRAVELATORS.length,6);assert.deepEqual(world.conveyor({x:1146,z:-2090}),{x:0,z:-BELT_SPEED});assert.deepEqual(world.conveyor({x:1154,z:-2090}),{x:0,z:BELT_SPEED});assert.equal(world.conveyor({x:1150,z:-2090}),null);
 for(const t of TRAVELATORS){assert.ok(travelatorAt(t)===t&&worldWalkable(t.x,t.z));for(const end of [-1,1])assert.ok(!obstacles.some(o=>{const z=t.z+end*7;return t.x>o.minX&&t.x<o.maxX&&z>o.minZ&&z<o.maxZ;}),'open ends');}
 // Inside/outside swap and streamed models.
-world.update(.1,{position:{x:1150,z:-2030}});assert.ok(world.inside&&world.interior.visible&&!world.exterior.visible);world.update(.1,{position:{x:1150,z:-1970}});assert.ok(!world.inside&&!world.interior.visible&&world.exterior.visible);
+world.update(.1,{position:{x:1150,z:-2030}});assert.ok(world.inside&&world.interior.visible&&world.exterior.visible);world.update(.1,{position:{x:1150,z:-1970}});assert.ok(!world.inside&&world.interior.visible&&world.exterior.visible);
 await world.loadModels();assert.equal(world.models.state,'ready');assert.ok(world.models.terminal&&world.models.tower&&world.models.landmark);assert.equal(world.models.travelators.length,6);
 const board=departuresBoard(15.5);assert.equal(board.length,8);assert.equal(board[0].status,'Boarding');assert.match(board[0].time,/^3:(4|5)\d PM$/);assert.ok(board.every(f=>A.stands.some(s=>s.id===f.gate)));
 

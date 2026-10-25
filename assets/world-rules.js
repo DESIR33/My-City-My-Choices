@@ -118,14 +118,15 @@ export const AIRPORT=Object.freeze({name:'Northstar Airport',
   // jet bridges; A1 and A4 get built bridges; B1 and B2 are remote stands.
   stands:Object.freeze([{id:'A1',x:1062,maxSpan:40,bridge:'built'},{id:'A2',x:1119,maxSpan:40,bridge:'model'},{id:'A3',x:1177,maxSpan:40,bridge:'model'},{id:'A4',x:1245,maxSpan:66,bridge:'built'},{id:'B1',x:1335,maxSpan:82},{id:'B2',x:1425,maxSpan:82}].map(Object.freeze)),standNoseZ:-2209,
   tower:Object.freeze({x:1700,z:-2330}),landmark:Object.freeze({x:915,z:-1878}),
-  road:Object.freeze({z:-1750,x0:240,x1:1256,halfWidth:7.5}),
+  road:Object.freeze({z:-1750,x0:240,x1:1558,halfWidth:7.5}),
   loop:Object.freeze({west:1052,east:1248,curb:-1962,halfWidth:7}),
   parking:Object.freeze({minX:1066,maxX:1234,minZ:-1940,maxZ:-1772}),
-  landside:Object.freeze({minX:780,maxX:1262,minZ:-1985,maxZ:-1742}),
+  landside:Object.freeze({minX:780,maxX:1562,minZ:-1985,maxZ:-1742}),
   hall:Object.freeze({minX:1062,maxX:1238,minZ:-2062,maxZ:-1985}),
   corridor:Object.freeze({minX:1136,maxX:1164,minZ:-2120,maxZ:-2062}),
   lounge:Object.freeze({minX:1040,maxX:1265,minZ:-2152,maxZ:-2120}),
-  entrance:Object.freeze({minX:1124,maxX:1176})});
+  overflowParking:Object.freeze({minX:1280,maxX:1550,minZ:-1940,maxZ:-1772}),
+  entrance:Object.freeze({minX:1144,maxX:1156})});
 // Skyview's public garden: paving is bounded and kept off the access/loop roads.
 export const SKYVIEW_PATHS=Object.freeze([{minX:871,maxX:879,minZ:-1970,maxZ:-1759.6},{minX:875,maxX:958,minZ:-1842,maxZ:-1834},{minX:875,maxX:1044,minZ:-1971,maxZ:-1965},{minX:1040.5,maxX:1044,minZ:-1968,maxZ:-1760},{minX:875,maxX:910,minZ:-1803,maxZ:-1799},{minX:906,maxX:910,minZ:-1801,maxZ:-1789},{minX:875,maxX:904,minZ:-1770,maxZ:-1766},{minX:900,maxX:904,minZ:-1774,maxZ:-1768}].map(Object.freeze));
 // Inside the terminal (departures hall, gate corridor or gate lounge).
@@ -136,7 +137,7 @@ export function airportWalkable(x,z){const A=AIRPORT,R=A.road;if(Math.abs(z-R.z)
   return airportInside(x,z);}
 export function airportDrivable(x,z){const A=AIRPORT,R=A.road,L=A.loop;if(Math.abs(z-R.z)<R.halfWidth&&x>=R.x0&&x<=R.x1)return true;
   if((Math.abs(x-L.west)<L.halfWidth||Math.abs(x-L.east)<L.halfWidth)&&z<=R.z&&z>=L.curb-L.halfWidth)return true;
-  if(Math.abs(z-L.curb)<L.halfWidth&&x>=L.west-L.halfWidth&&x<=L.east+L.halfWidth)return true;return withinRect(x,z,A.parking);}
+  if(Math.abs(z-L.curb)<L.halfWidth&&x>=L.west-L.halfWidth&&x<=L.east+L.halfWidth)return true;return withinRect(x,z,A.parking)||withinRect(x,z,A.overflowParking);}
 export const RONDA=Object.freeze({name:'Ronda',minX:-700,maxX:-300,minZ:1150,maxZ:1850,cliffX:-700,gorge:Object.freeze({minZ:1478,maxZ:1522,eastX:-330}),valleyY:-100,
   bridges:Object.freeze([Object.freeze({id:'puente-nuevo',name:'Puente Nuevo',x:-520,halfWidth:6.2}),Object.freeze({id:'puente-viejo',name:'Puente Viejo',x:-410,halfWidth:2.6})]),
   link:Object.freeze({z:1400,minX:-310,maxX:-252,halfWidth:7.5}),roads:Object.freeze({ew:Object.freeze([1400,1650]),ns:Object.freeze([-520,-345])})});
