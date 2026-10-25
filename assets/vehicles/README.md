@@ -81,3 +81,7 @@ Only active play starts loading; files are fetched/parsed serially, once. One
 nearby civilian is upgraded per frame. The driven car uses authored medium detail
 and phones never expose a maximum-detail level. Police retain their existing rig.
 These changes restore authored shapes without claiming measured device stability.
+
+## Prepared desktop Mustang
+
+`mustang-template.bin.gz` is generated with `node tools/prepare-mustang.mjs` from the existing owner-supplied `assets/maple-mustang.obj.gz` and `assets/MapleStreetMustang.mtl`. It preserves the exact existing prepared body (including welded normals/material groups), wheel centers and fourteen projected rear panels. The version-1 packed file has a little-endian JSON-header length, a UTF-8 header padded to four bytes, and aligned Float32/Uint16/Uint32 geometry arrays. The header stores attribute descriptors, material names/groups, bounds and wheel centers. Runtime reads shared buffer views; no OBJ parse, welding or rear-panel projection occurs in gameplay. Keep the original sources and run the native source-equivalence regression after regeneration. This desktop-only download does not change the compact mobile pipeline.

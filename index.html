@@ -76,8 +76,6 @@ html,body{width:100%;height:100%;overscroll-behavior:none}#game{position:fixed;i
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="text/plain" id="cityRuntime">
 import * as THREE from "three";
-import {OBJLoader} from "three/addons/loaders/OBJLoader.js";
-import {MTLLoader} from "three/addons/loaders/MTLLoader.js";
 import {RoundedBoxGeometry} from "three/addons/geometries/RoundedBoxGeometry.js";
 import {CITY_LIGHT_STORAGE,CITY_LIGHT_PRESETS,restoreCityTime,advanceCityTime,setCityLightPreset,formatCityTime} from "./assets/city-time.js";
 import {skyFromDate} from "./assets/local-sky.js";
@@ -89,7 +87,8 @@ import {PLAN_CATEGORIES,freshMoneyPlan,restoreMoneyPlan,planTotals,changeReserve
 import {CAR_OFFERS,carPrices,TANK_CAPACITY,offerFor,freshCarOwnership,restoreCarOwnership,carBudget,fuelQuote,transactCar,useOwnedCar} from "./assets/vehicle-ownership.js";
 import {VEHICLE,createVehicleState,advanceVehicle,vehicleFootprint,vehicleBlocksPedestrian,rectanglesOverlap} from "./assets/vehicle-physics.js";
 import {civilianAppearance,availableFleetModel} from "./assets/vehicle-fleet.js";
-import {prepareVehicleTemplate,mountVehicle,updateVehicleVisual} from "./assets/vehicles.js";
+import {decodeVehicleTemplate} from "./assets/vehicle-template.js";
+import {mountVehicle,updateVehicleVisual} from "./assets/vehicles.js";
 import {createMobileFleet,loadPremiumVehicleTemplates,updateVehicleDetail,setVehicleEnvironment} from "./assets/premium-vehicles.js";
 import {createPedestrianSignal,pedestrianSignalMaterial} from "./assets/pedestrian-signals.js";
 import {createVerticalState,requestJump,advanceVertical,walkingSurface} from "./assets/character-grounding.js";
@@ -255,7 +254,21 @@ for(const [index,spot] of STATION_CARS.entries())policeCar(spot.x,spot.z,spot.he
 for(const [index,route] of PATROL_CAR_ROUTES.entries())policeCar(route.x,route.z,route.heading,true,route.speed,index+STATION_CARS.length);
 let mustangTemplate=null;
 function nextVehicleFrame(){return new Promise(resolve=>requestAnimationFrame(resolve));}
-async function loadDetailedCars(){try{const [compressed,mtlText]=await Promise.all([fetch('assets/maple-mustang.obj.gz').then(r=>{if(!r.ok)throw new Error('Car model unavailable');return r.arrayBuffer()}),fetch('assets/MapleStreetMustang.mtl').then(r=>{if(!r.ok)throw new Error('Car materials unavailable');return r.text()})]);const objText=await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text(),materials=new MTLLoader().parse(mtlText,'assets/');materials.preload();const original=new OBJLoader().setMaterials(materials).parse(objText),template=prepareVehicleTemplate(original);mustangTemplate=template;for(const [i,ref] of vehicleRefs.entries()){const activePolice=ref.group.userData.policeVehicle?.active;mountVehicle(ref.group,template,ref.color,i);if(ref.group.userData.policeVehicle){addPoliceVehicleDetails(ref.group,i);ref.group.userData.policeVehicle.active=activePolice;}ref.group.add(visualKit.contactShadow(2.55,5.1,.063));await nextVehicleFrame();}original.traverse(o=>{if(o.isMesh)o.geometry.dispose()});console.info('Loaded independently animated vehicle rigs for',vehicleRefs.length,'vehicles')}catch(error){console.warn('Detailed car model could not be loaded; keeping shaped fallback vehicles.',error)}}
+async function loadDetailedCars(){try{
+ const response=await fetch('assets/vehicles/mustang-template.bin.gz');if(!response.ok)throw new Error('Car template unavailable');
+ const bytes=await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer(),template=decodeVehicleTemplate(bytes);mustangTemplate=template;
+ for(const [i,ref] of vehicleRefs.entries()){
+  // Premium civilian slots get their final model in the next pass. Avoid
+  // constructing and immediately disposing a Ford rig for these cars.
+  if(!ref.group.userData.policeVehicle&&ref.group.userData.fleetAppearance?.modelId!=='mustang')continue;
+  const activePolice=ref.group.userData.policeVehicle?.active,travel=ref.group.userData.vehicleVisual?.travel||0;
+  mountVehicle(ref.group,template,ref.color,i);ref.group.userData.vehicleVisual.travel=travel;
+  if(ref.group.userData.policeVehicle){addPoliceVehicleDetails(ref.group,i);ref.group.userData.policeVehicle.active=activePolice;}
+  ref.group.add(visualKit.contactShadow(2.55,5.1,.063));
+  if(ref.group===driving&&vehicleState)updateVehicleVisual(ref.group,vehicleState,0);
+  await nextVehicleFrame();
+ }
+}catch(error){console.warn('Detailed car template could not be loaded; keeping shaped fallback vehicles.',error)}}
 async function loadPremiumCars(){
   const templates=await loadPremiumVehicleTemplates();
   const available=new Map(templates);if(mustangTemplate)available.set('mustang',mustangTemplate);

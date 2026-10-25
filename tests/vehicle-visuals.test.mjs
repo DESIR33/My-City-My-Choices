@@ -7,6 +7,7 @@ import {MTLLoader} from 'three/addons/loaders/MTLLoader.js';
 import {mountVehicleWheel} from '../assets/vehicle-wheels.js';
 import {prepareVehicleTemplate,mountVehicle,updateVehicleVisual} from '../assets/vehicles.js';
 import {VEHICLE} from '../assets/vehicle-physics.js';
+import {decodeVehicleTemplate} from '../assets/vehicle-template.js';
 
 for(const side of [-1,1]) {
   const rig=new THREE.Group(),center=new THREE.Vector3(side*.832,.388,1.47),wheel=mountVehicleWheel(rig,center);
@@ -33,3 +34,20 @@ updateVehicleVisual(car,{wheelTravel:2,steering:.25,brake:1,gear:'R'},.04);
 assert.ok(wheels.every(w=>w.spin.rotation.x>0));assert.ok(wheels.filter(w=>w.front).every(w=>w.pivot.rotation.y>0));
 assert.equal(brakeMaterial.emissiveIntensity,2.6);assert.equal(reverseMaterial.emissiveIntensity,1.4);
 console.log('Vehicle visuals passed: open rims, recessed brakes, road contact, model import, smoked glazing, steering, wheel rotation and lamp states.');
+
+// The prebuilt template must retain every rendered vertex, normal, UV, material
+// group, wheel center and projected rear panel from the original authored path.
+const packed=gunzipSync(await readFile(new URL('../assets/vehicles/mustang-template.bin.gz',import.meta.url))),decoded=decodeVehicleTemplate(packed.buffer.slice(packed.byteOffset,packed.byteOffset+packed.byteLength));
+function sameGeometry(a,b){
+ assert.deepEqual(Object.keys(a.attributes),Object.keys(b.attributes));
+ for(const key of Object.keys(a.attributes)){assert.equal(a.attributes[key].itemSize,b.attributes[key].itemSize);assert.deepEqual(a.attributes[key].array,b.attributes[key].array);}
+ assert.deepEqual(a.index?.array,b.index?.array);assert.deepEqual(a.groups,b.groups);
+}
+sameGeometry(decoded.body.geometry,template.body.geometry);assert.deepEqual(decoded.body.names,template.body.names);assert.deepEqual(decoded.centers.map(c=>c.toArray()),template.centers.map(c=>c.toArray()));
+assert.deepEqual([...decoded.rearPanels.keys()],[...template.rearPanels.keys()]);for(const [key,g] of decoded.rearPanels)sameGeometry(g,template.rearPanels.get(key));
+decoded.rearSurface.raycast=()=>{throw new Error('Rear panel projection must happen at build time');};
+const preparedCar=new THREE.Group();mountVehicle(preparedCar,decoded,0x8b423a);updateVehicleVisual(preparedCar,{wheelTravel:2,steering:.25,brake:1,gear:'R'},.04);
+assert.equal(preparedCar.userData.vehicleVisual.modelId,'mustang');assert.equal(preparedCar.userData.vehicleVisual.brakeMaterial.emissiveIntensity,2.6);
+assert.ok(preparedCar.userData.vehicleVisual.wheels.every(w=>w.spin.rotation.x>0));
+let disposed=0;decoded.body.geometry.addEventListener('dispose',()=>disposed++);preparedCar.userData.vehicleVisual.dispose();assert.equal(disposed,0,'disposing a rig keeps shared prepared buffers');
+console.log('Prepared Ford exactly matches the source template: all attributes, groups, four wheel centers and fourteen rear panels; mounting performs no rear projection.');
