@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {mountOnboarding,ownScriptError,LOAD_GRACE_MS,STARTER_GOALS,setupGoal,setupTier,setupTarget,setupPinValid,existingSetupStory} from '../assets/onboarding.js';
+import {mountOnboarding,ownScriptError,LOAD_ERROR,LOAD_GRACE_MS,STARTER_GOALS,setupGoal,setupTier,setupTarget,setupPinValid,existingSetupStory} from '../assets/onboarding.js';
 import {convertDollars} from '../assets/economy.js';
 
 for(const value of ['',null,undefined,'3','-1','0.0','01',true,{},NaN])assert.equal(setupGoal(value),null);
@@ -63,3 +63,7 @@ const conversationSource=html.match(/function conversation\(x,z\)\{[^\n]*/)?.[0]
 assert.ok(conversationSource.includes('openGround(')&&!conversationSource.includes('blocked('),'conversation pairs use the setup-safe ground check');assert.ok(openGroundSource&&!/player/.test(openGroundSource));
 assert.ok(html.indexOf('function conversation(x,z)')<html.indexOf('const player=person('),'conversation() is defined before the player, so it must stay player-free');
 console.log('Onboarding passed: static goals, all age-tier targets, real setup-controller steps, loading/failure states, PIN and saved-story guards with step-3 reasons, startup-safe conversation placement, safe text, focus containment and no premature save writes.');
+
+// Startup support codes expose only a fixed phase, never arbitrary error data.
+f=fixture();f.root.dataset.cityPhase='player';f.win.emit('error',own);assert.match(f.get('citySetupStatus').textContent,/CITY-PLAYER/);
+f=fixture();f.root.dataset.cityPhase='<script>private-data</script>';f.win.emit('error',own);assert.equal(f.get('citySetupStatus').textContent,LOAD_ERROR);

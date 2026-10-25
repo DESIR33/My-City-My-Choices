@@ -19,6 +19,7 @@ export const LOAD_ERROR='The city couldn’t finish loading. Your saved story ha
 // True for an uncaught error thrown by this page's own code (inline module or a
 // same-origin script). Cross-origin scripts report a bare "Script error." with no
 // file; rejections and resource events are never treated as fatal on their own.
+export function startupFailure(phase){const codes={graphics:'CITY-GRAPHICS',neighbors:'CITY-NEIGHBORS',player:'CITY-PLAYER',metro:'CITY-METRO',scene:'CITY-SCENE'};return LOAD_ERROR+(Object.hasOwn(codes,phase)?' Support code: '+codes[phase]+'.':'');}
 export function ownScriptError(event,win){
   if(!event||event.type==='unhandledrejection'||!event.message||/^Script error\.?$/i.test(event.message))return false;
   const file=event.filename||'';if(!file)return false;
@@ -77,7 +78,7 @@ export function mountOnboarding(doc,win){
   // stream) only counts if the city is still not ready LOAD_GRACE_MS later, and a
   // city that does become ready clears that generic message.
   let graceTimer=null;
-  const showLoadError=()=>{graceTimer=null;if(ready())return;if(!root.dataset.cityError){root.dataset.cityError=LOAD_ERROR;root.dataset.cityErrorGeneric='true';}refresh();};
+  const showLoadError=()=>{graceTimer=null;if(ready())return;if(!root.dataset.cityError){root.dataset.cityError=startupFailure(root.dataset.cityPhase);root.dataset.cityErrorGeneric='true';}refresh();};
   const fail=event=>{if(ready())return;if(ownScriptError(event,win))showLoadError();else if(graceTimer===null)graceTimer=(win.setTimeout?win:globalThis).setTimeout(showLoadError,LOAD_GRACE_MS);};
   doc.addEventListener('city:ready',()=>{if(graceTimer!==null){(win.clearTimeout?win:globalThis).clearTimeout(graceTimer);graceTimer=null;}if(root.dataset.cityErrorGeneric==='true'&&root.dataset.cityReady==='true'){delete root.dataset.cityError;delete root.dataset.cityErrorGeneric;refresh();}});
   win.addEventListener('error',fail);win.addEventListener('unhandledrejection',fail);

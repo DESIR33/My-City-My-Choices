@@ -6,9 +6,9 @@ Last updated: 2026-10-24 (America/New_York). Maintained project handoff, product
 
 ## Integration status
 
-Baseline main is `e89cfa64ba08cc8605ebbcb49b56d49947df366e` through merged #83, matching private v81/source `53adff5a8e262b00ae9649c4e9490d19818569dd`. After the owner reported onboarding's generic “city couldn’t finish loading” error, inspection reproduced a synchronous startup failure: airport construction paints the departures board and reads `cityTime.hour` before the later `const cityTime` initialization. The shared clock now initializes before airport construction with the same persisted settings and no save reset.
+Baseline is main `0f33386bb1e2de2dfcd29c80b1ad7b8d19c3e4c7` through merged #84, matching private v82/source `ad13d32a884002abfbda69d2251fa5a09e358c60`. The owner reports the same onboarding failure after the clock correction. A second deterministic dependency cycle is now reproduced: metro floor lookup calls `()=>player` while neighborhood/player construction is still invoking `groundHeight`, before `const player` initializes. Construct and publish the player-dependent metro only after the player exists; earlier characters use ordinary ground lookup. Keep the airport clock correction.
 
-The same follow-up completes the already-started metro action checks: board only beside an open stationary train on a real platform; refuse stale/remote/malformed/arrivals-only boarding without moving the actor; exit only onto an actual platform with open doors. Existing ride save recovery remains derived and leaves the active ride unchanged. Exact validation/publication outcomes belong in the handoff. This reproduces and fixes one concrete JavaScript startup cause; GPU/physical-device/audio acceptance and unrelated mobile process crashes remain unverified.
+The new regression executes real character creation, metro construction and the shipped ground-height/person callbacks in source order, including an earlier neighbor and a later neighbor. The pre-fix order throws and the corrected order succeeds without paused model hydration. Startup failures also show a fixed whitelisted phase support code (no raw error/stack/save contents) so another failure can be distinguished. Exact validation/publication evidence belongs in the handoff. Full rendered GPU/device acceptance and unrelated phone process crashes remain unverified.
 
 ## Start here
 
@@ -547,6 +547,15 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-24 — Break the metro/player startup dependency cycle
+
+- Request/evidence: owner reports the same generic onboarding error after v82. The prior airport test correctly covered its clock dependency but did not cover metro/character initialization. Character construction calls real `groundHeight`; after the metro global is installed it calls `metro.floorAt`, which immediately resolves the `()=>player` getter before `const player` exists. This affects early neighborhood actors and the player's own creation, before city readiness.
+- Fix: move metro construction/global registration after the existing player declaration. Earlier NPCs and the player initialize on normal world/house surfaces, then metro queries use the live initialized player. No mutable placeholder player, swallowed exception, geometry/asset removal or save reset. Metro remains installed before scene batching/navigation refresh/first-frame processing, preserving its geometry, ground obstacles, walking/boarding and frame hooks. Airport clock correction, mobile budgets and all prior features remain.
+- Diagnostics: stamp five construction phases in the intro dataset. The existing setup failure message adds only a fixed support code such as CITY-PLAYER or CITY-METRO; unknown phases produce the original generic text. No arbitrary error message, stack, name, progress or save data is shown or uploaded. Existing late-ready cleanup, specific WebGL recovery text and saved-story replacement guards remain.
+- Validation: real native character/metro/ground-height regression reproduces the original order throwing before initialization and executes the corrected source order with an early neighbor, the player and a later neighbor. Paused setup triggers no model hydration. Airport clock, actual metro riding and onboarding support-code whitelist tests also run. Both full suites pass 155/155 cases across 97 test files. All 318 runtime files match; executable inline/module syntax, staged context and whitespace checks pass before publication. The story fixture now includes a minimal non-riding metro stand-in and intro dataset; detailed initialization/riding remains covered by the real native tests. The shared startup-error formatter is used for both window and module failures; actual GPU/device gameplay remains unverified because the QA browser cannot create WebGL.
+- Compatibility: same story/preferences/save schema and ownership/economy, no new runtime module/dependency/binary asset. Publish the focused patch to the existing private Site, preserve audience and existing saves; exact source/version/CI results belong in the handoff.
+
 
 ### 2026-10-24 — Fix airport clock initialization blocking onboarding
 
