@@ -73,8 +73,7 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
     // contact wire above each track
     for(const off of [-TRACK_OFFSET,TRACK_OFFSET])box(M.wire,cx+nx*off,RAIL_Y+5.95,cz+nz*off,.05,.05,len+.04,yaw);
     s+=step;}
-  {const pts=[];for(let s=0;s<=LINE_LENGTH;s+=.01)pts.push(s);let i=0;// cheap uniform sampling for the bottom edge cameraBoxes
-    for(let s=0;s<LINE_LENGTH;s+=20){const a=lineAt(s),b=lineAt(Math.min(LINE_LENGTH,s+20));cameraBoxes.push({minX:Math.min(a.x,b.x)-5,maxX:Math.max(a.x,b.x)+5,minY:DECK_Y-1.25,maxY:DECK_Y+1.05,minZ:Math.min(a.z,b.z)-5,maxZ:Math.max(a.z,b.z)+5});i++;}pts.length=0;}
+  for(let s=0;s<LINE_LENGTH;s+=20){const a=lineAt(s),b=lineAt(Math.min(LINE_LENGTH,s+20));cameraBoxes.push({minX:Math.min(a.x,b.x)-5,maxX:Math.max(a.x,b.x)+5,minY:DECK_Y-1.25,maxY:DECK_Y+1.05,minZ:Math.min(a.z,b.z)-5,maxZ:Math.max(a.z,b.z)+5});}
   // sleepers
   if(!mobile)for(let s=.6;s<LINE_LENGTH;s+=1.2){const p=lineAt(s),yaw=yawOf(p.tx,p.tz);for(const off of [-TRACK_OFFSET,TRACK_OFFSET])box(M.sleeper,p.x+p.nx*off,DECK_Y+.04,p.z+p.nz*off,2.4,.09,.26,yaw);}
   // crossovers at both tails (rails along the loop path where it changes track)
@@ -88,7 +87,7 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   for(let s=20;s<LINE_LENGTH-10;s+=48){if(stationSpan(s))continue;const p=lineAt(s),yaw=yawOf(p.tx,p.tz);for(const side of [-1,1])box(M.steel,p.x+p.nx*side*4.6,DECK_Y,p.z+p.nz*side*4.6,.25,6.9,.25,yaw);box(M.steel,p.x,RAIL_Y+6.3,p.z,9.5,.2,.2,yaw);}
 
   // ---------- stations ----------
-  const stations=[],gates=[],boards=[];const gateLeaf=new THREE.BoxGeometry(.05,1.45,.7);
+  const stations=[],gates=[],boards=[],streetTotems=[];const gateLeaf=new THREE.BoxGeometry(.05,1.45,.7);
   for(const st of STATIONS){const F=stationFrame(st),L=st.length/2,P=PLATFORM,Y=PLATFORM_Y,central=st.kind==='central',info={station:st,frame:F,boards:[]};stations.push(info);
     // platforms with tactile edge
     for(const side of [1,-1]){const v0=side>0?P.inner:-P.outer,v1=side>0?P.outer:-P.inner,edge=side*P.inner;
@@ -123,7 +122,7 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
       for(const [sv,m,h,w,lift] of [[v0+.06,M.steel,.42,.12,-.32],[v1-.06,M.steel,.42,.12,-.32],[v0+.06,M.glass,1,.03,.55],[v1-.06,M.glass,1,.03,.55],[v0+.06,M.steel,.06,.06,1.08],[v1-.06,M.steel,.06,.06,1.08]]){
         const c=F.toWorld((u0+u1)/2,sv),beam=new THREE.Mesh(unit,m);beam.position.set(c.x,Y/2+lift,c.z);beam.rotation.order='YXZ';beam.rotation.set(dir*slope,F.yaw,0);beam.scale.set(w,h,len);beam.castShadow=!mobile&&m!==M.glass;root.add(beam);}
       for(const f of [.35,.7]){const pu=low+(top-low)*f,ph=stairHeight(s,pu)-.45;sbox(F,M.steel,pu-.15,pu+.15,(v0+v1)/2-.15,(v0+v1)/2+.15,0,ph);}
-      const foot=top===u0?u1:u0,fc=F.toWorld(foot+(top===u0?1.2:-1.2),(v0+v1)/2);
+      const foot=top===u0?u1:u0,fc=F.toWorld(foot+(top===u0?1.2:-1.2),(v0+v1)/2+((v0+v1)>0?2.3:-2.3));streetTotems.push({station:st.id,...fc});
       box(M.red,fc.x,0,fc.z,.3,4.2,.3,F.yaw);const t=sign(['Ⓜ'],fc.x,4.6,fc.z,1.1,1.1,F.yaw,{w:256,h:256,font:200,bg:'#c8242b'});const t2=sign(['Ⓜ'],fc.x,4.6,fc.z,1.1,1.1,F.yaw+Math.PI,{w:256,h:256,font:200,bg:'#c8242b'});void t;void t2;
       {const lc=F.toWorld(foot+(top===u0?1.2:-1.2),(v0+v1)/2+((v0+v1)>0?-1.1:1.1));sign([st.name,LINE_NAME],lc.x,3.3,lc.z,2.6,1.1,F.yaw+((v0+v1)>0?-Math.PI/2:Math.PI/2),{w:640,h:270,font:72,bg:'#1d2a33'});}
       // the high part of the stair is a wall at street level
@@ -258,6 +257,6 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
   const mapPoints=CENTRELINE.filter((q,i)=>i%10===0||i===CENTRELINE.length-1);
   function mapSvg(mx,mz){return '<polyline points="'+mapPoints.map(q=>mx(q.x).toFixed(1)+','+mz(q.z).toFixed(1)).join(' ')+'" fill="none" stroke="#e0343a" stroke-width="3"/>'+STATIONS.map(st=>'<circle cx="'+mx(st.at[0]).toFixed(1)+'" cy="'+mz(st.at[1]).toFixed(1)+'" r="2.6" fill="#fff"/>').join('')+'<text x="'+(mx(100)+6).toFixed(1)+'" y="'+(mz(-1760)-4).toFixed(1)+'" fill="#ff8b8f" font-size="11">Ⓜ RED LINE</text>';}
   function drawMinimap(ctx,px,pz){ctx.strokeStyle='#e0343a';ctx.lineWidth=2.5;ctx.beginPath();mapPoints.forEach((q,i)=>i?ctx.lineTo(px(q.x),pz(q.z)):ctx.moveTo(px(q.x),pz(q.z)));ctx.stroke();ctx.fillStyle='#ffffff';for(const st of STATIONS){ctx.beginPath();ctx.arc(px(st.at[0]),pz(st.at[1]),2.6,0,Math.PI*2);ctx.fill();}}
-  return {root,trains,stations,gates,boards,columns,models,loadModels,update,arrivals,boardable,board,alight,carry,changeDestination,rideInfo,setView,floorAt,walk,nearestStation,nearestLandmark,
+  return {root,trains,stations,gates,boards,columns,streetTotems,models,loadModels,update,arrivals,boardable,board,alight,carry,changeDestination,rideInfo,setView,floorAt,walk,nearestStation,nearestLandmark,
     mapSvg,drawMinimap,isRiding:()=>!!ride,safePoint:p=>metroSafePoint(p,!!ride),get time(){return time;},set time(v){time=v;},batches:meshes,entrance:entranceGroup,stops:STOPS};
 }

@@ -47,10 +47,10 @@ refs.splice(23,0,{group:police,color:policePaint});
 const owned=refs[0];owned.color=0x326d8c;owned.group.userData.vehicleVisual.paint.color.setHex(owned.color);
 const position=refs[3].group.position.clone();refs[3].group.rotation.y=.6;
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
-const source=html.slice(html.indexOf('async function loadPremiumCars(){'),html.indexOf('loadDetailedCars().then(loadPremiumCars)'));
-let captured=0;
+const source=html.slice(html.indexOf('function nextVehicleFrame(){'),html.indexOf('const mobileFleet='));
+let captured=0,yields=0;const skyEnvironment=new THREE.Texture();
 const camera=new THREE.PerspectiveCamera();camera.position.set(0,3,0);
-const context={civilianAppearance,availableFleetModel,mustangTemplate:mustang,loadPremiumVehicleTemplates:async()=>new Map([...templates].filter(([key])=>key!=='mustang')),
+const context={scene:{environment:skyEnvironment},requestAnimationFrame:fn=>{yields++;fn();},civilianAppearance,availableFleetModel,mustangTemplate:mustang,loadPremiumVehicleTemplates:async()=>new Map([...templates].filter(([key])=>key!=='mustang')),
   mountVehicle,updateVehicleVisual,updateVehicleDetail,setVehicleEnvironment,vehicleRefs:refs,camera,mobileGraphics:false,
   driving:refs[3].group,vehicleState:{wheelTravel:4,steering:.2,brake:1},player:{position:new THREE.Vector3()},console,
   visualKit:{contactShadow:()=>new THREE.Group(),captureVehicleEnvironment:()=>{captured++;return new THREE.Texture();}},
@@ -64,7 +64,7 @@ assert.equal(owned.group.userData.vehicleVisual.paint.color.getHex(),owned.color
 assert.equal(refs[3].group.position.distanceTo(position),0);assert.equal(refs[3].group.rotation.y,.6);
 assert.equal(refs[3].group.userData.vehicleVisual.brakeMaterial.emissiveIntensity,2.6,'Driving input survives the model update');
 assert.ok(refs[3].group.userData.vehicleVisual.wheels.every(w=>w.spin.rotation.x>0));
-assert.equal(captured,1);assert.ok(civilians.every(r=>r.group.userData.vehicleVisual.paint.envMap),'Every brand gets the city reflections');
+assert.equal(captured,0,'No six-face city capture during vehicle loading');assert.ok(yields>0,'Detailed car installation yields between mounts');assert.ok(civilians.every(r=>r.group.userData.vehicleVisual.paint.envMap),'Every brand gets the city reflections');
 for(const ref of civilians) {
   const data=ref.group.userData.vehicleVisual;
   assert.equal(data.paint.color.getHex(),ref.color);

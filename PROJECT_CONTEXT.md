@@ -1,14 +1,14 @@
 # My City, My Choices — project context
 
-Last updated: 2026-10-24 (America/New_York). Maintained project handoff, product brief, architecture guide, decision record and change ledger.
+Last updated: 2026-10-25 (UTC). Maintained project handoff, product brief, architecture guide, decision record and change ledger.
 
 **Read this document before changing the project. Update it in every change commit, including fixes, assets, configuration, tests and documentation.** See [Maintenance contract](#maintenance-contract). This is the current-state guide; Git history and linked PRs retain implementation detail and earlier states.
 
 ## Integration status
 
-Baseline is main `0f33386bb1e2de2dfcd29c80b1ad7b8d19c3e4c7` through merged #84, matching private v82/source `ad13d32a884002abfbda69d2251fa5a09e358c60`. The owner reports the same onboarding failure after the clock correction. A second deterministic dependency cycle is now reproduced: metro floor lookup calls `()=>player` while neighborhood/player construction is still invoking `groundHeight`, before `const player` initializes. Construct and publish the player-dependent metro only after the player exists; earlier characters use ordinary ground lookup. Keep the airport clock correction.
+Baseline is main `7e51d3255b713d889d23f217a3c004e335be4908` through merged #85, matching private v83/source `73bfda5f48685ecc4b1304a11805d848ffca2a97`. Airport-clock and metro/player initialization corrections remain. The current Rivergate/performance patch addresses the owner's screenshots: street-level parked cars incorrectly blocked elevated platform walking and offered driving prompts upstairs; metro M totems occupied stair approaches.
 
-The new regression executes real character creation, metro construction and the shipped ground-height/person callbacks in source order, including an earlier neighbor and a later neighbor. The pre-fix order throws and the corrected order succeeds without paused model hydration. Startup failures also show a fixed whitelisted phase support code (no raw error/stack/save contents) so another failure can be distinguished. Exact validation/publication evidence belongs in the handoff. Full rendered GPU/device acceptance and unrelated phone process crashes remain unverified.
+Parked-car collision and driving discovery now respect actor height, preserving street collision. All station M totems move beside the approaches. Desktop character hydration/residency is bounded, detailed fleet work starts only in active play and yields between installations, and vehicle materials reuse the sky reflection instead of capturing six full-city views. Remove an unused approximately 190,000-element metro startup array. No save schema, ownership, fare or economy changes. These are source/native-verified corrections; physical-device frame rate, complete freeze resolution and rendered GPU acceptance remain unverified.
 
 ## Start here
 
@@ -547,6 +547,14 @@ This requirement comes directly from the owner: the context must be updated afte
 ```
 
 ## Change ledger and history
+
+### 2026-10-25 — Clear Rivergate platform/stairs and bound background detail work
+
+- Evidence/request: owner reports freezes on startup, movement and car entry, then screenshots showing a restricted elevated platform and a pole in the stairs. The platform screenshot also offers driving a car below. Parked obstacles and car discovery used only planar distance; the native regression reproduces a road-level car blocking a player upstairs.
+- Resolution: parked obstacles include vertical bounds and vehicle height; pedestrian blocking and driving prompts reject cars on another level while street-level body collision remains. Move all seven stations' M totems 2.3 m outward from stair centerlines. Keep actual stair/platform geometry, rail safety and boarding/floor/recovery contracts. Native walking exercises both directions on both Rivergate platform sides and checks every station's sign clearance.
+- Performance: desktop characters now use serial nearby hydration, finite draw/residency radii and a sixteen-detailed-rig draw limit (mobile remains eight). Defer desktop fleet launch until active play, yield a frame after each installation and reuse shared sky environment maps instead of a six-render full-city reflection capture. Preserve detailed vehicle brands/paints, police rigs and driven state. Delete an unused roughly 190,000-number metro allocation without changing camera coverage. OBJ parsing still runs on the main thread; this does not prove every hitch is resolved.
+- Compatibility/validation: no new runtime modules, binary assets, dependencies, save keys or migration. Existing saves, story startup protections, mobile fleet policy and household features remain. Focused native metro, actual story-handler driving discovery, fleet appearance/environment/scheduling and startup checks pass. Both complete layouts pass 156/156 cases across 98 test files; all 318 runtime sources match. Executable inline/module syntax, context policy and whitespace checks pass. No rendered GPU or physical-device performance acceptance: the QA browser cannot initialize WebGL gameplay.
+
 
 ### 2026-10-24 — Break the metro/player startup dependency cycle
 

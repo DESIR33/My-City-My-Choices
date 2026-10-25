@@ -42,6 +42,12 @@ const run=s=>c.__storyEval(s);
 Object.assign(c,await loadModule('city-time.js'),{visualKit:{atmosphere:{finalizeStreetLights(){},update(){}}}});
 const cityClockStart=html.indexOf('const cityTime=(()=>');run(html.slice(cityClockStart,html.indexOf('\n',cityClockStart))+'\n'+html.slice(html.indexOf('function persistCityLight('),html.indexOf('sessionLifecycle=createSessionLifecycle('))+';window.cityTime=cityTime;');
 assert.equal(typeof c.closeGamePanel,'function');assert.equal(typeof c.newStory,'function');assert.equal(typeof c.launchNextBusinessDay,'function');
+// A street-level car must not offer an interaction from an elevated platform.
+const beforeLevelProbe=run('({x:player.position.x,y:player.position.y,z:player.position.z})');
+run('player.position.copy(cars[1].position);findNear();');assert.equal(run('near?.kind'),'car');
+run('player.position.y=8.72;findNear();');assert.notEqual(run('near?.kind'),'car');
+run('player.position.set('+beforeLevelProbe.x+','+beforeLevelProbe.y+','+beforeLevelProbe.z+');findNear();');
+
 // Play through the story using the same public handlers as its buttons.
 // The main playthrough is a 6-year-old's Sprout story: the original story money.
 doc.querySelector('#onboardingGoal').value='0';doc.querySelector('#replaceStory').checked=true;
