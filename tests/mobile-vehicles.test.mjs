@@ -12,7 +12,7 @@ import {civilianAppearance} from '../assets/vehicle-fleet.js';
 const assets=new Map();
 const triangles=root=>{let n=0;root.traverse(o=>{if(o.isMesh)n+=(o.geometry.index?.count||o.geometry.attributes.position.count)/3;});return n;};
 for(const id of ['senna','gls']){
- const compressed=await readFile(new URL('../assets/vehicles/'+id+'-mobile.glb.gz',import.meta.url));assets.set(id,compressed);
+ const compressed=await readFile(new URL('../assets/vehicles/'+id+'-mobile.glb.gz',import.meta.url));assets.set(id,await readFile(new URL('../assets/vehicles/'+id+'-mobile-ready.glb.gz',import.meta.url)));
  const original=await readFile(new URL('../assets/vehicles/'+id+'.glb.gz',import.meta.url));assert.ok(compressed.length<original.length*.62);
  const bytes=gunzipSync(compressed),gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
  const fullBytes=gunzipSync(original),full=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(fullBytes.buffer.slice(fullBytes.byteOffset,fullBytes.byteOffset+fullBytes.byteLength),'');
@@ -40,6 +40,6 @@ test('Mobile fleet waits for play, loads once, prioritizes the driven car and mo
 test('Mobile asset fetches are serial and request only compact files; partial failures preserve available cars',async()=>{
  const old=globalThis.fetch,warn=console.warn;let active=0,peak=0;const urls=[];
  try{console.warn=()=>{};globalThis.fetch=async url=>{active++;peak=Math.max(peak,active);urls.push(String(url));await new Promise(resolve=>setTimeout(resolve,2));active--;const id=String(url).includes('senna')?'senna':'gls';return id==='senna'?new Response('',{status:404}):new Response(assets.get(id));};
-  const map=await loadPremiumVehicleTemplates(new URL('https://models.invalid/'),{mobile:true});assert.deepEqual([...map.keys()],['gls']);assert.equal(peak,1);assert.ok(urls.every(u=>u.endsWith('-mobile.glb.gz')));
+  const map=await loadPremiumVehicleTemplates(new URL('https://models.invalid/'),{mobile:true});assert.deepEqual([...map.keys()],['gls']);assert.equal(peak,1);assert.ok(urls.every(u=>u.endsWith('-mobile-ready.glb.gz')));
  }finally{globalThis.fetch=old;console.warn=warn;}
 });

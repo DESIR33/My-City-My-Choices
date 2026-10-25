@@ -6,8 +6,8 @@ import {availableFleetModel} from './vehicle-fleet.js';
 import {VEHICLE} from './vehicle-physics.js';
 
 const definitions = {
-  senna: {name:'McLaren Senna',file:'senna.glb.gz'},
-  gls: {name:'Mercedes GLS',file:'gls.glb.gz'},
+  senna: {name:'McLaren Senna'},
+  gls: {name:'Mercedes GLS'},
 };
 const palette = {
   Chrome: {color:0xaab4bb,metalness:.96,roughness:.2},
@@ -59,13 +59,16 @@ function worldClone(object) {
   return clone;
 }
 
-export function preparePremiumVehicleTemplate(scene, modelId,{mobile=false}={}) {
+export function preparePremiumVehicleTemplate(scene, modelId,{mobile=false,requirePrepared=false}={}) {
   if(!definitions[modelId])throw new Error('Unknown vehicle model: ' + modelId);
+  const preparation=scene.userData.vehiclePreparation;
+  const prepared=preparation?.version===1&&preparation.modelId===modelId&&preparation.mobile===mobile;
+  if(requirePrepared&&!prepared)throw new Error('Vehicle preparation is missing: '+modelId);
   scene.updateMatrixWorld(true);
   const materials = new Map(), originals = new Set();
   scene.traverse(o => {
     if(!o.isMesh)return;
-    if(!mobile&&modelId==='senna'&&!Array.isArray(o.material)&&/^Vehicle_(Paint|Glass)$/.test(o.material.name)) {
+    if(!prepared&&!mobile&&modelId==='senna'&&!Array.isArray(o.material)&&/^Vehicle_(Paint|Glass)$/.test(o.material.name)) {
       // Smooth within a surface material. Imported front/back materials stay
       // separate, and compression seams cannot turn into creases in the paint.
       const source=o.geometry,geometry=source.clone(),positions=source.attributes.position,points=new Float32Array(positions.count*3);
@@ -97,22 +100,25 @@ export function preparePremiumVehicleTemplate(scene, modelId,{mobile=false}={}) 
   });
   const bounds=new THREE.Box3().setFromObject(scene),size=bounds.getSize(new THREE.Vector3());
   if(size.x>VEHICLE.width+.015||size.z>VEHICLE.length+.015)throw new Error('Vehicle exceeds its collision footprint');
-  return {kind:'premium',mobile,modelId,name:definitions[modelId].name,levels,materials,size,auxiliary:null};
+  return {kind:'premium',mobile,modelId,name:definitions[modelId].name,levels,materials,size,auxiliary:prepared?Object.fromEntries(Object.entries(preparation.auxiliary).map(([key,data])=>[key,data?new THREE.BufferGeometryLoader().parse({data}):null])):null};
 }
 
-export async function loadPremiumVehicleTemplates(baseURL=new URL('./vehicles/',import.meta.url),{mobile=false}={}) {
+export async function loadPremiumVehicleTemplates(baseURL=new URL('./vehicles/',import.meta.url),{mobile=false,yieldFrame=()=>new Promise(resolve=>globalThis.requestAnimationFrame?globalThis.requestAnimationFrame(resolve):resolve())}={}) {
   const loader=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const job=async([id,definition])=>{
-    const url=new URL(mobile?id+'-mobile.glb.gz':definition.file,baseURL),response=await fetch(url);
+  const job=async([id])=>{
+    const url=new URL(id+(mobile?'-mobile-ready.glb.gz':'-ready.glb.gz'),baseURL),response=await fetch(url);
     if(!response.ok)throw new Error('Vehicle asset unavailable: '+id);
     const bytes=await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
     const gltf=await loader.parseAsync(bytes,baseURL.href);
-    return [id,preparePremiumVehicleTemplate(gltf.scene,id,{mobile})];
+    return [id,preparePremiumVehicleTemplate(gltf.scene,id,{mobile,requirePrepared:true})];
   };
   const results=[];
-  if(mobile){
-    for(const entry of Object.entries(definitions))results.push(await job(entry).then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})));
-  }else results.push(...await Promise.allSettled(Object.entries(definitions).map(job)));
+  // Serial decode/preparation avoids two rich templates peaking together; let
+  // the game present a frame before starting the next asset, on both devices.
+  for(const entry of Object.entries(definitions)){
+    results.push(await job(entry).then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})));
+    await yieldFrame();
+  }
   const templates=new Map();
   for(const result of results) {
     if(result.status==='fulfilled')templates.set(...result.value);
