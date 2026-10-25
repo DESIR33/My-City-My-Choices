@@ -232,15 +232,19 @@ export function createMetroWorld({scene,visualKit,obstacles,mobile=false,loader=
     if(ride){const t=trains[ride.train];if(ride.alightAt&&time>=ride.alightAt&&t.doorOpen>.6){const out=alight();if(out)onEvent({kind:'alighted',...out});}}}
   // ---------- passengers ----------
   // The open doorway nearest a player on a platform, or null.
-  function boardable(p){if(ride||!p||p.y<PLATFORM_Y-.5)return null;for(const t of trains){const s=t.state;if(!s?.doors||!s.station||t.doorOpen<.5)continue;
+  function boardable(p){if(ride||!p||![p.x,p.y,p.z].every(Number.isFinite)||Math.abs(p.y-PLATFORM_Y)>.35||metroFloorAt(p.x,p.z,p.y)!==PLATFORM_Y)return null;for(const t of trains){const s=t.state;if(!s?.doors||!s.station||s.speed!==0||t.doorOpen<.6)continue;
       for(const d of DOORWAYS){const w=doorWorld(t,d,2.4);if(Math.hypot(p.x-w.x,p.z-w.z)<2.4){const station=stationById(s.station),term=terminatesAt(s.station,s.track);return {train:t.index,doorway:d,station,terminates:term,towards:destinationOf(s.track),stops:term?[]:stationsAhead(t),departsIn:Math.max(0,s.remaining-3)};}}}return null;}
-  function board(trainIndex,destination,actor=me()){const t=trains[trainIndex];if(!t||ride||!stationIds.has(destination))return false;const s=t.state;if(!s?.doors||t.doorOpen<.3)return false;
-    if(!stationsAhead(t).some(x=>x.id===destination))return false;ride={train:trainIndex,destination,boardedAt:s.station,alightAt:null,view:'outside',slot:[.8,-6.45]};carry(actor);return true;}
+  function board(trainIndex,destination,actor=me()){
+    if(!Number.isInteger(trainIndex)||!actor?.position||!stationIds.has(destination))return false;
+    const b=boardable(actor.position);if(!b||b.train!==trainIndex||b.terminates||!b.stops.some(s=>s.id===destination))return false;
+    ride={train:trainIndex,destination,boardedAt:b.station.id,alightAt:null,view:'outside',slot:[.8,-6.45]};carry(actor);return true;}
   function carry(actor=me()){if(!ride||!actor)return;const t=trains[ride.train],yaw=t.group.rotation.y,[lx,lz]=ride.slot,x=Math.cos(yaw),z=-Math.sin(yaw),fx=Math.sin(yaw),fz=Math.cos(yaw);
     actor.position.set(t.group.position.x+x*lx+fx*lz,RAIL_Y+trainSpec.floor,t.group.position.z+z*lx+fz*lz);actor.rotation.y=yaw;}
   // Step out of the nearest doorway onto the platform (doors must be open).
-  function alight(actor=me()){if(!ride)return null;const t=trains[ride.train],s=t.state;if(!s?.doors||!s.station)return null;const [,lz]=ride.slot,d=DOORWAYS.reduce((a,b)=>Math.abs(b-lz)<Math.abs(a-lz)?b:a),w=doorWorld(t,d,2.9);
-    const station=stationById(s.station);ride=null;if(actor){actor.position.set(w.x,PLATFORM_Y,w.z);actor.rotation.y=t.group.rotation.y+Math.PI/2;}return {station,x:w.x,y:PLATFORM_Y,z:w.z};}
+  function alight(actor=me()){if(!ride||!actor?.position)return null;const t=trains[ride.train],s=t.state;if(!s?.doors||!s.station||s.speed!==0||t.doorOpen<.6)return null;
+    const [,lz]=ride.slot,d=DOORWAYS.reduce((a,b)=>Math.abs(b-lz)<Math.abs(a-lz)?b:a),w=doorWorld(t,d,2.9);
+    if(metroFloorAt(w.x,w.z,PLATFORM_Y)!==PLATFORM_Y)return null;
+    const station=stationById(s.station);ride=null;actor.position.set(w.x,PLATFORM_Y,w.z);actor.rotation.y=t.group.rotation.y+Math.PI/2;return {station,x:w.x,y:PLATFORM_Y,z:w.z};}
   function changeDestination(id){if(!ride)return false;const t=trains[ride.train];if(!stationsAhead(t).some(x=>x.id===id)&&!(t.state.station===id&&t.state.doors))return false;ride.destination=id;if(t.state.station===id&&t.state.doors)ride.alightAt=time+.2;return true;}
   function rideInfo(){if(!ride)return null;const t=trains[ride.train];return {train:ride.train,destination:stationById(ride.destination),ahead:stationsAhead(t),speed:t.state.speed,stopped:t.state.speed===0,doors:!!t.state.doors,at:t.state.station?stationById(t.state.station):null,view:ride.view,position:t.group.position,yaw:t.group.rotation.y};}
   function setView(view){if(ride)ride.view=view==='inside'?'inside':'outside';return ride?.view;}

@@ -83,14 +83,28 @@ assert.ok(board&&board.station.id==='midtown'&&board.towards.id==='airport'&&!bo
 assert.deepEqual(board.stops.map(s=>s.id),['central','uptown','northgate','plaza','airport']);
 assert.ok(metro.gates.filter(g=>g.station==='midtown'&&g.track==='A').every(g=>g.open>.5),'platform gates open with the train doors');
 assert.equal(metro.board(board.train,'rivergate'),false,'only stations ahead');
+// Actions revalidate physical boarding; rejected calls cannot move the actor.
+const waiting=player.position.clone(),train=metro.trains[board.train];
+for(const bad of [{x:0,y:PLATFORM_Y,z:0},{x:waiting.x,y:0,z:waiting.z},{x:waiting.x,y:PLATFORM_Y+2,z:waiting.z},{x:NaN,y:PLATFORM_Y,z:waiting.z},{x:waiting.x,y:PLATFORM_Y,z:Infinity}]){
+ player.position.set(bad.x,bad.y,bad.z);assert.equal(metro.boardable(player.position),null);assert.equal(metro.board(board.train,'plaza'),false);assert.equal(metro.isRiding(),false);assert.ok(Object.is(player.position.x,bad.x)&&Object.is(player.position.y,bad.y)&&Object.is(player.position.z,bad.z),'refused boarding leaves position untouched');}
+player.position.copy(waiting);
+assert.equal(metro.board(String(board.train),'plaza'),false,'invalid train identity');assert.equal(metro.board(board.train,'removed-stop'),false);assert.equal(metro.board(board.train,'plaza',null),false,'missing actor');
+const open=train.doorOpen;train.doorOpen=.45;assert.equal(metro.board(board.train,'plaza'),false,'a partly opening door cannot accept a stale click');train.doorOpen=open;
+const speed=train.state.speed;train.state.speed=1;assert.equal(metro.board(board.train,'plaza'),false,'cannot board a moving car');train.state.speed=speed;
+// A player inside the track envelope is near a door but not on its platform.
+const track=F.toWorld(DOORWAYS[2],3.0);player.position.set(track.x,PLATFORM_Y,track.z);assert.equal(metro.board(board.train,'plaza'),false);player.position.copy(waiting);
 assert.ok(metro.board(board.train,'plaza'));assert.ok(metro.isRiding());
+assert.equal(metro.board(board.train,'plaza'),false,'one ride only');
+const seat=player.position.clone();train.doorOpen=.3;assert.equal(metro.alight(),null,'wait for the real door to open');assert.ok(metro.isRiding());assert.ok(player.position.equals(seat));train.doorOpen=open;
+const savedDuringRide=metro.safePoint(player.position);assert.ok(worldWalkable(savedDuringRide.x,savedDuringRide.z));assert.equal(metroFloorAt(savedDuringRide.x,savedDuringRide.z,0),null);assert.ok(player.position.equals(seat)&&metro.isRiding(),'saving derives a recovery point without changing the active ride');
+
 assert.equal(metro.floorAt(player.position.x,player.position.z,player.position.y),RAIL_Y+T.floor,'standing on the car floor');
-for(let i=0;i<4000&&metro.isRiding();i++){metro.update(.25,{});if(metro.isRiding()){metro.carry(player);const tr=metro.trains[board.train].group;assert.ok(Math.hypot(player.position.x-tr.position.x,player.position.z-tr.position.z)<14,'carried in the car');}}
+for(let i=0;i<4000&&metro.isRiding();i++){metro.update(.25,{});if(metro.isRiding()){metro.carry(player);const tr=metro.trains[board.train].group;assert.ok(Math.hypot(player.position.x-tr.position.x,player.position.z-tr.position.z)<14,'carried in the car');if(metro.rideInfo().speed>0){const before=player.position.clone();assert.equal(metro.alight(),null,'cannot leave a moving train');assert.ok(player.position.equals(before)&&metro.isRiding());}}}
 assert.ok(!metro.isRiding());const kinds=events.map(e=>e.kind);assert.ok(kinds.includes('departing')&&kinds.includes('arrived'));
 const off=events.find(e=>e.kind==='alighted');assert.equal(off.station.id,'plaza');assert.equal(player.position.y,PLATFORM_Y);
 assert.equal(metroFloorAt(player.position.x,player.position.z,PLATFORM_Y),PLATFORM_Y,'stepped out onto the platform');
 // Terminus platforms: arriving trains end their trip.
-{const air=STATIONS.at(-1),A=stationFrame(air),d=A.toWorld(DOORWAYS[1],4.3);player.position.set(d.x,PLATFORM_Y,d.z);let b=null;for(let i=0;i<4000&&!b;i++){metro.update(.25,{});b=metro.boardable(player.position);}assert.ok(b?.terminates,'airport platform 1 is arrivals only');}
+{const air=STATIONS.at(-1),A=stationFrame(air),d=A.toWorld(DOORWAYS[1],4.3);player.position.set(d.x,PLATFORM_Y,d.z);let b=null;for(let i=0;i<4000&&!b;i++){metro.update(.25,{});b=metro.boardable(player.position);}assert.ok(b?.terminates,'airport platform 1 is arrivals only');assert.equal(metro.board(b.train,'rivergate'),false,'cannot board an arrivals-only train');}
 
 // Game wiring.
 const html=await readFile(file('index.html'),'utf8');

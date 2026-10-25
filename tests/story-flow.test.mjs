@@ -39,7 +39,7 @@ const run=s=>c.__storyEval(s);
 // Light controls share the real story modal, but keep their clock in a separate
 // preference. Include their shipped handlers when checking every inline button.
 Object.assign(c,await loadModule('city-time.js'),{visualKit:{atmosphere:{finalizeStreetLights(){},update(){}}}});
-run(html.slice(html.indexOf('const cityTime=(()=>'),html.indexOf('sessionLifecycle=createSessionLifecycle('))+';window.cityTime=cityTime;');
+const cityClockStart=html.indexOf('const cityTime=(()=>');run(html.slice(cityClockStart,html.indexOf('\n',cityClockStart))+'\n'+html.slice(html.indexOf('function persistCityLight('),html.indexOf('sessionLifecycle=createSessionLifecycle('))+';window.cityTime=cityTime;');
 assert.equal(typeof c.closeGamePanel,'function');assert.equal(typeof c.newStory,'function');assert.equal(typeof c.launchNextBusinessDay,'function');
 // Play through the story using the same public handlers as its buttons.
 // The main playthrough is a 6-year-old's Sprout story: the original story money.
