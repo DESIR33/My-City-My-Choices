@@ -1,3 +1,4 @@
+import {createAirportArrival} from './airport-arrival.js';
 import {createSkyviewLandscape} from './skyview-landscape.js';
 import * as THREE from 'three';
 import {nearMetro} from './metro-line.js';
@@ -81,18 +82,16 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   for(const s of [-1,1])pave((A.road.x0+A.road.x1)/2,A.road.z+s*(A.road.halfWidth+1),A.road.x1-A.road.x0,2);
   groundSurfaces?.push({minX:A.landside.minX,maxX:A.landside.maxX,minZ:A.landside.minZ,maxZ:A.landside.maxZ,top:0,kind:'concrete',airport:true});
   // Road paint and parking stalls.
-  for(let x=A.road.x0+6;x<A.road.x1-10;x+=12)flatMark(M.white,x,A.road.z,6,.18,.0);
-  for(let x=A.parking.minX+6;x<A.parking.maxX-3;x+=3)for(const z of [-1792,-1812,-1852,-1872,-1912,-1932])flatMark(M.white,x,z,.12,5,.0);
+  for(let x=A.road.x0+6;x<A.road.x1-10;x+=12)flatMark(M.yellow,x,A.road.z,6,.18,.0);
+
   flatMark(M.white,1150,A.loop.curb+A.loop.halfWidth-.4,190,.2,.0);for(let x=1060;x<1245;x+=8)flatMark(M.yellow,x,A.loop.curb+A.loop.halfWidth-1.2,4,.15,.0);
   for(let x=870;x<=880;x+=1.5)flatMark(M.white,x,A.road.z,.7,14.5,.025);
   // Curbside canopy and wayfinding.
   for(let x=1080;x<=1220;x+=20){box(M.steel,x,0,-1972,.5,6,.5);solid(x,-1972,.6,.6,'airport-column');}
-  box(M.cream,1150,6,-1977,160,.6,14);camBox(1150,6,-1977,160,.6,14);box(M.light,1150,5.95,-1977,150,.08,10);
+  box(M.cream,1150,6,-1977,160,.6,14);camBox(1150,6,-1977,160,.6,14);for(let x=1080;x<=1220;x+=20)box(M.light,x,5.95,-1977,.3,.04,8);
   sign('DEPARTURES  ✈  ALL GATES',1150,7.2,-1969.9,40,2.2,0,{bg:'#13233a',fg:'#ffffff'});
   sign('NORTHSTAR AIRPORT  ✈  →',262,4.2,-1741,14,2.2,0,{bg:'#0e5a3a'});box(M.steel,256,0,-1741.1,.3,3.6,.3);box(M.steel,268,0,-1741.1,.3,3.6,.3);
   for(let x=A.road.x0+30;x<A.road.x1;x+=45)for(const s of [-1,1]){if(nearMetro(x,A.road.z+s*9,0))continue;const z=A.road.z+s*(A.road.halfWidth+1.5);box(M.steel,x,0,z,.22,8,.22);box(M.light,x,8,z-s*1,.5,.25,1.6);visualKit.atmosphere?.addStreetLight?.({x,y:8,z:z-s*1,groundY:.02});}
-  // Parked cars in the lot (a few on phones).
-  if(parkedCar){let n=0;for(const z of [-1802,-1862,-1922])for(let x=A.parking.minX+9;x<A.parking.maxX-6&&n<(mobile?6:18);x+=12){if(((x*7+z)|0)%3===0||nearMetro(x,z,9))continue;parkedCar(x,z,z<-1900?Math.PI:0);n++;}}
   const skyview=createSkyviewLandscape({parent:root,cube,C,visualKit,obstacles,groundSurfaces});
 
   // ---------- landmark (owner's arched building and its old tower) ----------
@@ -100,9 +99,8 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   solid(lm.core[0],lm.core[1],42,42,'airport-landmark');solid(lm.tower[0],lm.tower[1],12,12,'airport-landmark');for(const [x,z] of lm.feet)solid(x,z,4,4,'airport-landmark');
   const landmarkStandIn=new THREE.Group();{const m=new THREE.Mesh(new THREE.CylinderGeometry(20,20,9,24),M.white);m.position.set(lm.core[0],4.5,lm.core[1]);landmarkStandIn.add(m);const t=new THREE.Mesh(new THREE.CylinderGeometry(4,4,62,12),M.white);t.position.set(lm.tower[0],31,lm.tower[1]);landmarkStandIn.add(t);}root.add(landmarkStandIn);
 
-  // ---------- terminal stand-in (until the model streams in) ----------
-  const T=A.terminal,standIn=new THREE.Group();standIn.name='Terminal stand-in';exterior.add(standIn);
-  {const add=(m,x,y,z,w,h,d)=>{const o=new THREE.Mesh(unit,m);o.position.set(x,y+h/2,z);o.scale.set(w,h,d);standIn.add(o);};add(M.cream,1150,0,-2080,240,16,190);add(M.glass,1150,1,-1985.5,236,12,.4);add(M.steel,1150,16,-2080,246,1.5,196);add(M.hangar,1153,0,-2131,58,110,36);}
+  const T=A.terminal;
+  const arrival=createAirportArrival({root,exterior,box,sign,camBox,road,pave,flatMark,M,C,parkedCar,mobile,obstacles});
 
   // ---------- interior: departures hall, gate corridor, gate lounge ----------
   const H=A.hall,K=A.corridor,G=A.lounge;
@@ -113,7 +111,7 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   sign(['WELCOME TO NORTHSTAR'],1150,11,H.maxZ-.6,30,3,Math.PI,{bg:'#0e5a3a',font:110},interior);
   const glazing=(x0,x1,z,h,gap=null)=>{for(const [a,b] of gap?[[x0,gap[0]],[gap[1],x1]]:[[x0,x1]]){camBox((a+b)/2,0,z,b-a,h,.3);ibox(M.glass,(a+b)/2,0,z,b-a,h,.08);for(let x=a;x<=b+1e-6;x+=3)ibox(M.mullion,x,0,z,.14,h,.3);for(const y of [3.2,h*.6])ibox(M.mullion,(a+b)/2,y,z,b-a,.12,.25);}};
   // Hall: 14 m high, glass landside facade with the entrance, check-in islands.
-  glazing(H.minX,H.maxX,H.maxZ,14,[A.entrance.minX,A.entrance.maxX]);ibox(M.mullion,1150,4.2,H.maxZ,A.entrance.maxX-A.entrance.minX,.4,.4);ibox(M.glass,1150,4.6,H.maxZ,A.entrance.maxX-A.entrance.minX,9.4,.08);
+
   for(const x of [A.entrance.minX,A.entrance.maxX]){solid(x,H.maxZ,.6,1.2,'airport-wall');ibox(M.mullion,x,0,H.maxZ,.5,4.2,.6);}
   solid((H.minX+A.entrance.minX)/2,H.maxZ,A.entrance.minX-H.minX,1.2,'airport-wall');solid((A.entrance.maxX+H.maxX)/2,H.maxZ,H.maxX-A.entrance.maxX,1.2,'airport-wall');
   wall(H.minX,H.minZ,H.minX,H.maxZ,14);wall(H.maxX,H.minZ,H.maxX,H.maxZ,14);wall(H.minX,H.minZ,K.minX,H.minZ,14);wall(K.maxX,H.minZ,H.maxX,H.minZ,14);ibox(M.wall,1150,6,H.minZ,K.maxX-K.minX,8,.4);
@@ -149,7 +147,7 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
     for(const s of [-1,1]){solid(t.x+s*.72,t.z,.18,13.4,'airport-travelator');}}
   sign('→ GATES',1146,3.6,-2066.5,3,.8,Math.PI,{bg:'#13233a',font:120},interior);
   // Gate lounge: glass wall over the apron, gate desks, seating.
-  glazing(G.minX,G.maxX,G.minZ,8);wall(G.minX,G.minZ,G.minX,G.maxZ,8);wall(G.maxX,G.minZ,G.maxX,G.maxZ,8);wall(G.minX,G.maxZ,K.minX,G.maxZ,8);wall(K.maxX,G.maxZ,G.maxX,G.maxZ,8);
+  wall(G.minX,G.minZ,G.minX,G.maxZ,8);wall(G.maxX,G.minZ,G.maxX,G.maxZ,8);wall(G.minX,G.maxZ,K.minX,G.maxZ,8);wall(K.maxX,G.maxZ,G.maxX,G.maxZ,8);
   ibox(M.ceiling,(G.minX+G.maxX)/2,8,(G.minZ+G.maxZ)/2,G.maxX-G.minX,.3,G.maxZ-G.minZ);for(let x=G.minX+6;x<G.maxX;x+=10)ibox(M.light,x,7.9,(G.minZ+G.maxZ)/2,1.2,.06,G.maxZ-G.minZ-4);
   for(const s of A.stands){const door=s.x+2;if(s.bridge){ibox(M.mullion,door,0,G.minZ+.2,3.6,3,.3);ibox(M.dark,door,0,G.minZ+.25,3,2.6,.2);}
     if(s.x>G.maxX-4)continue;ibox(M.desk,s.x-4,0,G.minZ+7,3.4,1.05,1.2);ibox(M.deskTop,s.x-4,1.05,G.minZ+7,3.6,.06,1.4);solid(s.x-4,G.minZ+7,3.6,1.4,'airport-gate-desk');
@@ -184,7 +182,7 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   for(const s of A.stands){flatMark(Y,s.x,(TL.z+A.standNoseZ)/2,.2,A.standNoseZ-TL.z);flatMark(W,s.x,A.standNoseZ-1.5,6,.4);const {texture}=signTexture(s.id,{w:256,h:256,bg:'rgba(0,0,0,0)',fg:'#f2c230',font:200});const m=new THREE.Mesh(new THREE.PlaneGeometry(8,8),new THREE.MeshStandardMaterial({map:texture,transparent:true,polygonOffset:true,polygonOffsetFactor:-2}));m.rotation.set(-Math.PI/2,0,Math.PI);m.position.set(s.x,.04,TL.z+20);root.add(m);
     for(const k of [-1,1])flatMark(M.red,s.x+k*(s.maxSpan/2+3),(A.standNoseZ+TL.z)/2+30,.3,A.standNoseZ-TL.z-60);}
   // Jet bridges built for A1 and A4 (A2 and A3 use the terminal model's own bridges).
-  for(const s of A.stands.filter(q=>q.bridge==='built')){const face=s.x<1110?-2198:-2171,door=[s.x+2.2,A.standNoseZ-6.5],start=[s.x+(s.x<1110?8:6),face],y=s.maxSpan>45?4.6:3.4;
+  for(const s of A.stands.filter(q=>q.bridge)){const face=A.lounge.minZ,door=[s.x+2.2,A.standNoseZ-6.5],start=[s.x+(s.x<1110?8:6),face],y=s.maxSpan>45?4.6:3.4;
     const dx=door[0]-start[0],dz=door[1]-start[1],len=Math.hypot(dx,dz),ry=Math.atan2(dx,dz);box(M.cream,(start[0]+door[0])/2,y,(start[1]+door[1])/2,3.2,3,len,ry);box(M.glass,(start[0]+door[0])/2,y+1.2,(start[1]+door[1])/2,3.25,.8,len-2,ry);
     box(M.dark,door[0],y-.2,door[1],4,3.6,3.4,ry);const leg=[start[0]+dx*.7,start[1]+dz*.7];box(M.steel,leg[0],0,leg[1],.5,y,.5);box(M.dark,leg[0],0,leg[1],2.6,.8,1.2,ry);const rot=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,y+3,16),M.cream);rot.position.set(start[0],(y+3)/2,start[1]);root.add(rot);}
   // Ground service vehicles at the gates.
@@ -223,20 +221,23 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
     points(edge,0xfff3d6,3);points(taxi,0x3a7bff,3);points(approach,0xfff7e8,3.5);points(thr,0x3dff6e,4);points(end,0xff3b30,4);points(papi[0],0xffffff,4);points(papi[1],0xff3b30,4);
     points(lightHeads,0xfff4d8,6);points([[A.tower.x,73,A.tower.z]],0xff2a1f,4);points(lm.tower.length?[[lm.tower[0],81,lm.tower[1]]]:[],0xff2a1f,4);}
 
+  ibox(M.desk,1139,0,-2004,1.4,1.1,.8);ibox(M.dark,1139,1.1,-2004,1.5,1.1,.15);
+  sign('SELF CHECK-IN',1139,3.3,-2004,7,1.1,0,{bg:'#196b69',font:90},interior);
+  for(const z of [-1994,-2038,-2058])sign('↑  SECURITY & GATES',1150,4,z,11,1,0,{bg:'#196b69',font:70},interior);
   // ---------- commit instanced boxes ----------
   const dummy=new THREE.Object3D(),meshes=[];
   for(const {material,group,list} of batches.values()){const mesh=new THREE.InstancedMesh(unit,material,list.length);list.forEach(([x,y,z,w,h,d,ry],i)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,ry,0);dummy.scale.set(w,h,d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});
     mesh.castShadow=!mobile&&group===root&&material!==M.white&&material!==M.yellow&&material!==M.red;mesh.receiveShadow=true;mesh.computeBoundingSphere();group.add(mesh);meshes.push(mesh);}
 
   // ---------- streamed models ----------
-  const models={state:'idle',terminal:null,tower:null,landmark:null,travelators:[]};
+  const models={state:'idle',terminal:arrival.terminal,tower:null,landmark:null,travelators:[]};
   let loading=null;
   function loadModels(modelLoader){loading||=fetchModels(modelLoader);return loading;}
   async function fetchModels(modelLoader=loader||new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)){
     models.state='loading';
     const get=async key=>{try{return (await modelLoader.loadAsync(AIRPORT_MODELS[key].url)).scene;}catch(error){console.warn('Airport model unavailable: '+key,error);return null;}};
-    const [terminal,tower,landmark,travelator]=await Promise.all([get(mobile?'terminalMobile':'terminal'),get('tower'),get('landmark'),get('travelator')]);
-    if(terminal){terminal.rotation.y=Math.PI/2;terminal.position.set(T.x,0,T.z);terminal.traverse(c=>{if(c.isMesh){c.castShadow=!mobile;c.receiveShadow=true;}});exterior.add(terminal);standIn.visible=false;models.terminal=terminal;}
+    const [tower,landmark,travelator]=await Promise.all([get('tower'),get('landmark'),get('travelator')]);
+
     if(tower){tower.position.set(A.tower.x,0,A.tower.z);tower.traverse(c=>{if(c.isMesh){c.castShadow=!mobile;if(c.material?.name==='body'){c.material.map=null;c.material.color.setHex(0xc9c6bf);c.material.needsUpdate=true;}}});root.add(tower);towerStandIn.visible=false;models.tower=tower;}
     if(landmark){landmark.position.set(L.x,0,L.z);landmark.traverse(c=>{if(c.isMesh)c.castShadow=!mobile;});root.add(landmark);landmarkStandIn.visible=false;models.landmark=landmark;}
     if(travelator)for(const [i,t] of TRAVELATORS.entries()){const m=travelator.clone();m.position.set(t.x,0,t.z);if(t.dir>0)m.rotation.y=Math.PI;interior.add(m);models.travelators.push(m);travelatorStandIns[i].visible=false;}
@@ -245,13 +246,26 @@ export function createAirportWorld({scene,visualKit,cube,C,obstacles,groundSurfa
   let inside=false,time=0;
   function update(dt,{position}={}){dt=Number.isFinite(dt)?Math.max(0,Math.min(dt,.25)):0;time+=dt;
     if(position){if(models.state==='idle'&&Math.hypot(position.x-1500,position.z+2400)<MODEL_RANGE)loadModels();
-      const now=airportInside(position.x,position.z,.2);if(now!==inside){inside=now;interior.visible=inside;exterior.visible=!inside;}}
+      arrival.update(dt,position);inside=airportInside(position.x,position.z,.2);interior.visible=inside||(Math.abs(position.x-1150)<45&&Math.abs(position.z-H.maxZ)<32);exterior.visible=true;}
     if(interior.visible){for(const m of beltMats)m.map.offset.y+=m.userData.dir*dt*BELT_SPEED/1.2;
       const minute=Math.floor(getHour()*60);if(minute!==boardMinute){boardMinute=minute;drawBoard(getHour());}}
     windsock.userData.sock.rotation.y=Math.sin(time*.3)*.35+.6;windsock.userData.sock.children[0].rotation.x=Math.sin(time*2.1)*.06;
     const night=M.probe.emissiveIntensity??0;for(const p of lightSets)p.material.opacity=.35+.65*night;}
   // Moving-walkway velocity under a walking player (m/s), or null.
   function conveyor(p){const t=travelatorAt(p);return t?{x:0,z:t.dir*BELT_SPEED}:null;}
+  // A free practice journey; no money or real flight booking is involved.
+  const visit={pass:null,security:false,complete:false};
+  const actions=[{id:'entrance',name:'Terminal entrance',x:1150,z:-1979,r:7},
+   {id:'checkin',name:'Self-service check-in',x:1139,z:-2003,r:3},
+   {id:'help',name:'Airport information',x:1150,z:-2013,r:4},
+   {id:'security',name:'Security checkpoint',x:1150,z:-2064,r:4},
+   ...A.stands.filter(s=>s.x<G.maxX-4).map(s=>({id:s.id,name:'Gate '+s.id,x:s.x-4,z:G.minZ+10,r:3}))];
+  function nearestAction(p){if(!p||![p.x,p.y??0,p.z].every(Number.isFinite)||Math.abs(p.y??0)>2)return null;return actions.find(a=>Math.hypot(p.x-a.x,p.z-a.z)<a.r)||null;}
+  function act(id,p,flight=null){const a=nearestAction(p);if(!a||a.id!==id)return false;
+   if(id==='checkin'){const f=departuresBoard(getHour()).find(f=>f.flight===flight&&/^A[1-4]$/.test(f.gate));if(!f)return false;visit.pass={...f};visit.security=false;visit.complete=false;return true;}
+   if(id==='security'){if(!visit.pass)return false;visit.security=true;return true;}
+   if(id===visit.pass?.gate&&visit.security){visit.complete=true;return true;}return false;
+  }
   function nearestLandmark(p){let best=null,dist=Infinity;for(const [id,s] of Object.entries(AIRPORT_PLACES)){const d=Math.hypot(p.x-s.x,p.z-s.z);if(d<s.r&&d<dist){dist=d;best={id,name:s.name,x:s.x,z:s.z,fact:AIRPORT_FACTS[id],think:AIRPORT_THINK[id]};}}return best;}
-  return {root,interior,exterior,skyview,models,loadModels,update,conveyor,nearestLandmark,places:AIRPORT_PLACES,get inside(){return inside;},batches:meshes,board:{draw:drawBoard,mesh:boardMesh},lights:lightSets};
+  return {root,interior,exterior,skyview,arrival,nearestAction,visit,act,flights:()=>departuresBoard(getHour()),models,loadModels,update,conveyor,nearestLandmark,places:AIRPORT_PLACES,get inside(){return inside;},batches:meshes,board:{draw:drawBoard,mesh:boardMesh},lights:lightSets};
 }

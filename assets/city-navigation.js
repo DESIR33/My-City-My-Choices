@@ -33,7 +33,7 @@ export function createCityNetwork(mode='drive'){
  // avenue; the loop road serves the terminal curb. On foot, the road shoulder leads to
  // the landside plaza, the main doors, the departures hall, the corridor and the gates.
  {const A=AIRPORT,east=NORTH_CITY.avenues.at(-1),z=A.road.z,L=A.loop,line=(...ps)=>{for(let i=1;i<ps.length;i++)link(ps[i-1],ps[i]);};
-  if(mode==='drive'){line({x:east,z},{x:L.west,z},{x:L.east,z});line({x:L.west,z},{x:L.west,z:L.curb},{x:A.terminal.x,z:L.curb},{x:L.east,z:L.curb},{x:L.east,z});}
+  if(mode==='drive'){line({x:east,z},{x:L.west,z},{x:L.east,z});line({x:L.east,z},{x:1390,z},{x:1390,z:-1920});line({x:L.west,z},{x:L.west,z:L.curb},{x:A.terminal.x,z:L.curb},{x:L.east,z:L.curb},{x:L.east,z});}
   else{const s=z+9.3;line({x:east+9.3,z:s},{x:L.west-10,z:s},{x:L.west-10,z:A.landside.minZ+10},{x:A.terminal.x,z:A.landside.minZ+10},{x:A.terminal.x,z:A.landside.minZ-6},{x:A.terminal.x-8,z:A.hall.minZ+20},{x:A.terminal.x,z:A.hall.minZ-2},{x:A.terminal.x,z:A.lounge.maxZ-4});}}
  return {nodes,edges,adj,mode};
 }
